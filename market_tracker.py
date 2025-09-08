@@ -36,18 +36,6 @@ DOWNLOAD_PERIOD = "max"
 VERBOSE = True
 MIN_MARKET_CAP = 0
 
-# Index configurations
-INDEX_CONFIGS = {
-    "SP500": {
-        "name": "S&P 500",
-        "url": "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies",
-        "table_index": 0,
-        "symbol_column": "Symbol",
-        "sector_column": "GICS Sector",
-        "industry_column": "GICS Sub-Industry"
-    }
-}
-
 # ---------------------------
 # Shared Helper Functions
 # ---------------------------
@@ -137,100 +125,6 @@ def download_history(tickers, period="max", interval="1d", threads=True, progres
                     out[t] = pd.DataFrame()
 
     return out
-
-def style_dataframe(df, return_cols=None, vol_cols=None, rsi_cols=None):
-    """Apply color coding to dataframe based on column types"""
-    if return_cols is None:
-        return_cols = []
-    if vol_cols is None:
-        vol_cols = []
-    if rsi_cols is None:
-        rsi_cols = []
-    
-    # Create a copy to avoid modifying original
-    df_copy = df.copy()
-    
-    def color_returns(val):
-        """Color code return percentages"""
-        try:
-            if pd.isna(val):
-                return ''
-            val = float(val)
-            if val > 5:
-                return 'background-color: #006400; color: white'  # Dark green
-            elif val > 2:
-                return 'background-color: #228B22; color: white'  # Medium green
-            elif val > 0.5:
-                return 'background-color: #90EE90; color: black'  # Light green
-            elif val > -0.5:
-                return 'background-color: #D3D3D3; color: black'  # Gray
-            elif val > -2:
-                return 'background-color: #FFB6C1; color: black'  # Light red
-            elif val > -5:
-                return 'background-color: #FF6347; color: black'  # Medium red
-            else:
-                return 'background-color: #8B0000; color: white'  # Dark red
-        except (ValueError, TypeError):
-            return ''
-    
-    def color_volatility(val):
-        """Color code volatility percentages"""
-        try:
-            if pd.isna(val):
-                return ''
-            val = float(val)
-            if val > 50:
-                return 'background-color: #8B0000; color: white'  # Dark red
-            elif val > 35:
-                return 'background-color: #FF0000; color: white'  # Red
-            elif val > 25:
-                return 'background-color: #FF6347; color: black'  # Light red
-            elif val > 15:
-                return 'background-color: #D3D3D3; color: black'  # Gray
-            else:
-                return 'background-color: #90EE90; color: black'  # Light green
-        except (ValueError, TypeError):
-            return ''
-    
-    def color_rsi(val):
-        """Color code RSI values"""
-        try:
-            if pd.isna(val):
-                return ''
-            val = float(val)
-            if val > 70:
-                return 'background-color: #FF0000; color: white'  # Red (overbought)
-            elif val > 60:
-                return 'background-color: #FF6347; color: black'  # Light red
-            elif val > 30:
-                return 'background-color: #D3D3D3; color: black'  # Gray (neutral)
-            elif val > 20:
-                return 'background-color: #90EE90; color: black'  # Light green
-            else:
-                return 'background-color: #006400; color: white'  # Green (oversold)
-        except (ValueError, TypeError):
-            return ''
-    
-    # Apply styling
-    try:
-        styler = df_copy.style
-        
-        for col in return_cols:
-            if col in df_copy.columns:
-                styler = styler.applymap(color_returns, subset=[col])
-        
-        for col in vol_cols:
-            if col in df_copy.columns:
-                styler = styler.applymap(color_volatility, subset=[col])
-        
-        for col in rsi_cols:
-            if col in df_copy.columns:
-                styler = styler.applymap(color_rsi, subset=[col])
-        
-        return styler
-    except Exception as e:
-        # If styling fails, return plain dataframe
-        return df_copy
 
 # ---------------------------
 # Metrics Calculation
@@ -391,6 +285,27 @@ def add_technical_indicators(df):
     df['Momentum'] = df['Close'] / df['Close'].shift(14) - 1
 
     return df
+
+def format_currency(val):
+    """Format value as currency"""
+    try:
+        return f'${float(val):.2f}'
+    except:
+        return str(val)
+
+def format_percentage(val):
+    """Format value as percentage"""
+    try:
+        return f'{float(val):.2f}%'
+    except:
+        return str(val)
+
+def format_number(val, decimals=1):
+    """Format value as number with specified decimals"""
+    try:
+        return f'{float(val):.{decimals}f}'
+    except:
+        return str(val)
 
 # ---------------------------
 # CLI Main Function
@@ -744,42 +659,6 @@ def run_streamlit():
         if view_mode == "Dashboard":
             st.subheader("📊 Market Overview")
             
-            # Add color legend
-            with st.expander("📊 Color Legend", expanded=False):
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.markdown("**📈 Returns:**")
-                    st.markdown("""
-                    - 🟢 **Dark Green**: >5% (Excellent)
-                    - 🟢 **Medium Green**: 2-5% (Good)  
-                    - 🟢 **Light Green**: 0.5-2% (Slight gain)
-                    - ⚪ **Gray**: -0.5% to 0.5% (Neutral)
-                    - 🔴 **Light Red**: -2% to -0.5% (Slight loss)
-                    - 🔴 **Medium Red**: -5% to -2% (Bad)
-                    - 🔴 **Dark Red**: <-5% (Terrible)
-                    """)
-                
-                with col2:
-                    st.markdown("**📊 RSI:**")
-                    st.markdown("""
-                    - 🔴 **Red**: >70 (Overbought)
-                    - 🟠 **Light Red**: 60-70 (Near overbought)
-                    - ⚪ **Gray**: 30-60 (Neutral)
-                    - 🟢 **Light Green**: 20-30 (Near oversold)
-                    - 🟢 **Green**: <20 (Oversold)
-                    """)
-                
-                with col3:
-                    st.markdown("**📈 Volatility:**")
-                    st.markdown("""
-                    - 🔴 **Dark Red**: >50% (Very high)
-                    - 🔴 **Red**: 35-50% (High)
-                    - 🟠 **Light Red**: 25-35% (Medium-high)
-                    - ⚪ **Gray**: 15-25% (Normal)
-                    - 🟢 **Light Green**: <15% (Low)
-                    """)
-            
             col1, col2, col3, col4 = st.columns(4)
             
             # Use dynamic column names
@@ -837,7 +716,7 @@ def run_streamlit():
                     showlegend=False,
                     yaxis_title=f"Return % ({horizon_label})"
                 )
-                st.plotly_chart(fig_gainers, use_container_width=True)
+                st.plotly_chart(fig_gainers, width='stretch')
 
             with col2:
                 st.markdown("### 📉 Top Decliners")
@@ -862,7 +741,7 @@ def run_streamlit():
                     showlegend=False,
                     yaxis_title=f"Return % ({horizon_label})"
                 )
-                st.plotly_chart(fig_losers, use_container_width=True)
+                st.plotly_chart(fig_losers, width='stretch')
 
             # Data table
             st.subheader("📋 All Stocks")
@@ -872,22 +751,21 @@ def run_streamlit():
                 display_cols.append('rsi')
 
             display_df = valid_metrics[display_cols].copy()
+            # Format the data
+            display_df['last_close'] = display_df['last_close'].apply(format_currency)
+            display_df[horizon_col] = display_df[horizon_col].apply(format_percentage)
+            if 'ann_vol_pct' in display_df.columns:
+                display_df['ann_vol_pct'] = display_df['ann_vol_pct'].apply(format_percentage)
+            if 'rsi' in display_df.columns:
+                display_df['rsi'] = display_df['rsi'].apply(lambda x: format_number(x, 1))
+
             # rename for display
             renamed_cols = ['Ticker', 'Sector', 'Price', f'{horizon_label} %', 'Volatility']
             if 'rsi' in valid_metrics.columns:
                 renamed_cols.append('RSI')
             display_df.columns = renamed_cols
 
-            st.dataframe(
-                display_df.style.format({
-                    'Price': '${:.2f}',
-                    f'{horizon_label} %': '{:.2f}%',
-                    'Volatility': '{:.1f}%',
-                    'RSI': '{:.1f}' if 'RSI' in display_df.columns else None
-                }),
-                use_container_width=True,
-                height=400
-            )
+            st.dataframe(display_df, width='stretch', height=400)
 
         # ---------- Sector Analysis ----------
         elif view_mode == "Sector Analysis":
@@ -921,16 +799,16 @@ def run_streamlit():
                 height=500,
                 xaxis_tickangle=-45
             )
-            st.plotly_chart(fig_sector, use_container_width=True)
+            st.plotly_chart(fig_sector, width='stretch')
 
-            # Table with formatting instead of color coding for now
+            # Format sector performance table
             formatted_sector = sector_perf.copy()
-            formatted_sector['Mean Return'] = formatted_sector['Mean Return'].apply(lambda x: f'{x:.2f}%')
-            formatted_sector['Median Return'] = formatted_sector['Median Return'].apply(lambda x: f'{x:.2f}%')
-            formatted_sector['Std Dev'] = formatted_sector['Std Dev'].apply(lambda x: f'{x:.2f}%')
-            formatted_sector['Avg Volatility'] = formatted_sector['Avg Volatility'].apply(lambda x: f'{x:.1f}%')
+            formatted_sector['Mean Return'] = formatted_sector['Mean Return'].apply(format_percentage)
+            formatted_sector['Median Return'] = formatted_sector['Median Return'].apply(format_percentage)
+            formatted_sector['Std Dev'] = formatted_sector['Std Dev'].apply(format_percentage)
+            formatted_sector['Avg Volatility'] = formatted_sector['Avg Volatility'].apply(format_percentage)
             
-            st.dataframe(formatted_sector, use_container_width=True)
+            st.dataframe(formatted_sector, width='stretch')
 
         # ---------- Top Movers ----------
         elif view_mode == "Top Movers":
@@ -954,17 +832,16 @@ def run_streamlit():
                     # Filter to only existing columns
                     display_cols = [col for col in display_cols if col in rising.columns]
                     
-                    # Apply color coding
-                    return_cols = [col for col in display_cols if col.startswith('pct_')]
-                    styled_rising = style_dataframe(
-                        rising[display_cols], 
-                        return_cols=return_cols
-                    ).format({
-                        'last_close': '${:.2f}',
-                        **{col: '{:.2f}%' for col in return_cols}
-                    })
+                    # Take head first, then format
+                    rising_display = rising[display_cols].head(20).copy()
                     
-                    st.dataframe(styled_rising.head(20), use_container_width=True)
+                    # Format the data
+                    rising_display['last_close'] = rising_display['last_close'].apply(format_currency)
+                    for col in display_cols:
+                        if col.startswith('pct_'):
+                            rising_display[col] = rising_display[col].apply(format_percentage)
+                    
+                    st.dataframe(rising_display, width='stretch')
             
             with tabs[1]:
                 declining = valid_metrics[valid_metrics.get(declining_col, False) == True]
@@ -981,67 +858,52 @@ def run_streamlit():
                     # Filter to only existing columns
                     display_cols = [col for col in display_cols if col in declining.columns]
                     
-                    # Apply color coding
-                    return_cols = [col for col in display_cols if col.startswith('pct_')]
-                    styled_declining = style_dataframe(
-                        declining[display_cols], 
-                        return_cols=return_cols
-                    ).format({
-                        'last_close': '${:.2f}',
-                        **{col: '{:.2f}%' for col in return_cols}
-                    })
+                    # Take head first, then format
+                    declining_display = declining[display_cols].head(20).copy()
                     
-                    st.dataframe(styled_declining.head(20), use_container_width=True)
+                    # Format the data
+                    declining_display['last_close'] = declining_display['last_close'].apply(format_currency)
+                    for col in display_cols:
+                        if col.startswith('pct_'):
+                            declining_display[col] = declining_display[col].apply(format_percentage)
+                    
+                    st.dataframe(declining_display, width='stretch')
 
             with tabs[2]:
                 if 'ann_vol_pct' in valid_metrics.columns:
-                    most_volatile = valid_metrics.nlargest(20, 'ann_vol_pct')[['ticker', 'sector', 'last_close', 'ann_vol_pct', horizon_col]]
+                    most_volatile = valid_metrics.nlargest(20, 'ann_vol_pct')[['ticker', 'sector', 'last_close', 'ann_vol_pct', horizon_col]].copy()
                     st.metric("Highest Volatility Stock", f"{most_volatile.iloc[0]['ticker']} ({most_volatile.iloc[0]['ann_vol_pct']:.1f}%)")
                     
-                    # Apply color coding
-                    styled_volatile = style_dataframe(
-                        most_volatile, 
-                        return_cols=[horizon_col],
-                        vol_cols=['ann_vol_pct']
-                    ).format({
-                        'last_close': '${:.2f}',
-                        'ann_vol_pct': '{:.1f}%',
-                        horizon_col: '{:.2f}%'
-                    })
+                    # Format the data
+                    most_volatile['last_close'] = most_volatile['last_close'].apply(format_currency)
+                    most_volatile['ann_vol_pct'] = most_volatile['ann_vol_pct'].apply(format_percentage)
+                    most_volatile[horizon_col] = most_volatile[horizon_col].apply(format_percentage)
                     
-                    st.dataframe(styled_volatile, use_container_width=True)
+                    st.dataframe(most_volatile, width='stretch')
                 else:
                     st.info("Volatility data not available")
 
             with tabs[3]:
                 if 'pct_from_52w_high' in valid_metrics.columns:
-                    near_highs = valid_metrics.nlargest(20, 'pct_from_52w_high')[['ticker', 'sector', 'last_close', '52w_high', 'pct_from_52w_high']]
-                    near_lows = valid_metrics.nsmallest(20, 'pct_from_52w_low')[['ticker', 'sector', 'last_close', '52w_low', 'pct_from_52w_low']]
+                    near_highs = valid_metrics.nlargest(20, 'pct_from_52w_high')[['ticker', 'sector', 'last_close', '52w_high', 'pct_from_52w_high']].copy()
+                    near_lows = valid_metrics.nsmallest(20, 'pct_from_52w_low')[['ticker', 'sector', 'last_close', '52w_low', 'pct_from_52w_low']].copy()
 
                     col1, col2 = st.columns(2)
                     with col1:
                         st.markdown("### Near 52-Week Highs")
-                        styled_highs = style_dataframe(
-                            near_highs,
-                            return_cols=['pct_from_52w_high']
-                        ).format({
-                            'last_close': '${:.2f}',
-                            '52w_high': '${:.2f}',
-                            'pct_from_52w_high': '{:.2f}%'
-                        })
-                        st.dataframe(styled_highs, use_container_width=True)
+                        # Format the data
+                        near_highs['last_close'] = near_highs['last_close'].apply(format_currency)
+                        near_highs['52w_high'] = near_highs['52w_high'].apply(format_currency)
+                        near_highs['pct_from_52w_high'] = near_highs['pct_from_52w_high'].apply(format_percentage)
+                        st.dataframe(near_highs, width='stretch')
                         
                     with col2:
                         st.markdown("### Near 52-Week Lows")
-                        styled_lows = style_dataframe(
-                            near_lows,
-                            return_cols=['pct_from_52w_low']
-                        ).format({
-                            'last_close': '${:.2f}',
-                            '52w_low': '${:.2f}',
-                            'pct_from_52w_low': '{:.2f}%'
-                        })
-                        st.dataframe(styled_lows, use_container_width=True)
+                        # Format the data
+                        near_lows['last_close'] = near_lows['last_close'].apply(format_currency)
+                        near_lows['52w_low'] = near_lows['52w_low'].apply(format_currency)
+                        near_lows['pct_from_52w_low'] = near_lows['pct_from_52w_low'].apply(format_percentage)
+                        st.dataframe(near_lows, width='stretch')
                 else:
                     st.info("52-week high/low data not available")
 
@@ -1169,28 +1031,16 @@ def run_streamlit():
                 if 'rsi' in screened_df.columns:
                     display_cols.append('rsi')
 
-                # Apply comprehensive color coding
-                return_cols = [horizon_col]
-                vol_cols = ['ann_vol_pct'] if 'ann_vol_pct' in screened_df.columns else []
-                rsi_cols = ['rsi'] if 'rsi' in screened_df.columns else []
-                
-                styled_screener = style_dataframe(
-                    screened_df[display_cols],
-                    return_cols=return_cols,
-                    vol_cols=vol_cols,
-                    rsi_cols=rsi_cols
-                ).format({
-                    'last_close': '${:.2f}',
-                    horizon_col: '{:.2f}%',
-                    'ann_vol_pct': '{:.1f}%',
-                    'rsi': '{:.1f}' if 'rsi' in display_cols else None
-                })
+                # Format the screener results
+                formatted_screener = screened_df[display_cols].copy()
+                formatted_screener['last_close'] = formatted_screener['last_close'].apply(format_currency)
+                formatted_screener[horizon_col] = formatted_screener[horizon_col].apply(format_percentage)
+                if 'ann_vol_pct' in formatted_screener.columns:
+                    formatted_screener['ann_vol_pct'] = formatted_screener['ann_vol_pct'].apply(format_percentage)
+                if 'rsi' in formatted_screener.columns:
+                    formatted_screener['rsi'] = formatted_screener['rsi'].apply(lambda x: format_number(x, 1))
 
-                st.dataframe(
-                    styled_screener,
-                    use_container_width=True,
-                    height=400
-                )
+                st.dataframe(formatted_screener, width='stretch', height=400)
 
                 # Visualization
                 if len(screened_df) > 1 and 'ann_vol_pct' in screened_df.columns:
@@ -1209,7 +1059,7 @@ def run_streamlit():
                     )
                     # add horizontal zero line
                     fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
 
                 # Per-ticker plotting: choose one from screened results
                 tickers_list = screened_df['ticker'].tolist()
@@ -1276,7 +1126,7 @@ def run_streamlit():
                     key="download_custom_export"
                 )
 
-                st.dataframe(export_df.head(10), use_container_width=True)
+                st.dataframe(export_df.head(10), width='stretch')
 
     # Footer
     st.divider()
