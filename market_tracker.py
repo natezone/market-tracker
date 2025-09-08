@@ -31,10 +31,22 @@ except ImportError:
 UNIVERSE = "SP500"
 DATA_DIR = "data"
 BATCH_SIZE = 50
-MIN_CONSECUTIVE = 3
+MIN_CONSECUTIVE = 30
 DOWNLOAD_PERIOD = "max"
 VERBOSE = True
 MIN_MARKET_CAP = 0
+
+# Index configurations
+INDEX_CONFIGS = {
+    "SP500": {
+        "name": "S&P 500",
+        "url": "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies",
+        "table_index": 0,
+        "symbol_column": "Symbol",
+        "sector_column": "GICS Sector",
+        "industry_column": "GICS Sub-Industry"
+    }
+}
 
 # ---------------------------
 # Shared Helper Functions
@@ -125,6 +137,81 @@ def download_history(tickers, period="max", interval="1d", threads=True, progres
                     out[t] = pd.DataFrame()
 
     return out
+
+def style_dataframe(df, return_cols=None, vol_cols=None, rsi_cols=None):
+    """Apply color coding to dataframe based on column types"""
+    if return_cols is None:
+        return_cols = []
+    if vol_cols is None:
+        vol_cols = []
+    if rsi_cols is None:
+        rsi_cols = []
+    
+    def color_returns(val):
+        """Color code return percentages"""
+        if pd.isna(val):
+            return ''
+        if val > 5:
+            return 'background-color: #006400'  # Dark green
+        elif val > 2:
+            return 'background-color: #228B22'  # Medium green
+        elif val > 0.5:
+            return 'background-color: #90EE90'  # Light green
+        elif val > -0.5:
+            return 'background-color: #D3D3D3'  # Gray
+        elif val > -2:
+            return 'background-color: #FFB6C1'  # Light red
+        elif val > -5:
+            return 'background-color: #FF6347'  # Medium red
+        else:
+            return 'background-color: #8B0000'  # Dark red
+    
+    def color_volatility(val):
+        """Color code volatility percentages"""
+        if pd.isna(val):
+            return ''
+        if val > 50:
+            return 'background-color: #8B0000'  # Dark red
+        elif val > 35:
+            return 'background-color: #FF0000'  # Red
+        elif val > 25:
+            return 'background-color: #FF6347'  # Light red
+        elif val > 15:
+            return 'background-color: #D3D3D3'  # Gray
+        else:
+            return 'background-color: #90EE90'  # Light green
+    
+    def color_rsi(val):
+        """Color code RSI values"""
+        if pd.isna(val):
+            return ''
+        if val > 70:
+            return 'background-color: #FF0000'  # Red (overbought)
+        elif val > 60:
+            return 'background-color: #FF6347'  # Light red
+        elif val > 30:
+            return 'background-color: #D3D3D3'  # Gray (neutral)
+        elif val > 20:
+            return 'background-color: #90EE90'  # Light green
+        else:
+            return 'background-color: #006400'  # Green (oversold)
+    
+    # Apply styling
+    styler = df.style
+    
+    for col in return_cols:
+        if col in df.columns:
+            styler = styler.applymap(color_returns, subset=[col])
+    
+    for col in vol_cols:
+        if col in df.columns:
+            styler = styler.applymap(color_volatility, subset=[col])
+    
+    for col in rsi_cols:
+        if col in df.columns:
+            styler = styler.applymap(color_rsi, subset=[col])
+    
+    return styler
 
 # ---------------------------
 # Metrics Calculation
@@ -275,9 +362,6 @@ def add_technical_indicators(df):
     df["MACD_Histogram"] = df["MACD"] - df["Signal"]
 
     # RSI (series)
-    df['RSI'] = df['Close'].diff().apply(lambda x: x if x>0 else 0).rolling(window=14).mean() / \
-                (-df['Close'].diff().apply(lambda x: x if x<0 else 0)).rolling(window=14).mean()
-    # The above is not the classic RS->RSI formula; easier to compute RSI using helper:
     try:
         df['RSI'] = df['Close'].rolling(window=15).apply(lambda s: calculate_rsi(s), raw=False)
     except Exception:
@@ -292,7 +376,7 @@ def add_technical_indicators(df):
 # ---------------------------
 # CLI Main Function
 # ---------------------------
-def run_cli(consecutive_days=30):
+def run_cli(consecutive_days=30, index_key="SP500"):
     """Run the CLI version of the market tracker with configurable consecutive period"""
     ensure_dir(DATA_DIR)
 
@@ -521,10 +605,10 @@ def run_streamlit():
     # Check for existing data
     data_exists = os.path.exists(os.path.join(DATA_DIR, "latest_metrics.csv"))
 
-    # Sidebar - Reordered controls
+    # Sidebar - Controls
     st.sidebar.header("⚙️ Settings")
 
-    # 1. View mode (first)
+    # 1. View mode
     view_mode = st.sidebar.radio(
         "View Mode",
         ["Dashboard", "Sector Analysis", "Top Movers", "Technical Screener", "Data Export"],
@@ -536,7 +620,7 @@ def run_streamlit():
         df_metrics = pd.read_csv(os.path.join(DATA_DIR, "latest_metrics.csv"))
         valid_metrics = df_metrics[df_metrics['status'] == 'ok'].copy()
         
-        # 2. Time horizon slider (second)
+        # 2. Time horizon slider
         horizon_map_full = {
             "1 Day": "pct_1d",
             "3 Days": "pct_3d", 
@@ -574,7 +658,7 @@ def run_streamlit():
         horizon_label = "N/A"
         horizon_col = None
 
-    # 3. Consecutive days slider (third)
+    # 3. Consecutive days slider
     consecutive_days = st.sidebar.slider(
         "Consecutive Days Lookback",
         min_value=2,
@@ -788,7 +872,7 @@ def run_streamlit():
 
         # ---------- Sector Analysis ----------
         elif view_mode == "Sector Analysis":
-            st.subheader("🏢 Sector Performance Analysis")
+            st.subheader("🏢 S&P 500 Sector Performance Analysis")
 
             sector_perf = valid_metrics.groupby('sector').agg({
                 horizon_col: ['mean', 'median', 'std'],
@@ -820,20 +904,23 @@ def run_streamlit():
             )
             st.plotly_chart(fig_sector, use_container_width=True)
 
-            # Table
-            st.dataframe(
-                sector_perf.style.format({
-                    'Mean Return': '{:.2f}%',
-                    'Median Return': '{:.2f}%',
-                    'Std Dev': '{:.2f}%',
-                    'Avg Volatility': '{:.1f}%'
-                }),
-                use_container_width=True
-            )
+            # Table with color coding
+            styled_sector = style_dataframe(
+                sector_perf,
+                return_cols=['Mean Return', 'Median Return'],
+                vol_cols=['Avg Volatility']
+            ).format({
+                'Mean Return': '{:.2f}%',
+                'Median Return': '{:.2f}%',
+                'Std Dev': '{:.2f}%',
+                'Avg Volatility': '{:.1f}%'
+            })
+            
+            st.dataframe(styled_sector, use_container_width=True)
 
         # ---------- Top Movers ----------
         elif view_mode == "Top Movers":
-            st.subheader("🎯 Market Movers Analysis")
+            st.subheader("🎯 S&P 500 Market Movers Analysis")
             
             tabs = st.tabs([f"Rising Stocks ({consecutive_days}d)", f"Declining Stocks ({consecutive_days}d)", "Most Volatile", "52-Week Highs/Lows"])
             
@@ -852,7 +939,18 @@ def run_streamlit():
                         display_cols.append('pct_21d')
                     # Filter to only existing columns
                     display_cols = [col for col in display_cols if col in rising.columns]
-                    st.dataframe(rising[display_cols].head(20), use_container_width=True)
+                    
+                    # Apply color coding
+                    return_cols = [col for col in display_cols if col.startswith('pct_')]
+                    styled_rising = style_dataframe(
+                        rising[display_cols], 
+                        return_cols=return_cols
+                    ).format({
+                        'last_close': '${:.2f}',
+                        **{col: '{:.2f}%' for col in return_cols}
+                    })
+                    
+                    st.dataframe(styled_rising.head(20), use_container_width=True)
             
             with tabs[1]:
                 declining = valid_metrics[valid_metrics.get(declining_col, False) == True]
@@ -868,13 +966,36 @@ def run_streamlit():
                         display_cols.append('pct_21d')
                     # Filter to only existing columns
                     display_cols = [col for col in display_cols if col in declining.columns]
-                    st.dataframe(declining[display_cols].head(20), use_container_width=True)
+                    
+                    # Apply color coding
+                    return_cols = [col for col in display_cols if col.startswith('pct_')]
+                    styled_declining = style_dataframe(
+                        declining[display_cols], 
+                        return_cols=return_cols
+                    ).format({
+                        'last_close': '${:.2f}',
+                        **{col: '{:.2f}%' for col in return_cols}
+                    })
+                    
+                    st.dataframe(styled_declining.head(20), use_container_width=True)
 
             with tabs[2]:
                 if 'ann_vol_pct' in valid_metrics.columns:
                     most_volatile = valid_metrics.nlargest(20, 'ann_vol_pct')[['ticker', 'sector', 'last_close', 'ann_vol_pct', horizon_col]]
                     st.metric("Highest Volatility Stock", f"{most_volatile.iloc[0]['ticker']} ({most_volatile.iloc[0]['ann_vol_pct']:.1f}%)")
-                    st.dataframe(most_volatile, use_container_width=True)
+                    
+                    # Apply color coding
+                    styled_volatile = style_dataframe(
+                        most_volatile, 
+                        return_cols=[horizon_col],
+                        vol_cols=['ann_vol_pct']
+                    ).format({
+                        'last_close': '${:.2f}',
+                        'ann_vol_pct': '{:.1f}%',
+                        horizon_col: '{:.2f}%'
+                    })
+                    
+                    st.dataframe(styled_volatile, use_container_width=True)
                 else:
                     st.info("Volatility data not available")
 
@@ -886,16 +1007,33 @@ def run_streamlit():
                     col1, col2 = st.columns(2)
                     with col1:
                         st.markdown("### Near 52-Week Highs")
-                        st.dataframe(near_highs, use_container_width=True)
+                        styled_highs = style_dataframe(
+                            near_highs,
+                            return_cols=['pct_from_52w_high']
+                        ).format({
+                            'last_close': '${:.2f}',
+                            '52w_high': '${:.2f}',
+                            'pct_from_52w_high': '{:.2f}%'
+                        })
+                        st.dataframe(styled_highs, use_container_width=True)
+                        
                     with col2:
                         st.markdown("### Near 52-Week Lows")
-                        st.dataframe(near_lows, use_container_width=True)
+                        styled_lows = style_dataframe(
+                            near_lows,
+                            return_cols=['pct_from_52w_low']
+                        ).format({
+                            'last_close': '${:.2f}',
+                            '52w_low': '${:.2f}',
+                            'pct_from_52w_low': '{:.2f}%'
+                        })
+                        st.dataframe(styled_lows, use_container_width=True)
                 else:
                     st.info("52-week high/low data not available")
 
         # ---------- Technical Screener ----------
         elif view_mode == "Technical Screener":
-            st.subheader("🔍 Technical Stock Screener")
+            st.subheader("🔍 S&P 500 Technical Stock Screener")
 
             col1, col2, col3 = st.columns(3)
 
@@ -1017,13 +1155,25 @@ def run_streamlit():
                 if 'rsi' in screened_df.columns:
                     display_cols.append('rsi')
 
+                # Apply comprehensive color coding
+                return_cols = [horizon_col]
+                vol_cols = ['ann_vol_pct'] if 'ann_vol_pct' in screened_df.columns else []
+                rsi_cols = ['rsi'] if 'rsi' in screened_df.columns else []
+                
+                styled_screener = style_dataframe(
+                    screened_df[display_cols],
+                    return_cols=return_cols,
+                    vol_cols=vol_cols,
+                    rsi_cols=rsi_cols
+                ).format({
+                    'last_close': '${:.2f}',
+                    horizon_col: '{:.2f}%',
+                    'ann_vol_pct': '{:.1f}%',
+                    'rsi': '{:.1f}' if 'rsi' in display_cols else None
+                })
+
                 st.dataframe(
-                    screened_df[display_cols].style.format({
-                        'last_close': '${:.2f}',
-                        horizon_col: '{:.2f}%',
-                        'ann_vol_pct': '{:.1f}%',
-                        'rsi': '{:.1f}' if 'rsi' in display_cols else None
-                    }),
+                    styled_screener,
                     use_container_width=True,
                     height=400
                 )
@@ -1064,7 +1214,7 @@ def run_streamlit():
             st.markdown("### Available Data Files")
 
             files = {
-                "Master Metrics": "latest_metrics.csv",
+                "S&P 500 Metrics": "latest_metrics.csv",
                 "S&P 500 Constituents": "sp500_constituents_snapshot.csv",
                 f"Rising Stocks ({consecutive_days}-day)": f"rising_{consecutive_days}day.csv",
                 f"Declining Stocks ({consecutive_days}-day)": f"declining_{consecutive_days}day.csv"
@@ -1107,7 +1257,7 @@ def run_streamlit():
                 st.download_button(
                     label="📥 Download Custom Export",
                     data=csv,
-                    file_name=f"custom_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    file_name=f"sp500_custom_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                     mime="text/csv",
                     key="download_custom_export"
                 )
@@ -1117,8 +1267,6 @@ def run_streamlit():
     # Footer
     st.divider()
     st.caption("""
-    Created by: Ehiremen Nathaniel Omoarebun 
-
     **Disclaimer:** This tool is for informational purposes only and should not be considered as financial advice.
     Data provided by Yahoo Finance and may be delayed. Always do your own research before making investment decisions.
     """)
@@ -1149,6 +1297,13 @@ Examples:
     )
 
     parser.add_argument(
+        '--consecutive-days',
+        type=int,
+        default=3,
+        help='Number of consecutive days for trend analysis (default: 3)'
+    )
+
+    parser.add_argument(
         '--data-dir',
         default='data',
         help='Directory for storing data files (default: data)'
@@ -1175,7 +1330,7 @@ Examples:
 
     # Run appropriate mode
     if args.mode == 'cli':
-        run_cli()
+        run_cli(args.consecutive_days)
     else:
         run_streamlit()
 
