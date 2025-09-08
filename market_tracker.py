@@ -577,7 +577,7 @@ def plot_ticker_price_rsi(ticker_csv_path, ticker):
         fig.update_yaxes(title_text="RSI", row=2, col=1)
     fig.update_yaxes(title_text="Price", row=1, col=1)
     fig.update_layout(height=600, title_text=f"{ticker} Price + RSI")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 def run_streamlit():
     """Run the Streamlit web interface"""
@@ -923,19 +923,14 @@ def run_streamlit():
             )
             st.plotly_chart(fig_sector, use_container_width=True)
 
-            # Table with color coding
-            styled_sector = style_dataframe(
-                sector_perf,
-                return_cols=['Mean Return', 'Median Return'],
-                vol_cols=['Avg Volatility']
-            ).format({
-                'Mean Return': '{:.2f}%',
-                'Median Return': '{:.2f}%',
-                'Std Dev': '{:.2f}%',
-                'Avg Volatility': '{:.1f}%'
-            })
+            # Table with formatting instead of color coding for now
+            formatted_sector = sector_perf.copy()
+            formatted_sector['Mean Return'] = formatted_sector['Mean Return'].apply(lambda x: f'{x:.2f}%')
+            formatted_sector['Median Return'] = formatted_sector['Median Return'].apply(lambda x: f'{x:.2f}%')
+            formatted_sector['Std Dev'] = formatted_sector['Std Dev'].apply(lambda x: f'{x:.2f}%')
+            formatted_sector['Avg Volatility'] = formatted_sector['Avg Volatility'].apply(lambda x: f'{x:.1f}%')
             
-            st.dataframe(styled_sector, use_container_width=True)
+            st.dataframe(formatted_sector, use_container_width=True)
 
         # ---------- Top Movers ----------
         elif view_mode == "Top Movers":
