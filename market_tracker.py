@@ -147,71 +147,90 @@ def style_dataframe(df, return_cols=None, vol_cols=None, rsi_cols=None):
     if rsi_cols is None:
         rsi_cols = []
     
+    # Create a copy to avoid modifying original
+    df_copy = df.copy()
+    
     def color_returns(val):
         """Color code return percentages"""
-        if pd.isna(val):
+        try:
+            if pd.isna(val):
+                return ''
+            val = float(val)
+            if val > 5:
+                return 'background-color: #006400; color: white'  # Dark green
+            elif val > 2:
+                return 'background-color: #228B22; color: white'  # Medium green
+            elif val > 0.5:
+                return 'background-color: #90EE90; color: black'  # Light green
+            elif val > -0.5:
+                return 'background-color: #D3D3D3; color: black'  # Gray
+            elif val > -2:
+                return 'background-color: #FFB6C1; color: black'  # Light red
+            elif val > -5:
+                return 'background-color: #FF6347; color: black'  # Medium red
+            else:
+                return 'background-color: #8B0000; color: white'  # Dark red
+        except (ValueError, TypeError):
             return ''
-        if val > 5:
-            return 'background-color: #006400'  # Dark green
-        elif val > 2:
-            return 'background-color: #228B22'  # Medium green
-        elif val > 0.5:
-            return 'background-color: #90EE90'  # Light green
-        elif val > -0.5:
-            return 'background-color: #D3D3D3'  # Gray
-        elif val > -2:
-            return 'background-color: #FFB6C1'  # Light red
-        elif val > -5:
-            return 'background-color: #FF6347'  # Medium red
-        else:
-            return 'background-color: #8B0000'  # Dark red
     
     def color_volatility(val):
         """Color code volatility percentages"""
-        if pd.isna(val):
+        try:
+            if pd.isna(val):
+                return ''
+            val = float(val)
+            if val > 50:
+                return 'background-color: #8B0000; color: white'  # Dark red
+            elif val > 35:
+                return 'background-color: #FF0000; color: white'  # Red
+            elif val > 25:
+                return 'background-color: #FF6347; color: black'  # Light red
+            elif val > 15:
+                return 'background-color: #D3D3D3; color: black'  # Gray
+            else:
+                return 'background-color: #90EE90; color: black'  # Light green
+        except (ValueError, TypeError):
             return ''
-        if val > 50:
-            return 'background-color: #8B0000'  # Dark red
-        elif val > 35:
-            return 'background-color: #FF0000'  # Red
-        elif val > 25:
-            return 'background-color: #FF6347'  # Light red
-        elif val > 15:
-            return 'background-color: #D3D3D3'  # Gray
-        else:
-            return 'background-color: #90EE90'  # Light green
     
     def color_rsi(val):
         """Color code RSI values"""
-        if pd.isna(val):
+        try:
+            if pd.isna(val):
+                return ''
+            val = float(val)
+            if val > 70:
+                return 'background-color: #FF0000; color: white'  # Red (overbought)
+            elif val > 60:
+                return 'background-color: #FF6347; color: black'  # Light red
+            elif val > 30:
+                return 'background-color: #D3D3D3; color: black'  # Gray (neutral)
+            elif val > 20:
+                return 'background-color: #90EE90; color: black'  # Light green
+            else:
+                return 'background-color: #006400; color: white'  # Green (oversold)
+        except (ValueError, TypeError):
             return ''
-        if val > 70:
-            return 'background-color: #FF0000'  # Red (overbought)
-        elif val > 60:
-            return 'background-color: #FF6347'  # Light red
-        elif val > 30:
-            return 'background-color: #D3D3D3'  # Gray (neutral)
-        elif val > 20:
-            return 'background-color: #90EE90'  # Light green
-        else:
-            return 'background-color: #006400'  # Green (oversold)
     
     # Apply styling
-    styler = df.style
-    
-    for col in return_cols:
-        if col in df.columns:
-            styler = styler.applymap(color_returns, subset=[col])
-    
-    for col in vol_cols:
-        if col in df.columns:
-            styler = styler.applymap(color_volatility, subset=[col])
-    
-    for col in rsi_cols:
-        if col in df.columns:
-            styler = styler.applymap(color_rsi, subset=[col])
-    
-    return styler
+    try:
+        styler = df_copy.style
+        
+        for col in return_cols:
+            if col in df_copy.columns:
+                styler = styler.applymap(color_returns, subset=[col])
+        
+        for col in vol_cols:
+            if col in df_copy.columns:
+                styler = styler.applymap(color_volatility, subset=[col])
+        
+        for col in rsi_cols:
+            if col in df_copy.columns:
+                styler = styler.applymap(color_rsi, subset=[col])
+        
+        return styler
+    except Exception as e:
+        # If styling fails, return plain dataframe
+        return df_copy
 
 # ---------------------------
 # Metrics Calculation
