@@ -1,0 +1,12 @@
+sector,avg_1d_return,avg_5d_return,avg_21d_return,avg_volatility,stock_count
+Communication Services,0.72,1.66,6.21,38.19,24
+Health Care,0.98,1.27,6.87,37.93,59
+Real Estate,1.05,0.83,3.64,34.88,29
+Consumer Staples,0.75,0.68,-0.67,29.12,37
+Consumer Discretionary,-0.56,0.13,5.6,50.14,49
+Information Technology,0.91,-0.08,3.44,46.59,68
+Materials,0.87,-0.39,6.24,34.2,26
+Industrials,-0.01,-0.86,1.76,35.49,78
+Utilities,-0.09,-0.94,-1.89,26.05,31
+Financials,-1.51,-1.39,1.56,36.23,75
+Energy,-1.71,-2.31,4.25,36.99,21

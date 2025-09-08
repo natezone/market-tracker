@@ -533,7 +533,7 @@ def run_streamlit():
                 st.cache_data.clear()
             except Exception:
                 pass
-            st.runtime.scriptrunner.rerun()
+            st.rerun()
 
     # Check for existing data
     data_exists = os.path.exists(os.path.join(DATA_DIR, "latest_metrics.csv"))
@@ -547,13 +547,22 @@ def run_streamlit():
             with st.spinner("Fetching data... This may take several minutes."):
                 run_cli()
             st.success("Data fetched successfully!")
-            st.runtime.scriptrunner.rerun()
+            if st.button("🔄 Refresh", key="refresh_btn_streamlit"):
+                try:
+                    st.cache_data.clear()
+                except Exception:
+                    pass
+                st.rerun()
     else:
         if st.sidebar.button("🔄 Update Data", key="update_data_btn"):
             with st.spinner("Updating data..."):
                 run_cli()
             st.success("Data updated!")
-            st.runtime.scriptrunner.rerun()
+            if st.button("🔄 Regenerate Data", key="regenerate_data_btn"):
+                with st.spinner("Regenerating data with all metrics..."):
+                    run_cli()
+                st.success("Data regenerated!")
+                st.rerun()
 
     if data_exists:
         # Load data
@@ -592,7 +601,11 @@ def run_streamlit():
                 with st.spinner("Regenerating data with all metrics..."):
                     run_cli()
                 st.success("Data regenerated!")
-                st.runtime.scriptrunner.rerun()
+                if st.sidebar.button("🔄 Update Data", key="update_data_btn"):
+                    with st.spinner("Updating data..."):
+                        run_cli()
+                    st.success("Data updated!")
+                    st.rerun()
             return
 
         # Default horizon choice
