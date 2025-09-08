@@ -129,8 +129,8 @@ def download_history(tickers, period="max", interval="1d", threads=True, progres
 # ---------------------------
 # Metrics Calculation
 # ---------------------------
-def compute_metrics_for_ticker(df):
-    """Calculate comprehensive metrics for a single ticker"""
+def compute_metrics_for_ticker(df, consecutive_days=3):
+    """Calculate comprehensive metrics for a single ticker with configurable consecutive period"""
     metrics = {}
 
     if df is None or df.empty:
@@ -148,17 +148,30 @@ def compute_metrics_for_ticker(df):
     metrics['last_date'] = last_date.strftime('%Y-%m-%d')
     metrics['last_close'] = float(closes.iloc[-1])
 
-    # 3-day consecutive rising/decline check
-    if len(closes) >= MIN_CONSECUTIVE:
-        last_n = closes.iloc[-MIN_CONSECUTIVE:]
+    # Configurable consecutive rising/decline check
+    if len(closes) >= consecutive_days:
+        last_n = closes.iloc[-consecutive_days:]
         increasing = all(last_n.values[i] > last_n.values[i-1] for i in range(1, len(last_n)))
         decreasing = all(last_n.values[i] < last_n.values[i-1] for i in range(1, len(last_n)))
     else:
         increasing = False
         decreasing = False
 
-    metrics['rising_3day'] = bool(increasing)
-    metrics['declining_3day'] = bool(decreasing)
+    metrics[f'rising_{consecutive_days}day'] = bool(increasing)
+    metrics[f'declining_{consecutive_days}day'] = bool(decreasing)
+
+    # Keep original 3-day metrics for backward compatibility
+    if consecutive_days != 3:
+        if len(closes) >= 3:
+            last_3 = closes.iloc[-3:]
+            increasing_3 = all(last_3.values[i] > last_3.values[i-1] for i in range(1, len(last_3)))
+            decreasing_3 = all(last_3.values[i] < last_3.values[i-1] for i in range(1, len(last_3)))
+        else:
+            increasing_3 = False
+            decreasing_3 = False
+        
+        metrics['rising_3day'] = bool(increasing_3)
+        metrics['declining_3day'] = bool(decreasing_3)
 
     # Percentage changes
     def pct_change(closes, days):
@@ -172,6 +185,10 @@ def compute_metrics_for_ticker(df):
     metrics['pct_21d'] = pct_change(closes, 21)
     metrics['pct_63d'] = pct_change(closes, 63)
     metrics['pct_252d'] = pct_change(closes, 252)
+
+    # Add configurable period percentage change if different from standard periods
+    if consecutive_days not in [1, 3, 5, 21, 63, 252]:
+        metrics[f'pct_{consecutive_days}d'] = pct_change(closes, consecutive_days)
 
     # Historical averages
     today = closes.index[-1]
@@ -275,12 +292,12 @@ def add_technical_indicators(df):
 # ---------------------------
 # CLI Main Function
 # ---------------------------
-def run_cli():
-    """Run the CLI version of the market tracker"""
+def run_cli(consecutive_days=3):
+    """Run the CLI version of the market tracker with configurable consecutive period"""
     ensure_dir(DATA_DIR)
 
     print("=" * 60)
-    print("S&P 500 Market Tracker - CLI Mode")
+    print(f"S&P 500 Market Tracker - CLI Mode (Consecutive: {consecutive_days} days)")
     print("=" * 60)
 
     print("\nFetching S&P 500 tickers...")
@@ -305,7 +322,7 @@ def run_cli():
     per_ticker_dir = os.path.join(DATA_DIR, "history")
     ensure_dir(per_ticker_dir)
 
-    print("\nProcessing ticker data...")
+    print(f"\nProcessing ticker data with {consecutive_days}-day consecutive analysis...")
 
     for t in tqdm(tickers, desc="Computing metrics"):
         df = hist.get(t, pd.DataFrame())
@@ -319,7 +336,7 @@ def run_cli():
             except Exception:
                 pass
 
-            metrics = compute_metrics_for_ticker(df)
+            metrics = compute_metrics_for_ticker(df, consecutive_days)
 
         if metrics is None:
             metrics_rows.append({
@@ -337,15 +354,29 @@ def run_cli():
 
     df_metrics = pd.DataFrame(metrics_rows)
 
-    # Order columns
+    # Dynamic column ordering based on consecutive_days
     cols_order = [
         'ticker', 'status', 'sector', 'industry', 'last_date', 'last_close',
-        'data_points', 'rising_3day', 'declining_3day', 'pct_1d', 'pct_3d',
-        'pct_5d', 'pct_21d', 'pct_63d', 'pct_252d', 'avg_1y', 'avg_2y',
-        'avg_5y', 'avg_max', 'cum_return_from_start_pct', 'ann_vol_pct', 'rsi',
-        '52w_high', '52w_low', 'pct_from_52w_high', 'pct_from_52w_low',
-        'avg_volume_20d', 'volume_vs_avg'
+        'data_points', f'rising_{consecutive_days}day', f'declining_{consecutive_days}day'
     ]
+    
+    # Add 3-day columns if different from consecutive_days
+    if consecutive_days != 3:
+        cols_order.extend(['rising_3day', 'declining_3day'])
+    
+    cols_order.extend([
+        'pct_1d', 'pct_3d', 'pct_5d', 'pct_21d', 'pct_63d', 'pct_252d'
+    ])
+    
+    # Add consecutive_days percentage if not in standard list
+    if consecutive_days not in [1, 3, 5, 21, 63, 252]:
+        cols_order.insert(-6, f'pct_{consecutive_days}d')
+    
+    cols_order.extend([
+        'avg_1y', 'avg_2y', 'avg_5y', 'avg_max', 'cum_return_from_start_pct', 
+        'ann_vol_pct', 'rsi', '52w_high', '52w_low', 'pct_from_52w_high', 
+        'pct_from_52w_low', 'avg_volume_20d', 'volume_vs_avg'
+    ])
 
     cols = [c for c in cols_order if c in df_metrics.columns]
     cols += [c for c in df_metrics.columns if c not in cols]
@@ -357,104 +388,56 @@ def run_cli():
     df_metrics.to_csv(master_csv, index=False)
     print(f"\n✓ Saved master metrics to {master_csv}")
 
-    # Rising and declining lists
+    # Rising and declining lists using configurable period
+    rising_col = f'rising_{consecutive_days}day'
+    declining_col = f'declining_{consecutive_days}day'
+    pct_col = f'pct_{consecutive_days}d' if consecutive_days not in [1, 3, 5, 21, 63, 252] else f'pct_{consecutive_days}d'
+    
+    # Use closest available percentage column
+    if pct_col not in df_metrics.columns:
+        if consecutive_days <= 3:
+            pct_col = 'pct_3d'
+        elif consecutive_days <= 5:
+            pct_col = 'pct_5d'
+        elif consecutive_days <= 21:
+            pct_col = 'pct_21d'
+        else:
+            pct_col = 'pct_63d'
+
     rising = df_metrics[
         (df_metrics['status'] == 'ok') &
-        (df_metrics['rising_3day'] == True)
-    ].sort_values(by='pct_3d', ascending=False)
+        (df_metrics[rising_col] == True)
+    ].sort_values(by=pct_col, ascending=False)
 
     declining = df_metrics[
         (df_metrics['status'] == 'ok') &
-        (df_metrics['declining_3day'] == True)
-    ].sort_values(by='pct_3d')
+        (df_metrics[declining_col] == True)
+    ].sort_values(by=pct_col)
 
-    rising.to_csv(os.path.join(DATA_DIR, "rising_3day.csv"), index=False)
-    declining.to_csv(os.path.join(DATA_DIR, "declining_3day.csv"), index=False)
+    rising.to_csv(os.path.join(DATA_DIR, f"rising_{consecutive_days}day.csv"), index=False)
+    declining.to_csv(os.path.join(DATA_DIR, f"declining_{consecutive_days}day.csv"), index=False)
 
-    # Additional analysis files
+    # Print summary with configurable period
+    print("\n" + "=" * 60)
+    print("MARKET SUMMARY")
+    print("=" * 60)
 
-    # Top gainers/losers
     valid_metrics = df_metrics[df_metrics['status'] == 'ok'].copy()
-
     if not valid_metrics.empty:
-        # Daily top movers
-        if 'pct_1d' in valid_metrics.columns:
-            top_gainers_1d = valid_metrics.nlargest(20, 'pct_1d')[['ticker', 'sector', 'last_close', 'pct_1d']]
-            top_losers_1d = valid_metrics.nsmallest(20, 'pct_1d')[['ticker', 'sector', 'last_close', 'pct_1d']]
-
-            top_gainers_1d.to_csv(os.path.join(DATA_DIR, "top_gainers_1d.csv"), index=False)
-            top_losers_1d.to_csv(os.path.join(DATA_DIR, "top_losers_1d.csv"), index=False)
-
-        # Most volatile stocks
-        if 'ann_vol_pct' in valid_metrics.columns:
-            most_volatile = valid_metrics.nlargest(20, 'ann_vol_pct')[['ticker', 'sector', 'last_close', 'ann_vol_pct']]
-            most_volatile.to_csv(os.path.join(DATA_DIR, "most_volatile.csv"), index=False)
-
-        # Sector performance summary
-        # guard missing cols
-        agg_map = {}
-        if 'pct_1d' in valid_metrics.columns:
-            agg_map['pct_1d'] = 'mean'
-        if 'pct_5d' in valid_metrics.columns:
-            agg_map['pct_5d'] = 'mean'
-        if 'pct_21d' in valid_metrics.columns:
-            agg_map['pct_21d'] = 'mean'
-        if 'ann_vol_pct' in valid_metrics.columns:
-            agg_map['ann_vol_pct'] = 'mean'
-        agg_map['ticker'] = 'count'
-
-        sector_summary = valid_metrics.groupby('sector').agg(agg_map).round(2)
-        # rename columns safely
-        col_rename = {}
-        if 'pct_1d' in sector_summary.columns: col_rename['pct_1d'] = 'avg_1d_return'
-        if 'pct_5d' in sector_summary.columns: col_rename['pct_5d'] = 'avg_5d_return'
-        if 'pct_21d' in sector_summary.columns: col_rename['pct_21d'] = 'avg_21d_return'
-        if 'ann_vol_pct' in sector_summary.columns: col_rename['ann_vol_pct'] = 'avg_volatility'
-        if 'ticker' in sector_summary.columns: col_rename['ticker'] = 'stock_count'
-        sector_summary = sector_summary.rename(columns=col_rename)
-        if 'avg_5d_return' in sector_summary.columns:
-            sector_summary = sector_summary.sort_values('avg_5d_return', ascending=False)
-        sector_summary.to_csv(os.path.join(DATA_DIR, "sector_summary.csv"))
-
-        # Print summary statistics
-        print("\n" + "=" * 60)
-        print("MARKET SUMMARY")
-        print("=" * 60)
-
         print(f"\n📊 Overall Statistics:")
         print(f"  • Total stocks processed: {len(valid_metrics)}")
-        print(f"  • Rising (3-day): {len(rising)} stocks")
-        print(f"  • Declining (3-day): {len(declining)} stocks")
+        print(f"  • Rising ({consecutive_days}-day): {len(rising)} stocks")
+        print(f"  • Declining ({consecutive_days}-day): {len(declining)} stocks")
 
-        if 'pct_1d' in valid_metrics.columns:
-            gainers_1d = len(valid_metrics[valid_metrics['pct_1d'] > 0])
-            print(f"  • Daily gainers: {gainers_1d} ({gainers_1d/len(valid_metrics)*100:.1f}%)")
-            print(f"  • Daily losers: {len(valid_metrics) - gainers_1d} ({(len(valid_metrics)-gainers_1d)/len(valid_metrics)*100:.1f}%)")
+        print(f"\n🏆 Top 5 Rising Stocks ({consecutive_days}-day consecutive):")
+        for _, row in rising.head().iterrows():
+            pct_val = row.get(pct_col, 0)
+            print(f"  • {row['ticker']}: +{pct_val:.2f}% ({row['sector']})")
 
-        print(f"\n📈 Market Performance (Averages):")
-        if 'pct_1d' in valid_metrics.columns:
-            print(f"  • 1-day return: {valid_metrics['pct_1d'].mean():.2f}%")
-        if 'pct_5d' in valid_metrics.columns:
-            print(f"  • 5-day return: {valid_metrics['pct_5d'].mean():.2f}%")
-        if 'pct_21d' in valid_metrics.columns:
-            print(f"  • 21-day return: {valid_metrics['pct_21d'].mean():.2f}%")
-        if 'ann_vol_pct' in valid_metrics.columns:
-            print(f"  • Annual volatility: {valid_metrics['ann_vol_pct'].mean():.1f}%")
-
-        if 'pct_1d' in locals():
-            print(f"\n🏆 Top 5 Daily Gainers:")
-            for _, row in top_gainers_1d.head().iterrows():
-                print(f"  • {row['ticker']}: +{row['pct_1d']:.2f}% ({row['sector']})")
-
-        if 'top_losers_1d' in locals():
-            print(f"\n📉 Top 5 Daily Losers:")
-            for _, row in top_losers_1d.head().iterrows():
-                print(f"  • {row['ticker']}: {row['pct_1d']:.2f}% ({row['sector']})")
-
-        if 'avg_5d_return' in sector_summary.columns:
-            print(f"\n🏢 Best Performing Sectors (5-day):")
-            for sector, row in sector_summary.head(3).iterrows():
-                print(f"  • {sector}: {row['avg_5d_return']:.2f}% ({int(row['stock_count'])} stocks)")
+        print(f"\n📉 Top 5 Declining Stocks ({consecutive_days}-day consecutive):")
+        for _, row in declining.head().iterrows():
+            pct_val = row.get(pct_col, 0)
+            print(f"  • {row['ticker']}: {pct_val:.2f}% ({row['sector']})")
 
     print("\n✅ Analysis complete! Check the 'data' directory for all output files.")
     print("=" * 60)
@@ -541,33 +524,64 @@ def run_streamlit():
     # Sidebar
     st.sidebar.header("⚙️ Settings")
 
+    consecutive_days = st.sidebar.slider(
+    "Consecutive Days Lookback",
+    min_value=2,
+    max_value=126,  # ~6 months of trading days
+    value=3,
+    step=1,
+    help="Number of consecutive days to analyze for rising/declining trends"
+)
+
+    # Add preset buttons
+    col1, col2, col3 = st.sidebar.columns(3)
+    with col1:
+        if st.button("3d", key="preset_3d"):
+            consecutive_days = 3
+    with col2:
+        if st.button("1w", key="preset_1w"):
+            consecutive_days = 5
+    with col3:
+        if st.button("1m", key="preset_1m"):
+            consecutive_days = 21
+
+    st.sidebar.info(f"Current: {consecutive_days} days ({consecutive_days/5:.1f} weeks)")
+
+    # Add warning for very long periods
+    if consecutive_days > 63:
+        st.sidebar.warning("⚠️ Long periods may have fewer matching stocks")
+    
+    # Check for existing data
+    data_exists = os.path.exists(os.path.join(DATA_DIR, "latest_metrics.csv"))
+
     if not data_exists:
         st.sidebar.warning("No data found. Run initial data fetch first.")
         if st.sidebar.button("📥 Fetch All Data", key="fetch_all_data_btn"):
             with st.spinner("Fetching data... This may take several minutes."):
-                run_cli()
+                run_cli(consecutive_days)
             st.success("Data fetched successfully!")
-            if st.button("🔄 Refresh", key="refresh_btn_streamlit"):
-                try:
-                    st.cache_data.clear()
-                except Exception:
-                    pass
-                st.rerun()
+            st.rerun()
     else:
         if st.sidebar.button("🔄 Update Data", key="update_data_btn"):
-            with st.spinner("Updating data..."):
-                run_cli()
+            with st.spinner(f"Updating data with {consecutive_days}-day analysis..."):
+                run_cli(consecutive_days)
             st.success("Data updated!")
-            if st.button("🔄 Regenerate Data", key="regenerate_data_btn"):
-                with st.spinner("Regenerating data with all metrics..."):
-                    run_cli()
-                st.success("Data regenerated!")
-                st.rerun()
+            st.rerun()
 
     if data_exists:
-        # Load data
+        # Load and process data with dynamic column names
         df_metrics = pd.read_csv(os.path.join(DATA_DIR, "latest_metrics.csv"))
         valid_metrics = df_metrics[df_metrics['status'] == 'ok'].copy()
+
+        # Dynamic column names based on consecutive_days
+        rising_col = f'rising_{consecutive_days}day'
+        declining_col = f'declining_{consecutive_days}day'
+        
+        # Check if columns exist, if not use 3-day as fallback
+        if rising_col not in df_metrics.columns:
+            rising_col = 'rising_3day'
+            declining_col = 'declining_3day'
+            st.warning(f"Data not available for {consecutive_days}-day analysis. Using 3-day data. Please update data to use custom period.")
 
         # Debug: Show available columns
         st.sidebar.text("Available columns:")
@@ -632,24 +646,27 @@ def run_streamlit():
 
         # ---------- Dashboard ----------
         if view_mode == "Dashboard":
-            # Market Overview
             st.subheader("📊 Market Overview")
-
+            
             col1, col2, col3, col4 = st.columns(4)
-
-            gainers = len(valid_metrics[valid_metrics[horizon_col] > 0])
-            total = len(valid_metrics)
-
+            
+            # Use dynamic column names
+            rising_count = len(valid_metrics[valid_metrics.get(rising_col, False) == True])
+            declining_count = len(valid_metrics[valid_metrics.get(declining_col, False) == True])
+            
             with col1:
                 st.metric(
-                    "Market Breadth",
-                    f"{gainers}/{total}",
-                    f"{(gainers/total*100):.1f}% advancing"
+                    f"Rising ({consecutive_days}d consecutive)",
+                    f"{rising_count}",
+                    f"{(rising_count/len(valid_metrics)*100):.1f}% of stocks"
                 )
-
+            
             with col2:
-                avg_return = valid_metrics[horizon_col].mean()
-                st.metric(f"Avg {horizon_label} Return", f"{avg_return:.2f}%")
+                st.metric(
+                    f"Declining ({consecutive_days}d consecutive)", 
+                    f"{declining_count}",
+                    f"{(declining_count/len(valid_metrics)*100):.1f}% of stocks"
+                )
 
             with col3:
                 avg_volatility = valid_metrics['ann_vol_pct'].mean() if 'ann_vol_pct' in valid_metrics.columns else np.nan
@@ -788,26 +805,35 @@ def run_streamlit():
         # ---------- Top Movers ----------
         elif view_mode == "Top Movers":
             st.subheader("🎯 Market Movers Analysis")
-
-            tabs = st.tabs(["Rising Stocks", "Declining Stocks", "Most Volatile", "52-Week Highs/Lows"])
-
+            
+            tabs = st.tabs([f"Rising Stocks ({consecutive_days}d)", f"Declining Stocks ({consecutive_days}d)", "Most Volatile", "52-Week Highs/Lows"])
+            
             with tabs[0]:
-                rising = valid_metrics[valid_metrics['rising_3day'] == True].sort_values('pct_3d', ascending=False)
-                st.metric("Total Rising (3-day consecutive)", len(rising))
+                rising = valid_metrics[valid_metrics.get(rising_col, False) == True]
                 if not rising.empty:
-                    st.dataframe(
-                        rising[['ticker', 'sector', 'last_close', 'pct_1d', 'pct_3d', 'pct_5d']].head(20),
-                        use_container_width=True
-                    )
-
+                    # Sort by appropriate percentage column
+                    sort_col = 'pct_5d' if consecutive_days <= 5 else 'pct_21d'
+                    rising = rising.sort_values(sort_col, ascending=False)
+                
+                st.metric(f"Total Rising ({consecutive_days}-day consecutive)", len(rising))
+                if not rising.empty:
+                    display_cols = ['ticker', 'sector', 'last_close', 'pct_1d', 'pct_3d', 'pct_5d']
+                    if 'pct_21d' in rising.columns:
+                        display_cols.append('pct_21d')
+                    st.dataframe(rising[display_cols].head(20), use_container_width=True)
+            
             with tabs[1]:
-                declining = valid_metrics[valid_metrics['declining_3day'] == True].sort_values('pct_3d')
-                st.metric("Total Declining (3-day consecutive)", len(declining))
+                declining = valid_metrics[valid_metrics.get(declining_col, False) == True]
                 if not declining.empty:
-                    st.dataframe(
-                        declining[['ticker', 'sector', 'last_close', 'pct_1d', 'pct_3d', 'pct_5d']].head(20),
-                        use_container_width=True
-                    )
+                    sort_col = 'pct_5d' if consecutive_days <= 5 else 'pct_21d'
+                    declining = declining.sort_values(sort_col)
+                
+                st.metric(f"Total Declining ({consecutive_days}-day consecutive)", len(declining))
+                if not declining.empty:
+                    display_cols = ['ticker', 'sector', 'last_close', 'pct_1d', 'pct_3d', 'pct_5d']
+                    if 'pct_21d' in declining.columns:
+                        display_cols.append('pct_21d')
+                    st.dataframe(declining[display_cols].head(20), use_container_width=True)
 
             with tabs[2]:
                 if 'ann_vol_pct' in valid_metrics.columns:
@@ -889,12 +915,15 @@ def run_streamlit():
             # Additional filters
             col1, col2 = st.columns(2)
             with col1:
-                only_rising = st.checkbox("Only Rising (3-day)", False, key="ts_only_rising")
-                only_declining = st.checkbox("Only Declining (3-day)", False, key="ts_only_declining")
-
+                only_rising = st.checkbox(f"Only Rising ({consecutive_days}-day)", False, key="ts_only_rising")
             with col2:
-                min_price = st.number_input("Min Price ($)", value=0.0, step=1.0, key="ts_min_price")
-                max_price = st.number_input("Max Price ($)", value=10000.0, step=1.0, key="ts_max_price")
+                only_declining = st.checkbox(f"Only Declining ({consecutive_days}-day)", False, key="ts_only_declining")
+            
+            # Apply consecutive filters
+            if only_rising:
+                screened_df = screened_df[screened_df.get(rising_col, False) == True]
+            if only_declining:
+                screened_df = screened_df[screened_df.get(declining_col, False) == True]
 
             # Apply filters
             screened_df = valid_metrics[
