@@ -1,13 +1,3 @@
-#!/usr/bin/env python3
-"""
-hybrid_market_tracker_fixed.py
-Patched hybrid_market_tracker.py:
- - fixes Streamlit duplicate element IDs by giving each widget a unique key
- - consolidates horizon handling (no duplicate select_sliders)
- - finishes Technical Screener and adds per-ticker price + RSI + momentum plot
- - preserves CLI behavior and output files
-"""
-
 import os
 import sys
 import time
