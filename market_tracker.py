@@ -292,7 +292,7 @@ def add_technical_indicators(df):
 # ---------------------------
 # CLI Main Function
 # ---------------------------
-def run_cli(consecutive_days=3):
+def run_cli(consecutive_days=30):
     """Run the CLI version of the market tracker with configurable consecutive period"""
     ensure_dir(DATA_DIR)
 
@@ -640,6 +640,42 @@ def run_streamlit():
         # ---------- Dashboard ----------
         if view_mode == "Dashboard":
             st.subheader("📊 Market Overview")
+            
+            # Add color legend
+            with st.expander("📊 Color Legend", expanded=False):
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.markdown("**📈 Returns:**")
+                    st.markdown("""
+                    - 🟢 **Dark Green**: >5% (Excellent)
+                    - 🟢 **Medium Green**: 2-5% (Good)  
+                    - 🟢 **Light Green**: 0.5-2% (Slight gain)
+                    - ⚪ **Gray**: -0.5% to 0.5% (Neutral)
+                    - 🔴 **Light Red**: -2% to -0.5% (Slight loss)
+                    - 🔴 **Medium Red**: -5% to -2% (Bad)
+                    - 🔴 **Dark Red**: <-5% (Terrible)
+                    """)
+                
+                with col2:
+                    st.markdown("**📊 RSI:**")
+                    st.markdown("""
+                    - 🔴 **Red**: >70 (Overbought)
+                    - 🟠 **Light Red**: 60-70 (Near overbought)
+                    - ⚪ **Gray**: 30-60 (Neutral)
+                    - 🟢 **Light Green**: 20-30 (Near oversold)
+                    - 🟢 **Green**: <20 (Oversold)
+                    """)
+                
+                with col3:
+                    st.markdown("**📈 Volatility:**")
+                    st.markdown("""
+                    - 🔴 **Dark Red**: >50% (Very high)
+                    - 🔴 **Red**: 35-50% (High)
+                    - 🟠 **Light Red**: 25-35% (Medium-high)
+                    - ⚪ **Gray**: 15-25% (Normal)
+                    - 🟢 **Light Green**: <15% (Low)
+                    """)
             
             col1, col2, col3, col4 = st.columns(4)
             
