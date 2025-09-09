@@ -400,7 +400,7 @@ def show_color_legend():
 # ---------------------------
 # Metrics Calculation
 # ---------------------------
-def compute_metrics_for_ticker(df, consecutive_days=30):
+def compute_metrics_for_ticker(df, consecutive_days=7):
     """Calculate comprehensive metrics for a single ticker with configurable consecutive period"""
     metrics = {}
 
@@ -431,18 +431,18 @@ def compute_metrics_for_ticker(df, consecutive_days=30):
     metrics[f'rising_{consecutive_days}day'] = bool(increasing)
     metrics[f'declining_{consecutive_days}day'] = bool(decreasing)
 
-    # Keep original 3-day metrics for backward compatibility
-    if consecutive_days != 3:
-        if len(closes) >= 3:
-            last_3 = closes.iloc[-3:]
-            increasing_3 = all(last_3.values[i] > last_3.values[i-1] for i in range(1, len(last_3)))
-            decreasing_3 = all(last_3.values[i] < last_3.values[i-1] for i in range(1, len(last_3)))
+    # Keep original 7-day metrics for backward compatibility
+    if consecutive_days != 7:
+        if len(closes) >= 7:
+            last_7 = closes.iloc[-7:]
+            increasing_7 = all(last_7.values[i] > last_7.values[i-1] for i in range(1, len(last_7)))
+            decreasing_7 = all(last_7.values[i] < last_7.values[i-1] for i in range(1, len(last_7)))
         else:
-            increasing_3 = False
-            decreasing_3 = False
-        
-        metrics['rising_3day'] = bool(increasing_3)
-        metrics['declining_3day'] = bool(decreasing_3)
+            increasing_7 = False
+            decreasing_7 = False
+
+        metrics['rising_7day'] = bool(increasing_7)
+        metrics['declining_7day'] = bool(decreasing_7)
 
     # Percentage changes
     def pct_change(closes, days):
@@ -458,7 +458,7 @@ def compute_metrics_for_ticker(df, consecutive_days=30):
     metrics['pct_252d'] = pct_change(closes, 252)
 
     # Add configurable period percentage change if different from standard periods
-    if consecutive_days not in [1, 3, 5, 21, 63, 252]:
+    if consecutive_days not in [1, 3, 5, 7, 21, 63, 252]:
         metrics[f'pct_{consecutive_days}d'] = pct_change(closes, consecutive_days)
 
     # Historical averages
@@ -581,7 +581,7 @@ def format_number(val, decimals=1):
 # ---------------------------
 # CLI Main Function
 # ---------------------------
-def run_cli(consecutive_days=30, index_key="SP500"):
+def run_cli(consecutive_days=7, index_key="SP500"):
     """Run the CLI version of the market tracker with configurable consecutive period"""
     ensure_dir(DATA_DIR)
 
@@ -648,17 +648,17 @@ def run_cli(consecutive_days=30, index_key="SP500"):
         'ticker', 'status', 'sector', 'industry', 'last_date', 'last_close',
         'data_points', f'rising_{consecutive_days}day', f'declining_{consecutive_days}day'
     ]
-    
-    # Add 3-day columns if different from consecutive_days
-    if consecutive_days != 3:
-        cols_order.extend(['rising_3day', 'declining_3day'])
-    
+
+    # Add 7-day columns if different from consecutive_days
+    if consecutive_days != 7:
+        cols_order.extend(['rising_7day', 'declining_7day'])
+
     cols_order.extend([
         'pct_1d', 'pct_3d', 'pct_5d', 'pct_21d', 'pct_63d', 'pct_252d'
     ])
     
     # Add consecutive_days percentage if not in standard list
-    if consecutive_days not in [1, 3, 5, 21, 63, 252]:
+    if consecutive_days not in [1, 3, 5, 7, 21, 63, 252]:
         cols_order.insert(-6, f'pct_{consecutive_days}d')
     
     cols_order.extend([
@@ -680,14 +680,16 @@ def run_cli(consecutive_days=30, index_key="SP500"):
     # Rising and declining lists using configurable period
     rising_col = f'rising_{consecutive_days}day'
     declining_col = f'declining_{consecutive_days}day'
-    pct_col = f'pct_{consecutive_days}d' if consecutive_days not in [1, 3, 5, 21, 63, 252] else f'pct_{consecutive_days}d'
-    
+    pct_col = f'pct_{consecutive_days}d' if consecutive_days not in [1, 3, 5, 7, 21, 63, 252] else f'pct_{consecutive_days}d'
+
     # Use closest available percentage column
     if pct_col not in df_metrics.columns:
         if consecutive_days <= 3:
             pct_col = 'pct_3d'
         elif consecutive_days <= 5:
             pct_col = 'pct_5d'
+        elif consecutive_days <= 7:
+            pct_col = 'pct_7d'
         elif consecutive_days <= 21:
             pct_col = 'pct_21d'
         else:
@@ -1379,6 +1381,8 @@ def run_streamlit():
     # Footer
     st.divider()
     st.caption("""
+    Created by Ehiremen Nathaniel Omoarebun
+             
     **Disclaimer:** This tool is for informational purposes only and should not be considered as financial advice.
     Data provided by Yahoo Finance and may be delayed. Always do your own research before making investment decisions.
     """)
