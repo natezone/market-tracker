@@ -400,7 +400,7 @@ def show_color_legend():
 # ---------------------------
 # Metrics Calculation
 # ---------------------------
-def compute_metrics_for_ticker(df, consecutive_days=3):
+def compute_metrics_for_ticker(df, consecutive_days=30):
     """Calculate comprehensive metrics for a single ticker with configurable consecutive period"""
     metrics = {}
 
