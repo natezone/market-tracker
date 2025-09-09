@@ -127,6 +127,277 @@ def download_history(tickers, period="max", interval="1d", threads=True, progres
     return out
 
 # ---------------------------
+# Color Coding Functions
+# ---------------------------
+
+def get_performance_color(value, metric_type='return', use_gradient=True):
+    """
+    Get color based on performance metric
+    
+    Args:
+        value: The metric value
+        metric_type: Type of metric ('return', 'rsi', 'volatility', 'volume')
+        use_gradient: Whether to use gradient colors or simple red/green
+    
+    Returns:
+        Color string (hex code)
+    """
+    if pd.isna(value):
+        return '#888888'  # Gray for missing data
+    
+    if metric_type == 'return':
+        # For returns: negative = red, positive = green
+        if value < -5:
+            return '#8B0000' if use_gradient else '#FF0000'  # Dark red
+        elif value < -2:
+            return '#DC143C' if use_gradient else '#FF0000'  # Crimson
+        elif value < -1:
+            return '#FF6B6B' if use_gradient else '#FF0000'  # Light red
+        elif value < 0:
+            return '#FFB3B3' if use_gradient else '#FF0000'  # Very light red
+        elif value == 0:
+            return '#D3D3D3'  # Light gray
+        elif value < 1:
+            return '#B3FFB3' if use_gradient else '#00FF00'  # Very light green
+        elif value < 2:
+            return '#66FF66' if use_gradient else '#00FF00'  # Light green
+        elif value < 5:
+            return '#32CD32' if use_gradient else '#00FF00'  # Lime green
+        else:
+            return '#006400' if use_gradient else '#00FF00'  # Dark green
+    
+    elif metric_type == 'rsi':
+        # For RSI: <30 = oversold (good buy), >70 = overbought (bad)
+        if value < 20:
+            return '#006400'  # Dark green (very oversold)
+        elif value < 30:
+            return '#32CD32'  # Green (oversold)
+        elif value < 40:
+            return '#90EE90'  # Light green
+        elif value < 60:
+            return '#FFFF99'  # Yellow (neutral)
+        elif value < 70:
+            return '#FFA500'  # Orange
+        elif value < 80:
+            return '#FF6347'  # Tomato
+        else:
+            return '#8B0000'  # Dark red (very overbought)
+    
+    elif metric_type == 'volatility':
+        # For volatility: lower = better (green), higher = riskier (red)
+        if value < 15:
+            return '#006400' if use_gradient else '#00FF00'  # Dark green
+        elif value < 25:
+            return '#32CD32' if use_gradient else '#00FF00'  # Green
+        elif value < 35:
+            return '#90EE90' if use_gradient else '#FFFF00'  # Light green
+        elif value < 50:
+            return '#FFFF99'  # Yellow
+        elif value < 75:
+            return '#FFA500'  # Orange
+        else:
+            return '#8B0000' if use_gradient else '#FF0000'  # Dark red
+    
+    elif metric_type == 'volume':
+        # For volume vs average: higher = more interest
+        if value > 100:
+            return '#006400'  # Dark green (high volume)
+        elif value > 50:
+            return '#32CD32'  # Green
+        elif value > 20:
+            return '#90EE90'  # Light green
+        elif value > -20:
+            return '#FFFF99'  # Yellow (normal)
+        elif value > -50:
+            return '#FFA500'  # Orange
+        else:
+            return '#FF6347'  # Red (low volume)
+
+def create_gradient_colorscale(values, metric_type='return'):
+    """Create a custom colorscale for plotly based on values"""
+    if metric_type == 'return':
+        return [
+            [0.0, '#8B0000'],    # Dark red
+            [0.25, '#FF6B6B'],   # Light red
+            [0.45, '#FFB3B3'],   # Very light red
+            [0.5, '#D3D3D3'],    # Gray (neutral)
+            [0.55, '#B3FFB3'],   # Very light green
+            [0.75, '#66FF66'],   # Light green
+            [1.0, '#006400']     # Dark green
+        ]
+    elif metric_type == 'rsi':
+        return [
+            [0.0, '#006400'],    # Dark green (oversold)
+            [0.3, '#90EE90'],    # Light green
+            [0.5, '#FFFF99'],    # Yellow (neutral)
+            [0.7, '#FFA500'],    # Orange
+            [1.0, '#8B0000']     # Dark red (overbought)
+        ]
+
+def create_colored_metric_card(title, value, metric_type='return', format_func=None):
+    """Create a colored metric card for Streamlit"""
+    if format_func:
+        display_value = format_func(value)
+    else:
+        display_value = f"{value:.2f}%" if metric_type == 'return' else f"{value:.1f}"
+    
+    color = get_performance_color(value, metric_type)
+    text_color = 'white' if color in ['#8B0000', '#006400', '#DC143C'] else 'black'
+    
+    # Use HTML to create colored metric
+    st.markdown(f"""
+        <div style="
+            background-color: {color};
+            color: {text_color};
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 5px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        ">
+            <h4 style="margin: 0; font-size: 14px;">{title}</h4>
+            <h2 style="margin: 5px 0; font-size: 24px;">{display_value}</h2>
+        </div>
+    """, unsafe_allow_html=True)
+
+def create_enhanced_bar_chart(df, x_col, y_col, title, metric_type='return'):
+    """Create a bar chart with gradient colors"""
+    colors = [get_performance_color(val, metric_type) for val in df[y_col]]
+    
+    fig = go.Figure(data=[
+        go.Bar(
+            x=df[x_col],
+            y=df[y_col],
+            marker_color=colors,
+            text=df[y_col].apply(lambda x: f"{x:.1f}%"),
+            textposition='outside',
+            hovertemplate='<b>%{x}</b><br>' +
+                          f'{title}: %{{y:.2f}}%<extra></extra>'
+        )
+    ])
+    
+    fig.update_layout(
+        title=title,
+        height=400,
+        showlegend=False,
+        yaxis_title=f"{title} (%)"
+    )
+    
+    return fig
+
+def create_sector_heatmap(sector_data, value_col, title):
+    """Create a heatmap for sector performance"""
+    fig = go.Figure(data=go.Heatmap(
+        z=sector_data.values.reshape(1, -1),
+        x=sector_data.index,
+        y=['Performance'],
+        colorscale=create_gradient_colorscale(sector_data, 'return'),
+        text=sector_data.apply(lambda x: f"{x:.1f}%").values.reshape(1, -1),
+        texttemplate="%{text}",
+        textfont={"size": 10},
+        hoverongaps=False,
+        hovertemplate='<b>%{x}</b><br>Performance: %{z:.2f}%<extra></extra>'
+    ))
+    
+    fig.update_layout(
+        title=title,
+        height=200,
+        xaxis_tickangle=-45
+    )
+    
+    return fig
+
+def add_custom_css():
+    """Add custom CSS for better color styling"""
+    st.markdown("""
+        <style>
+        .stMetric {
+            background-color: #f0f2f6;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        
+        .performance-good {
+            background: linear-gradient(135deg, #d4ff88 0%, #4caf50 100%);
+            color: white;
+        }
+        
+        .performance-bad {
+            background: linear-gradient(135deg, #ff8a80 0%, #f44336 100%);
+            color: white;
+        }
+        
+        .performance-neutral {
+            background: linear-gradient(135deg, #e0e0e0 0%, #9e9e9e 100%);
+            color: black;
+        }
+        
+        /* Custom table styling */
+        .stDataFrame [data-testid="stTable"] {
+            background-color: white;
+            border-radius: 5px;
+        }
+        
+        /* Gradient backgrounds for metric cards */
+        .metric-card-positive {
+            background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 5px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .metric-card-negative {
+            background: linear-gradient(135deg, #f44336 0%, #c62828 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 5px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .metric-card-neutral {
+            background: linear-gradient(135deg, #9e9e9e 0%, #616161 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 5px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+def show_color_legend():
+    """Display color legend for performance interpretation"""
+    with st.expander("Color Legend"):
+        st.markdown("""
+        **Performance Colors:**
+        - Dark Green: Excellent performance (>5% gains)
+        - Green: Good performance (2-5% gains)  
+        - Light Green: Positive performance (0-2% gains)
+        - Gray: Neutral (0% change)
+        - Yellow: Caution zone
+        - Light Red: Negative performance (0-2% loss)
+        - Red: Poor performance (2-5% loss)
+        - Dark Red: Very poor performance (>5% loss)
+        
+        **RSI Colors:**
+        - Green: Oversold (potential buy, RSI < 30)
+        - Yellow: Neutral (30-70)
+        - Red: Overbought (potential sell, RSI > 70)
+        
+        **Volatility Colors:**
+        - Green: Low risk (< 25%)
+        - Yellow: Medium risk (25-50%)
+        - Red: High risk (> 50%)
+        """)
+
+# ---------------------------
 # Metrics Calculation
 # ---------------------------
 def compute_metrics_for_ticker(df, consecutive_days=3):
@@ -442,17 +713,17 @@ def run_cli(consecutive_days=30, index_key="SP500"):
 
     valid_metrics = df_metrics[df_metrics['status'] == 'ok'].copy()
     if not valid_metrics.empty:
-        print(f"\n📊 Overall Statistics:")
+        print(f"\nOverall Statistics:")
         print(f"  • Total stocks processed: {len(valid_metrics)}")
         print(f"  • Rising ({consecutive_days}-day): {len(rising)} stocks")
         print(f"  • Declining ({consecutive_days}-day): {len(declining)} stocks")
 
-        print(f"\n🏆 Top 5 Rising Stocks ({consecutive_days}-day consecutive):")
+        print(f"\nTop 5 Rising Stocks ({consecutive_days}-day consecutive):")
         for _, row in rising.head().iterrows():
             pct_val = row.get(pct_col, 0)
             print(f"  • {row['ticker']}: +{pct_val:.2f}% ({row['sector']})")
 
-        print(f"\n📉 Top 5 Declining Stocks ({consecutive_days}-day consecutive):")
+        print(f"\nTop 5 Declining Stocks ({consecutive_days}-day consecutive):")
         for _, row in declining.head().iterrows():
             pct_val = row.get(pct_col, 0)
             print(f"  • {row['ticker']}: {pct_val:.2f}% ({row['sector']})")
@@ -509,17 +780,8 @@ def run_streamlit():
         initial_sidebar_state="expanded"
     )
 
-    # Custom CSS
-    st.markdown("""
-        <style>
-        .stMetric {
-            background-color: #f0f2f6;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 5px;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    # Add custom CSS
+    add_custom_css()
 
     # Header
     col1, col2, col3 = st.columns([2, 1, 1])
@@ -620,6 +882,9 @@ def run_streamlit():
     if consecutive_days > 63:
         st.sidebar.warning("⚠️ Long periods may have fewer matching stocks")
 
+    # Show color legend
+    show_color_legend()
+
     if not data_exists:
         st.sidebar.warning("No data found. Run initial data fetch first.")
         if st.sidebar.button("📥 Fetch All Data", key="fetch_all_data_btn"):
@@ -666,84 +931,63 @@ def run_streamlit():
             declining_count = len(valid_metrics[valid_metrics.get(declining_col, False) == True])
             
             with col1:
-                st.metric(
-                    f"Rising ({consecutive_days}d consecutive)",
-                    f"{rising_count}",
-                    f"{(rising_count/len(valid_metrics)*100):.1f}% of stocks"
+                rising_pct = (rising_count/len(valid_metrics)*100)
+                create_colored_metric_card(
+                    f"Rising ({consecutive_days}d)", 
+                    rising_pct, 
+                    'return',
+                    lambda x: f"{rising_count} ({x:.1f}%)"
                 )
             
             with col2:
-                st.metric(
-                    f"Declining ({consecutive_days}d consecutive)", 
-                    f"{declining_count}",
-                    f"{(declining_count/len(valid_metrics)*100):.1f}% of stocks"
+                declining_pct = (declining_count/len(valid_metrics)*100)
+                create_colored_metric_card(
+                    f"Declining ({consecutive_days}d)", 
+                    -declining_pct,  # Negative to show as red
+                    'return',
+                    lambda x: f"{declining_count} ({abs(x):.1f}%)"
                 )
 
             with col3:
                 avg_volatility = valid_metrics['ann_vol_pct'].mean() if 'ann_vol_pct' in valid_metrics.columns else np.nan
-                st.metric("Avg Volatility", f"{avg_volatility:.1f}%" if not pd.isna(avg_volatility) else "n/a")
+                if not pd.isna(avg_volatility):
+                    create_colored_metric_card("Avg Volatility", avg_volatility, 'volatility', format_percentage)
 
             with col4:
                 if 'rsi' in valid_metrics.columns:
                     avg_rsi = valid_metrics['rsi'].mean()
-                    st.metric("Avg RSI", f"{avg_rsi:.1f}")
+                    create_colored_metric_card("Avg RSI", avg_rsi, 'rsi', lambda x: f"{x:.1f}")
 
-            # Top movers
+            # Enhanced top movers with color gradients
             st.subheader(f"🚀 Top Movers ({horizon_label})")
 
             col1, col2 = st.columns(2)
 
             with col1:
                 st.markdown("### 📈 Top Gainers")
-                top_gainers = valid_metrics.nlargest(10, horizon_col)[['ticker', 'sector', horizon_col, 'last_close']]
-
-                fig_gainers = go.Figure(data=[
-                    go.Bar(
-                        x=top_gainers['ticker'],
-                        y=top_gainers[horizon_col],
-                        text=top_gainers[horizon_col].apply(lambda x: f"{x:.1f}%"),
-                        textposition='outside',
-                        marker_color='lightgreen',
-                        hovertemplate='<b>%{x}</b><br>' +
-                                      'Return: %{y:.2f}%<br>' +
-                                      'Price: $%{customdata[0]:.2f}<br>' +
-                                      'Sector: %{customdata[1]}<extra></extra>',
-                        customdata=top_gainers[['last_close', 'sector']].values
-                    )
-                ])
-                fig_gainers.update_layout(
-                    height=400,
-                    showlegend=False,
-                    yaxis_title=f"Return % ({horizon_label})"
+                top_gainers = valid_metrics.nlargest(10, horizon_col)
+                fig_gainers = create_enhanced_bar_chart(
+                    top_gainers, 'ticker', horizon_col, 
+                    f"Top Gainers ({horizon_label})", 'return'
                 )
-                st.plotly_chart(fig_gainers, width='stretch')
+                st.plotly_chart(fig_gainers, use_container_width=True)
 
             with col2:
                 st.markdown("### 📉 Top Decliners")
-                top_losers = valid_metrics.nsmallest(10, horizon_col)[['ticker', 'sector', horizon_col, 'last_close']]
-
-                fig_losers = go.Figure(data=[
-                    go.Bar(
-                        x=top_losers['ticker'],
-                        y=top_losers[horizon_col],
-                        text=top_losers[horizon_col].apply(lambda x: f"{x:.1f}%"),
-                        textposition='outside',
-                        marker_color='lightcoral',
-                        hovertemplate='<b>%{x}</b><br>' +
-                                      'Return: %{y:.2f}%<br>' +
-                                      'Price: $%{customdata[0]:.2f}<br>' +
-                                      'Sector: %{customdata[1]}<extra></extra>',
-                        customdata=top_losers[['last_close', 'sector']].values
-                    )
-                ])
-                fig_losers.update_layout(
-                    height=400,
-                    showlegend=False,
-                    yaxis_title=f"Return % ({horizon_label})"
+                top_losers = valid_metrics.nsmallest(10, horizon_col)
+                fig_losers = create_enhanced_bar_chart(
+                    top_losers, 'ticker', horizon_col, 
+                    f"Top Decliners ({horizon_label})", 'return'
                 )
-                st.plotly_chart(fig_losers, width='stretch')
+                st.plotly_chart(fig_losers, use_container_width=True)
 
-            # Data table
+            # Add sector heatmap
+            st.subheader("🏢 Sector Performance Heatmap")
+            sector_perf = valid_metrics.groupby('sector')[horizon_col].mean().sort_values(ascending=False)
+            fig_heatmap = create_sector_heatmap(sector_perf, horizon_col, f"Sector Performance ({horizon_label})")
+            st.plotly_chart(fig_heatmap, use_container_width=True)
+
+            # Enhanced data table with colors
             st.subheader("📋 All Stocks")
 
             display_cols = ['ticker', 'sector', 'last_close', horizon_col, 'ann_vol_pct']
@@ -751,21 +995,38 @@ def run_streamlit():
                 display_cols.append('rsi')
 
             display_df = valid_metrics[display_cols].copy()
+            
+            # Apply color coding function
+            def highlight_performance(row):
+                colors = []
+                for col in display_df.columns:
+                    if col == horizon_col:
+                        color = get_performance_color(row[col], 'return')
+                    elif col == 'ann_vol_pct':
+                        color = get_performance_color(row[col], 'volatility')
+                    elif col == 'rsi':
+                        color = get_performance_color(row[col], 'rsi')
+                    else:
+                        color = 'white'
+                    
+                    text_color = 'white' if color in ['#8B0000', '#006400', '#DC143C'] else 'black'
+                    colors.append(f'background-color: {color}; color: {text_color}')
+                return colors
+
+            styled_df = display_df.style.apply(highlight_performance, axis=1)
+            
             # Format the data
-            display_df['last_close'] = display_df['last_close'].apply(format_currency)
-            display_df[horizon_col] = display_df[horizon_col].apply(format_percentage)
-            if 'ann_vol_pct' in display_df.columns:
-                display_df['ann_vol_pct'] = display_df['ann_vol_pct'].apply(format_percentage)
+            format_dict = {
+                'last_close': '${:.2f}',
+                horizon_col: '{:.2f}%',
+                'ann_vol_pct': '{:.2f}%'
+            }
             if 'rsi' in display_df.columns:
-                display_df['rsi'] = display_df['rsi'].apply(lambda x: format_number(x, 1))
-
-            # rename for display
-            renamed_cols = ['Ticker', 'Sector', 'Price', f'{horizon_label} %', 'Volatility']
-            if 'rsi' in valid_metrics.columns:
-                renamed_cols.append('RSI')
-            display_df.columns = renamed_cols
-
-            st.dataframe(display_df, width='stretch', height=400)
+                format_dict['rsi'] = '{:.1f}'
+            
+            styled_df = styled_df.format(format_dict)
+            
+            st.dataframe(styled_df, use_container_width=True, height=400)
 
         # ---------- Sector Analysis ----------
         elif view_mode == "Sector Analysis":
@@ -780,26 +1041,13 @@ def run_streamlit():
             sector_perf.columns = ['Mean Return', 'Median Return', 'Std Dev', 'Count', 'Avg Volatility']
             sector_perf = sector_perf.sort_values('Mean Return', ascending=False)
 
-            # Bar chart
-            fig_sector = go.Figure(data=[
-                go.Bar(
-                    x=sector_perf.index,
-                    y=sector_perf['Mean Return'],
-                    text=sector_perf['Mean Return'].apply(lambda x: f"{x:.2f}%"),
-                    textposition='outside',
-                    marker_color=sector_perf['Mean Return'].apply(
-                        lambda x: 'lightgreen' if x > 0 else 'lightcoral'
-                    )
-                )
-            ])
-            fig_sector.update_layout(
-                title=f"Average Sector Returns ({horizon_label})",
-                xaxis_title="Sector",
-                yaxis_title="Average Return (%)",
-                height=500,
-                xaxis_tickangle=-45
+            # Enhanced Bar chart with colors
+            fig_sector = create_enhanced_bar_chart(
+                sector_perf.reset_index(), 'sector', 'Mean Return',
+                f"Average Sector Returns ({horizon_label})", 'return'
             )
-            st.plotly_chart(fig_sector, width='stretch')
+            fig_sector.update_layout(xaxis_tickangle=-45)
+            st.plotly_chart(fig_sector, use_container_width=True)
 
             # Format sector performance table
             formatted_sector = sector_perf.copy()
@@ -808,7 +1056,7 @@ def run_streamlit():
             formatted_sector['Std Dev'] = formatted_sector['Std Dev'].apply(format_percentage)
             formatted_sector['Avg Volatility'] = formatted_sector['Avg Volatility'].apply(format_percentage)
             
-            st.dataframe(formatted_sector, width='stretch')
+            st.dataframe(formatted_sector, use_container_width=True)
 
         # ---------- Top Movers ----------
         elif view_mode == "Top Movers":
@@ -841,7 +1089,7 @@ def run_streamlit():
                         if col.startswith('pct_'):
                             rising_display[col] = rising_display[col].apply(format_percentage)
                     
-                    st.dataframe(rising_display, width='stretch')
+                    st.dataframe(rising_display, use_container_width=True)
             
             with tabs[1]:
                 declining = valid_metrics[valid_metrics.get(declining_col, False) == True]
@@ -867,7 +1115,7 @@ def run_streamlit():
                         if col.startswith('pct_'):
                             declining_display[col] = declining_display[col].apply(format_percentage)
                     
-                    st.dataframe(declining_display, width='stretch')
+                    st.dataframe(declining_display, use_container_width=True)
 
             with tabs[2]:
                 if 'ann_vol_pct' in valid_metrics.columns:
@@ -879,7 +1127,7 @@ def run_streamlit():
                     most_volatile['ann_vol_pct'] = most_volatile['ann_vol_pct'].apply(format_percentage)
                     most_volatile[horizon_col] = most_volatile[horizon_col].apply(format_percentage)
                     
-                    st.dataframe(most_volatile, width='stretch')
+                    st.dataframe(most_volatile, use_container_width=True)
                 else:
                     st.info("Volatility data not available")
 
@@ -895,7 +1143,7 @@ def run_streamlit():
                         near_highs['last_close'] = near_highs['last_close'].apply(format_currency)
                         near_highs['52w_high'] = near_highs['52w_high'].apply(format_currency)
                         near_highs['pct_from_52w_high'] = near_highs['pct_from_52w_high'].apply(format_percentage)
-                        st.dataframe(near_highs, width='stretch')
+                        st.dataframe(near_highs, use_container_width=True)
                         
                     with col2:
                         st.markdown("### Near 52-Week Lows")
@@ -903,7 +1151,7 @@ def run_streamlit():
                         near_lows['last_close'] = near_lows['last_close'].apply(format_currency)
                         near_lows['52w_low'] = near_lows['52w_low'].apply(format_currency)
                         near_lows['pct_from_52w_low'] = near_lows['pct_from_52w_low'].apply(format_percentage)
-                        st.dataframe(near_lows, width='stretch')
+                        st.dataframe(near_lows, use_container_width=True)
                 else:
                     st.info("52-week high/low data not available")
 
@@ -1040,26 +1288,26 @@ def run_streamlit():
                 if 'rsi' in formatted_screener.columns:
                     formatted_screener['rsi'] = formatted_screener['rsi'].apply(lambda x: format_number(x, 1))
 
-                st.dataframe(formatted_screener, width='stretch', height=400)
+                st.dataframe(formatted_screener, use_container_width=True, height=400)
 
-                # Visualization
+                # Enhanced Visualization with color coding
                 if len(screened_df) > 1 and 'ann_vol_pct' in screened_df.columns:
                     fig = px.scatter(
                         screened_df,
                         x='ann_vol_pct',
                         y=horizon_col,
-                        color='sector',
+                        color=horizon_col,
+                        color_continuous_scale=create_gradient_colorscale(screened_df[horizon_col], 'return'),
                         size='last_close',
-                        hover_data=['ticker'],
+                        hover_data=['ticker', 'sector'],
                         title=f"{horizon_label} Return vs Volatility",
                         labels={
                             'ann_vol_pct': 'Annual Volatility (%)',
                             horizon_col: f'{horizon_label} Return (%)'
                         }
                     )
-                    # add horizontal zero line
                     fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
-                    st.plotly_chart(fig, width='stretch')
+                    st.plotly_chart(fig, use_container_width=True)
 
                 # Per-ticker plotting: choose one from screened results
                 tickers_list = screened_df['ticker'].tolist()
@@ -1126,7 +1374,7 @@ def run_streamlit():
                     key="download_custom_export"
                 )
 
-                st.dataframe(export_df.head(10), width='stretch')
+                st.dataframe(export_df.head(10), use_container_width=True)
 
     # Footer
     st.divider()
