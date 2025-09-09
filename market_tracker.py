@@ -861,7 +861,7 @@ def run_streamlit():
         "Consecutive Days Lookback",
         min_value=2,
         max_value=126,  # ~6 months of trading days
-        value=3,
+        value=7,
         step=1,
         help="Number of consecutive days to analyze for rising/declining trends"
     )
@@ -873,7 +873,7 @@ def run_streamlit():
             consecutive_days = 3
     with col2:
         if st.button("1w", key="preset_1w"):
-            consecutive_days = 5
+            consecutive_days = 7
     with col3:
         if st.button("1m", key="preset_1m"):
             consecutive_days = 21
