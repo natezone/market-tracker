@@ -14,6 +14,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import warnings
 warnings.filterwarnings('ignore')
 from datetime import timezone, timedelta
+import scipy.stats as stats
+from scipy.optimize import minimize
 
 # Try importing Streamlit and Plotly for web interface
 try:
@@ -734,6 +736,752 @@ def format_number(val, decimals=1):
         return f'{float(val):.{decimals}f}'
     except:
         return str(val)
+    
+# ---------------------------
+# Advanced Analytics Functions
+# ---------------------------
+
+def calculate_beta(stock_returns, market_returns):
+    """Calculate beta coefficient"""
+    if len(stock_returns) != len(market_returns) or len(stock_returns) < 10:
+        return np.nan
+    
+    covariance = np.cov(stock_returns, market_returns)[0][1]
+    market_variance = np.var(market_returns)
+    
+    if market_variance == 0:
+        return np.nan
+    
+    return covariance / market_variance
+
+def calculate_alpha(stock_returns, market_returns, risk_free_rate=0.02):
+    """Calculate alpha coefficient"""
+    if len(stock_returns) != len(market_returns) or len(stock_returns) < 10:
+        return np.nan
+    
+    beta = calculate_beta(stock_returns, market_returns)
+    if np.isnan(beta):
+        return np.nan
+    
+    stock_avg_return = np.mean(stock_returns) * 252  # Annualized
+    market_avg_return = np.mean(market_returns) * 252  # Annualized
+    
+    expected_return = risk_free_rate + beta * (market_avg_return - risk_free_rate)
+    alpha = stock_avg_return - expected_return
+    
+    return alpha
+
+def calculate_sharpe_ratio(returns, risk_free_rate=0.02):
+    """Calculate Sharpe ratio"""
+    if len(returns) < 10:
+        return np.nan
+    
+    excess_returns = np.mean(returns) * 252 - risk_free_rate
+    volatility = np.std(returns) * np.sqrt(252)
+    
+    if volatility == 0:
+        return np.nan
+    
+    return excess_returns / volatility
+
+def calculate_max_drawdown(prices):
+    """Calculate maximum drawdown"""
+    if len(prices) < 2:
+        return np.nan
+    
+    peak = prices.expanding().max()
+    drawdown = (prices - peak) / peak
+    max_drawdown = drawdown.min()
+    
+    return abs(max_drawdown) * 100
+
+def calculate_var(returns, confidence_level=0.05):
+    """Calculate Value at Risk"""
+    if len(returns) < 30:
+        return np.nan
+    
+    return np.percentile(returns, confidence_level * 100) * 100
+
+def calculate_correlation_matrix(data_dict):
+    """Calculate correlation matrix for multiple stocks"""
+    if len(data_dict) < 2:
+        return pd.DataFrame()
+    
+    returns_df = pd.DataFrame()
+    
+    for ticker, df in data_dict.items():
+        if df is not None and not df.empty and 'Close' in df.columns:
+            returns = df['Close'].pct_change().dropna()
+            if len(returns) > 50:  # Minimum data requirement
+                returns_df[ticker] = returns
+    
+    if returns_df.empty or len(returns_df.columns) < 2:
+        return pd.DataFrame()
+    
+    return returns_df.corr()
+
+def get_sector_comparison_data(valid_metrics, selected_tickers):
+    """Get sector comparison data for selected tickers"""
+    comparison_data = []
+    
+    for ticker in selected_tickers:
+        ticker_data = valid_metrics[valid_metrics['ticker'] == ticker]
+        if not ticker_data.empty:
+            row = ticker_data.iloc[0]
+            comparison_data.append({
+                'ticker': ticker,
+                'sector': row.get('sector', 'Unknown'),
+                'last_close': row.get('last_close', 0),
+                'pct_1d': row.get('pct_1d', 0),
+                'pct_5d': row.get('pct_5d', 0),
+                'pct_21d': row.get('pct_21d', 0),
+                'pct_252d': row.get('pct_252d', 0),
+                'ann_vol_pct': row.get('ann_vol_pct', 0),
+                'rsi': row.get('rsi', 50)
+            })
+    
+    return pd.DataFrame(comparison_data)
+
+# ---------------------------
+# Advanced Mode UI Functions
+# ---------------------------
+
+def render_comparison_mode(valid_metrics, hist):
+    """Render the Comparison Mode interface"""
+    st.subheader("🔄 Stock Comparison Analysis")
+    
+    # Stock selection
+    available_tickers = sorted(valid_metrics['ticker'].unique())
+    
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        # Initialize session state for selected tickers if not exists
+        if 'comparison_selected_tickers' not in st.session_state:
+            st.session_state.comparison_selected_tickers = []
+        
+        selected_tickers = st.multiselect(
+            "Select stocks to compare (2-15 stocks)",
+            options=available_tickers,
+            default=st.session_state.comparison_selected_tickers,
+            max_selections=15,
+            key="comparison_tickers"
+        )
+        
+        # Update session state when selection changes
+        st.session_state.comparison_selected_tickers = selected_tickers
+
+    with col2:
+        if st.button("Add Top Performers", key="add_top_performers"):
+            # Get top performers based on available data
+            available_return_cols = [col for col in ['pct_21d', 'pct_5d', 'pct_1d'] if col in valid_metrics.columns]
+            if available_return_cols:
+                top_performers = valid_metrics.nlargest(10, available_return_cols[0])['ticker'].tolist()
+                
+                # Combine existing selections with top performers
+                current_selections = st.session_state.comparison_selected_tickers
+                new_selections = list(set(current_selections + top_performers))[:15]  # Limit to 15
+
+                # Update session state
+                st.session_state.comparison_selected_tickers = new_selections
+
+                st.success(f"Added top 10 performers: {', '.join(top_performers[:10])}")
+                st.rerun()  
+    
+    if len(selected_tickers) < 2:
+        st.info("Please select at least 2 stocks to compare")
+        return
+    
+    # Get comparison data
+    comparison_df = get_sector_comparison_data(valid_metrics, selected_tickers)
+    
+    if comparison_df.empty:
+        st.error("No data available for selected stocks")
+        return
+    
+    # Display comparison table
+    st.subheader("📊 Performance Comparison")
+    
+    # Format the comparison table
+    display_df = comparison_df.copy()
+    display_df['last_close'] = display_df['last_close'].apply(lambda x: f"${x:.2f}")
+    for col in ['pct_1d', 'pct_5d', 'pct_21d', 'pct_252d', 'ann_vol_pct']:
+        if col in display_df.columns:
+            display_df[col] = display_df[col].apply(lambda x: f"{x:.2f}%")
+    if 'rsi' in display_df.columns:
+        display_df['rsi'] = display_df['rsi'].apply(lambda x: f"{x:.1f}")
+    
+    st.dataframe(display_df, use_container_width=True)
+    
+    # Performance charts
+    st.subheader("📈 Visual Comparison")
+    
+    tabs = st.tabs(["Returns Comparison", "Risk vs Return", "Correlation Analysis", "Top Performers"])
+    
+    with tabs[0]:
+        # Returns comparison chart
+        metrics_to_plot = ['pct_1d', 'pct_5d', 'pct_21d', 'pct_252d']
+        available_metrics = [m for m in metrics_to_plot if m in comparison_df.columns]
+        
+        if available_metrics:
+            fig = go.Figure()
+            
+            for ticker in selected_tickers:
+                ticker_data = comparison_df[comparison_df['ticker'] == ticker]
+                if not ticker_data.empty:
+                    values = [ticker_data[metric].iloc[0] for metric in available_metrics]
+                    fig.add_trace(go.Scatter(
+                        x=available_metrics,
+                        y=values,
+                        mode='lines+markers',
+                        name=ticker,
+                        line=dict(width=3)
+                    ))
+            
+            fig.update_layout(
+                title="Return Comparison Across Time Periods",
+                xaxis_title="Time Period",
+                yaxis_title="Return (%)",
+                height=400
+            )
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with tabs[1]:
+        # Risk vs Return scatter plot
+        if 'ann_vol_pct' in comparison_df.columns and 'pct_252d' in comparison_df.columns:
+            fig = px.scatter(
+                comparison_df,
+                x='ann_vol_pct',
+                y='pct_252d',
+                text='ticker',
+                title="Risk vs Return Analysis (1 Year)",
+                labels={'ann_vol_pct': 'Volatility (%)', 'pct_252d': '1-Year Return (%)'},
+                size='last_close',
+                color='sector'
+            )
+            fig.update_traces(textposition="top center")
+            fig.update_layout(height=500)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Insufficient data for risk vs return analysis")
+    
+    with tabs[2]:
+        # Correlation analysis
+        if len(selected_tickers) >= 2:
+            # Get historical data for correlation
+            correlation_data = {}
+            for ticker in selected_tickers:
+                if ticker in hist and not hist[ticker].empty:
+                    correlation_data[ticker] = hist[ticker]
+            
+            if len(correlation_data) >= 2:
+                corr_matrix = calculate_correlation_matrix(correlation_data)
+                
+                if not corr_matrix.empty:
+                    fig = px.imshow(
+                        corr_matrix,
+                        text_auto=True,
+                        aspect="auto",
+                        title="Stock Price Correlation Matrix",
+                        color_continuous_scale="RdBu"
+                    )
+                    fig.update_layout(height=500)
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    st.markdown("**Interpretation:**")
+                    st.markdown("- Values close to 1: Stocks move together")
+                    st.markdown("- Values close to -1: Stocks move in opposite directions")
+                    st.markdown("- Values close to 0: Little correlation")
+                else:
+                    st.info("Unable to calculate correlations with available data")
+            else:
+                st.info("Insufficient historical data for correlation analysis")
+
+    with tabs[3]:
+        # Top Performers - Auto-select top 20 stocks
+        st.subheader("🏆 Top 20 Performers")
+        
+        # Determine which time horizon column to use
+        horizon_map = {
+            "1 Day": "pct_1d",
+            "3 Days": "pct_3d", 
+            "5 Days": "pct_5d",
+            "1 Month": "pct_21d",
+            "3 Months": "pct_63d",
+            "1 Year": "pct_252d"
+        }
+        
+        # let's use a default or detect from available columns
+        available_horizons = [col for col in horizon_map.values() if col in valid_metrics.columns]
+        
+        if available_horizons:
+            # Use the first available horizon or get from sidebar selection
+            current_horizon_col = available_horizons[2] if len(available_horizons) > 2 else available_horizons[0]  # Default to 5-day if available
+            
+            # Get top 20 performers
+            top_20 = valid_metrics.nlargest(20, current_horizon_col)
+            
+            # Display summary
+            horizon_name = [k for k, v in horizon_map.items() if v == current_horizon_col][0] if current_horizon_col in horizon_map.values() else "Selected Period"
+            st.info(f"Showing top 20 performers over {horizon_name}")
+            
+            # Auto-populate comparison
+            top_20_tickers = top_20['ticker'].tolist()
+            top_20_comparison = get_sector_comparison_data(valid_metrics, top_20_tickers)
+            
+            if not top_20_comparison.empty:
+                # Format display
+                display_df = top_20_comparison.copy()
+                display_df['last_close'] = display_df['last_close'].apply(lambda x: f"${x:.2f}")
+                display_df['rank'] = range(1, len(display_df) + 1)
+                
+                # Reorder columns to show rank first
+                cols = ['rank'] + [col for col in display_df.columns if col != 'rank']
+                display_df = display_df[cols]
+                
+                for col in ['pct_1d', 'pct_5d', 'pct_21d', 'pct_252d', 'ann_vol_pct']:
+                    if col in display_df.columns:
+                        display_df[col] = display_df[col].apply(lambda x: f"{x:.2f}%")
+                
+                if 'rsi' in display_df.columns:
+                    display_df['rsi'] = display_df['rsi'].apply(lambda x: f"{x:.1f}")
+                
+                st.dataframe(display_df, use_container_width=True)
+                
+                # Performance chart for top 20
+                if current_horizon_col in top_20.columns:
+                    fig = create_enhanced_bar_chart(
+                        top_20.head(20), 'ticker', current_horizon_col,
+                        f"Top 20 Performers ({horizon_name})", 'return'
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                # Sector breakdown of top performers
+                sector_counts = top_20['sector'].value_counts()
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.subheader("Sector Breakdown")
+                    fig = px.pie(
+                        values=sector_counts.values,
+                        names=sector_counts.index,
+                        title="Top Performers by Sector"
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                with col2:
+                    st.subheader("Performance Stats")
+                    avg_return = top_20[current_horizon_col].mean()
+                    median_return = top_20[current_horizon_col].median()
+                    min_return = top_20[current_horizon_col].min()
+                    max_return = top_20[current_horizon_col].max()
+                    
+                    st.metric("Average Return", f"{avg_return:.2f}%")
+                    st.metric("Median Return", f"{median_return:.2f}%")
+                    st.metric("Range", f"{min_return:.2f}% to {max_return:.2f}%")
+            
+        else:
+            st.error("No performance data available for top performers analysis")
+
+def render_historical_analysis_mode(valid_metrics, hist):
+    """Render the Historical Analysis Mode interface"""
+    st.subheader("📅 Historical Analysis")
+    
+    # Stock selection
+    available_tickers = sorted(valid_metrics['ticker'].unique())
+    selected_ticker = st.selectbox(
+        "Select stock for historical analysis",
+        options=available_tickers,
+        key="historical_ticker"
+    )
+    
+    if not selected_ticker or selected_ticker not in hist:
+        st.info("Please select a valid stock")
+        return
+    
+    df = hist[selected_ticker]
+    if df.empty or 'Close' not in df.columns:
+        st.error("No historical data available for selected stock")
+        return
+    
+    # Date range selection
+    col1, col2 = st.columns(2)
+    
+    min_date = df.index.min().date()
+    max_date = df.index.max().date()
+    
+    with col1:
+        start_date = st.date_input(
+            "Start Date",
+            value=max_date - timedelta(days=365),
+            min_value=min_date,
+            max_value=max_date,
+            key="hist_start_date"
+        )
+    
+    with col2:
+        end_date = st.date_input(
+            "End Date",
+            value=max_date,
+            min_value=min_date,
+            max_value=max_date,
+            key="hist_end_date"
+        )
+    
+    # Filter data by date range
+    mask = (df.index.date >= start_date) & (df.index.date <= end_date)
+    filtered_df = df.loc[mask].copy()
+    
+    if filtered_df.empty:
+        st.error("No data available for selected date range")
+        return
+    
+    # Add technical indicators
+    filtered_df = add_technical_indicators(filtered_df)
+    
+    # Calculate additional metrics
+    returns = filtered_df['Close'].pct_change().dropna()
+    
+    # Display metrics
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total_return = (filtered_df['Close'].iloc[-1] / filtered_df['Close'].iloc[0] - 1) * 100
+        st.metric("Total Return", f"{total_return:.2f}%")
+    
+    with col2:
+        annualized_vol = returns.std() * np.sqrt(252) * 100
+        st.metric("Annualized Volatility", f"{annualized_vol:.2f}%")
+    
+    with col3:
+        max_dd = calculate_max_drawdown(filtered_df['Close'])
+        st.metric("Max Drawdown", f"{max_dd:.2f}%")
+    
+    with col4:
+        sharpe = calculate_sharpe_ratio(returns)
+        st.metric("Sharpe Ratio", f"{sharpe:.2f}" if not np.isnan(sharpe) else "N/A")
+    
+    # Charts
+    tabs = st.tabs(["Price & Volume", "Returns Analysis", "Drawdown Analysis", "Seasonal Patterns"])
+    
+    with tabs[0]:
+        # Price and volume chart
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.1,
+                           row_heights=[0.7, 0.3])
+        
+        fig.add_trace(go.Scatter(x=filtered_df.index, y=filtered_df['Close'], 
+                                name='Close Price'), row=1, col=1)
+        
+        if 'MA20' in filtered_df.columns:
+            fig.add_trace(go.Scatter(x=filtered_df.index, y=filtered_df['MA20'], 
+                                   name='20-day MA', line=dict(dash='dash')), row=1, col=1)
+        
+        if 'Volume' in filtered_df.columns:
+            fig.add_trace(go.Bar(x=filtered_df.index, y=filtered_df['Volume'], 
+                               name='Volume'), row=2, col=1)
+        
+        fig.update_layout(height=600, title=f"{selected_ticker} Price and Volume")
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with tabs[1]:
+        # Returns distribution
+        fig = go.Figure()
+        fig.add_trace(go.Histogram(x=returns * 100, nbinsx=50, name='Daily Returns'))
+        fig.update_layout(
+            title="Daily Returns Distribution",
+            xaxis_title="Daily Return (%)",
+            yaxis_title="Frequency"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Returns statistics
+        st.subheader("Returns Statistics")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write(f"Mean Daily Return: {returns.mean() * 100:.3f}%")
+            st.write(f"Median Daily Return: {returns.median() * 100:.3f}%")
+            st.write(f"Std Dev Daily Return: {returns.std() * 100:.3f}%")
+        
+        with col2:
+            st.write(f"Skewness: {stats.skew(returns):.3f}")
+            st.write(f"Kurtosis: {stats.kurtosis(returns):.3f}")
+            st.write(f"Best Day: {returns.max() * 100:.2f}%")
+            st.write(f"Worst Day: {returns.min() * 100:.2f}%")
+    
+    with tabs[2]:
+        # Drawdown analysis
+        peak = filtered_df['Close'].expanding().max()
+        drawdown = (filtered_df['Close'] - peak) / peak * 100
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=filtered_df.index, y=drawdown, 
+                               fill='tozeroy', name='Drawdown'))
+        fig.update_layout(
+            title="Drawdown Analysis",
+            xaxis_title="Date",
+            yaxis_title="Drawdown (%)"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with tabs[3]:
+        # Seasonal analysis
+        if len(filtered_df) > 252:  # At least 1 year of data
+            monthly_returns = returns.groupby(returns.index.month).mean() * 100
+            
+            fig = go.Figure()
+            fig.add_trace(go.Bar(
+                x=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                y=monthly_returns.values,
+                name='Average Monthly Return'
+            ))
+            fig.update_layout(
+                title="Seasonal Pattern - Average Monthly Returns",
+                xaxis_title="Month",
+                yaxis_title="Average Return (%)"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Insufficient data for seasonal analysis (need at least 1 year)")
+
+def render_risk_management_mode(valid_metrics, hist):
+    """Render the Risk Management Mode interface"""
+    st.subheader("⚠️ Risk Management Analysis")
+    
+    # Portfolio construction
+    st.markdown("### 📋 Portfolio Construction")
+    
+    available_tickers = sorted(valid_metrics['ticker'].unique())
+    
+    # Portfolio input
+    portfolio_stocks = []
+    weights = []
+    
+    num_stocks = st.slider("Number of stocks in portfolio", 2, 10, 5, key="portfolio_size")
+    
+    col1, col2 = st.columns(2)
+    
+    for i in range(num_stocks):
+        with col1:
+            stock = st.selectbox(
+                f"Stock {i+1}",
+                options=available_tickers,
+                key=f"portfolio_stock_{i}"
+            )
+        with col2:
+            weight = st.number_input(
+                f"Weight {i+1} (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=100.0/num_stocks,
+                step=0.1,
+                key=f"portfolio_weight_{i}"
+            )
+        
+        if stock:
+            portfolio_stocks.append(stock)
+            weights.append(weight/100)
+    
+    # Normalize weights
+    total_weight = sum(weights)
+    if total_weight > 0:
+        weights = [w/total_weight for w in weights]
+    
+    if len(portfolio_stocks) < 2 or total_weight == 0:
+        st.info("Please select at least 2 stocks with valid weights")
+        return
+    
+    # Calculate portfolio metrics
+    st.markdown("### 📊 Portfolio Risk Metrics")
+    
+    # Get historical data for portfolio stocks
+    portfolio_data = {}
+    portfolio_returns = pd.DataFrame()
+    
+    for stock in portfolio_stocks:
+        if stock in hist and not hist[stock].empty:
+            portfolio_data[stock] = hist[stock]
+            returns = hist[stock]['Close'].pct_change().dropna()
+            if len(returns) > 100:  # Minimum data requirement
+                portfolio_returns[stock] = returns
+    
+    if portfolio_returns.empty:
+        st.error("Insufficient historical data for risk analysis")
+        return
+    
+    # Align dates and calculate portfolio returns
+    portfolio_returns = portfolio_returns.dropna()
+    
+    if len(portfolio_returns) < 50:
+        st.error("Insufficient overlapping data for portfolio analysis")
+        return
+    
+    # Calculate weighted portfolio returns
+    valid_stocks = list(portfolio_returns.columns)
+    valid_weights = [weights[portfolio_stocks.index(stock)] for stock in valid_stocks if stock in portfolio_stocks]
+    
+    if len(valid_weights) != len(valid_stocks):
+        st.error("Mismatch between stocks and weights")
+        return
+    
+    # Normalize weights for valid stocks
+    valid_weights = np.array(valid_weights)
+    valid_weights = valid_weights / valid_weights.sum()
+    
+    portfolio_return_series = (portfolio_returns[valid_stocks] * valid_weights).sum(axis=1)
+    
+    # Calculate metrics
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        portfolio_vol = portfolio_return_series.std() * np.sqrt(252) * 100
+        st.metric("Portfolio Volatility", f"{portfolio_vol:.2f}%")
+    
+    with col2:
+        portfolio_var = calculate_var(portfolio_return_series)
+        st.metric("1-Day VaR (95%)", f"{portfolio_var:.2f}%")
+    
+    with col3:
+        portfolio_sharpe = calculate_sharpe_ratio(portfolio_return_series)
+        st.metric("Sharpe Ratio", f"{portfolio_sharpe:.2f}" if not np.isnan(portfolio_sharpe) else "N/A")
+    
+    with col4:
+        # Convert to price series for drawdown calculation
+        portfolio_prices = (1 + portfolio_return_series).cumprod()
+        portfolio_dd = calculate_max_drawdown(portfolio_prices)
+        st.metric("Max Drawdown", f"{portfolio_dd:.2f}%")
+    
+    # Risk decomposition
+    tabs = st.tabs(["Correlation Matrix", "Individual Stock Risk", "VaR Analysis", "Stress Testing"])
+    
+    with tabs[0]:
+        # Correlation matrix
+        corr_matrix = portfolio_returns[valid_stocks].corr()
+        
+        fig = px.imshow(
+            corr_matrix,
+            text_auto=True,
+            aspect="auto",
+            title="Portfolio Correlation Matrix",
+            color_continuous_scale="RdBu"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with tabs[1]:
+        # Individual stock contributions
+        individual_metrics = []
+        
+        for stock in valid_stocks:
+            stock_returns = portfolio_returns[stock]
+            weight = valid_weights[valid_stocks.index(stock)]
+            
+            # Get market data for beta calculation (using SPY as proxy)
+            market_returns = portfolio_returns.mean(axis=1)  # Simple market proxy
+            
+            metrics = {
+                'Stock': stock,
+                'Weight': f"{weight*100:.1f}%",
+                'Volatility': f"{stock_returns.std() * np.sqrt(252) * 100:.2f}%",
+                'Beta': f"{calculate_beta(stock_returns, market_returns):.2f}",
+                'Alpha': f"{calculate_alpha(stock_returns, market_returns):.2f}%",
+                'VaR': f"{calculate_var(stock_returns):.2f}%"
+            }
+            individual_metrics.append(metrics)
+        
+        st.dataframe(pd.DataFrame(individual_metrics), use_container_width=True)
+    
+    with tabs[2]:
+        # VaR analysis
+        confidence_levels = [0.01, 0.05, 0.10]
+        var_results = []
+        
+        for conf in confidence_levels:
+            var_value = calculate_var(portfolio_return_series, conf)
+            var_results.append({
+                'Confidence Level': f"{(1-conf)*100:.0f}%",
+                'Daily VaR': f"{var_value:.2f}%",
+                'Weekly VaR': f"{var_value * np.sqrt(5):.2f}%",
+                'Monthly VaR': f"{var_value * np.sqrt(22):.2f}%"
+            })
+        
+        st.dataframe(pd.DataFrame(var_results), use_container_width=True)
+        
+        # VaR visualization
+        fig = go.Figure()
+        fig.add_trace(go.Histogram(x=portfolio_return_series * 100, nbinsx=50, name='Portfolio Returns'))
+        
+        for conf in confidence_levels:
+            var_line = calculate_var(portfolio_return_series, conf)
+            fig.add_vline(x=var_line, line_dash="dash", 
+                         annotation_text=f"VaR {(1-conf)*100:.0f}%")
+        
+        fig.update_layout(
+            title="Portfolio Return Distribution with VaR Levels",
+            xaxis_title="Daily Return (%)",
+            yaxis_title="Frequency"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with tabs[3]:
+        # Stress testing
+        st.markdown("**Scenario Analysis**")
+        
+        scenarios = {
+            "Market Crash (-20%)": -0.20,
+            "Moderate Decline (-10%)": -0.10,
+            "Volatility Spike (+50% vol)": 0.0,
+            "Bull Market (+15%)": 0.15
+        }
+        
+        stress_results = []
+        # Portfolio construction
+        st.markdown("### 📋 Portfolio Construction")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            base_portfolio_value = st.number_input(
+                "Portfolio Value ($)",
+                min_value=500,
+                max_value=10000000,
+                value=100000,
+                step=1000,
+                format="%d",
+                key="portfolio_value"
+            )
+        with col2:
+            st.metric("Portfolio Value", f"${base_portfolio_value:,}")
+
+        available_tickers = sorted(valid_metrics['ticker'].unique())
+        
+        for scenario_name, market_shock in scenarios.items():
+            if "Volatility" in scenario_name:
+                # Simulate higher volatility
+                shocked_returns = portfolio_return_series * 1.5  # 50% higher volatility
+                portfolio_impact = shocked_returns.std() * np.sqrt(252) * 100
+                value_impact = f"{portfolio_impact:.2f}% vol"
+                impact_display = f"{portfolio_impact:.2f}% vol"
+            else:
+                # Simulate market shock
+                avg_beta = np.mean([calculate_beta(portfolio_returns[stock], portfolio_returns.mean(axis=1)) 
+                                for stock in valid_stocks if not np.isnan(calculate_beta(portfolio_returns[stock], portfolio_returns.mean(axis=1)))])
+                if np.isnan(avg_beta):
+                    avg_beta = 1.0
+                
+                portfolio_impact = market_shock * avg_beta
+                new_portfolio_value = base_portfolio_value * (1 + portfolio_impact)
+                value_change = new_portfolio_value - base_portfolio_value
+                
+                value_impact = f"${new_portfolio_value:,.0f}"
+                impact_display = f"{portfolio_impact*100:.2f}% (${value_change:+,.0f})"
+            
+            stress_results.append({
+                'Scenario': scenario_name,
+                'Portfolio Impact': impact_display,
+                'New Portfolio Value': value_impact
+            })
+            
+        st.dataframe(pd.DataFrame(stress_results), use_container_width=True)
 
 # ---------------------------
 # CLI Main Function
@@ -981,7 +1729,8 @@ def run_streamlit():
     # 1. View mode
     view_mode = st.sidebar.radio(
         "View Mode",
-        ["Dashboard", "Sector Analysis", "Top Movers", "Technical Screener", "Data Export"],
+        ["Dashboard", "Sector Analysis", "Top Movers", "Technical Screener", 
+        "Comparison Mode", "Historical Analysis", "Risk Management", "Data Export"],
         key="view_mode_radio"
     )
 
@@ -989,6 +1738,28 @@ def run_streamlit():
     if data_exists:
         df_metrics = pd.read_csv(os.path.join(DATA_DIR, "latest_metrics.csv"))
         valid_metrics = df_metrics[df_metrics['status'] == 'ok'].copy()
+
+    # Load historical data for advanced modes
+        @st.cache_data(ttl=3600)  # Cache for 1 hour
+        def load_historical_data():
+            hist_dir = os.path.join(DATA_DIR, "history")
+            hist = {}
+            
+            if os.path.exists(hist_dir):
+                for file in os.listdir(hist_dir):
+                    if file.endswith('.csv'):
+                        ticker = file.replace('.csv', '')
+                        try:
+                            df = pd.read_csv(os.path.join(hist_dir, file), 
+                                        parse_dates=True, index_col=0)
+                            if not df.empty:
+                                hist[ticker] = df
+                        except Exception:
+                            continue
+            return hist
+        
+        # Load historical data
+        hist = load_historical_data()
         
         # 2. Time horizon slider
         horizon_map_full = {
@@ -1572,6 +2343,17 @@ def run_streamlit():
                 )
 
                 st.dataframe(export_df.head(10), use_container_width=True)
+        # ---------- Comparison Mode ----------
+        elif view_mode == "Comparison Mode":
+            render_comparison_mode(valid_metrics, hist)
+
+        # ---------- Historical Analysis ---------- 
+        elif view_mode == "Historical Analysis":
+            render_historical_analysis_mode(valid_metrics, hist)
+
+        # ---------- Risk Management ----------
+        elif view_mode == "Risk Management":
+            render_risk_management_mode(valid_metrics, hist)
 
     # Footer
     st.divider()
