@@ -918,7 +918,7 @@ def get_sector_comparison_data(valid_metrics, selected_tickers):
 # Advanced Mode UI Functions
 # ---------------------------
 
-def render_comparison_mode(valid_metrics, hist):
+def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label):
     """Render the Comparison Mode interface"""
     st.subheader("🔄 Stock Comparison Analysis")
     
@@ -1062,32 +1062,16 @@ def render_comparison_mode(valid_metrics, hist):
                 st.info("Insufficient historical data for correlation analysis")
 
     with tabs[3]:
-        # Top Performers - Auto-select top 20 stocks
+        # Top Performers - Use selected time horizon
         st.subheader("🏆 Top 20 Performers")
         
-        # Determine which time horizon column to use
-        horizon_map = {
-            "1 Day": "pct_1d",
-            "3 Days": "pct_3d", 
-            "5 Days": "pct_5d",
-            "1 Month": "pct_21d",
-            "3 Months": "pct_63d",
-            "1 Year": "pct_252d"
-        }
-
-        # Use a default or detect from available columns
-        available_horizons = [col for col in horizon_map.values() if col in valid_metrics.columns]
-        
-        if available_horizons:
-            # Use the first available horizon or get from sidebar selection
-            current_horizon_col = available_horizons[2] if len(available_horizons) > 2 else available_horizons[0]  # Default to 5-day if available
+        # Use the current horizon_col instead of hardcoded column
+        if horizon_col and horizon_col in valid_metrics.columns:
+            # Get top 20 performers using the selected time horizon
+            top_20 = valid_metrics.nlargest(20, horizon_col)
             
-            # Get top 20 performers
-            top_20 = valid_metrics.nlargest(20, current_horizon_col)
-            
-            # Display summary
-            horizon_name = [k for k, v in horizon_map.items() if v == current_horizon_col][0] if current_horizon_col in horizon_map.values() else "Selected Period"
-            st.info(f"Showing top 20 performers over {horizon_name}")
+            # Display summary with current horizon
+            st.info(f"Showing top 20 performers over {horizon_label}")
             
             # Auto-populate comparison
             top_20_tickers = top_20['ticker'].tolist()
@@ -1096,27 +1080,24 @@ def render_comparison_mode(valid_metrics, hist):
             if not top_20_comparison.empty:
                 # Format display
                 display_df = top_20_comparison.copy()
-                display_df['last_close'] = display_df['last_close'].apply(lambda x: f"${x:.2f}")
                 display_df['rank'] = range(1, len(display_df) + 1)
                 
                 # Reorder columns to show rank first
                 cols = ['rank'] + [col for col in display_df.columns if col != 'rank']
                 display_df = display_df[cols]
                 
-                for col in ['pct_1d', 'pct_5d', 'pct_21d', 'pct_252d', 'ann_vol_pct']:
-                    if col in display_df.columns:
-                        display_df[col] = display_df[col].apply(lambda x: f"{x:.2f}%")
+                # Apply color styling instead of manual formatting
+                styled_top20 = format_and_style_dataframe(
+                    display_df,
+                    format_dict={'rank': '{:.0f}'}  # Keep rank as integer
+                )
+                st.dataframe(styled_top20, use_container_width=True)
                 
-                if 'rsi' in display_df.columns:
-                    display_df['rsi'] = display_df['rsi'].apply(lambda x: f"{x:.1f}")
-                
-                st.dataframe(display_df, use_container_width=True)
-                
-                # Performance chart for top 20
-                if current_horizon_col in top_20.columns:
+                # Performance chart for top 20 using selected horizon
+                if horizon_col in top_20.columns:
                     fig = create_enhanced_bar_chart(
-                        top_20.head(20), 'ticker', current_horizon_col,
-                        f"Top 20 Performers ({horizon_name})", 'return'
+                        top_20.head(20), 'ticker', horizon_col,
+                        f"Top 20 Performers ({horizon_label})", 'return'
                     )
                     st.plotly_chart(fig, use_container_width=True)
                 
@@ -1136,10 +1117,10 @@ def render_comparison_mode(valid_metrics, hist):
                 
                 with col2:
                     st.subheader("Performance Stats")
-                    avg_return = top_20[current_horizon_col].mean()
-                    median_return = top_20[current_horizon_col].median()
-                    min_return = top_20[current_horizon_col].min()
-                    max_return = top_20[current_horizon_col].max()
+                    avg_return = top_20[horizon_col].mean()
+                    median_return = top_20[horizon_col].median()
+                    min_return = top_20[horizon_col].min()
+                    max_return = top_20[horizon_col].max()
                     
                     st.metric("Average Return", f"{avg_return:.2f}%")
                     st.metric("Median Return", f"{median_return:.2f}%")
@@ -2357,7 +2338,7 @@ def run_streamlit():
                 st.dataframe(styled_preview, use_container_width=True)
         # ---------- Comparison Mode ----------
         elif view_mode == "Comparison Mode":
-            render_comparison_mode(valid_metrics, hist)
+            render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label)
 
         # ---------- Historical Analysis ---------- 
         elif view_mode == "Historical Analysis":
