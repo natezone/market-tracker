@@ -1009,8 +1009,8 @@ def render_comparison_mode(valid_metrics, hist):
             "3 Months": "pct_63d",
             "1 Year": "pct_252d"
         }
-        
-        # let's use a default or detect from available columns
+
+        # Use a default or detect from available columns
         available_horizons = [col for col in horizon_map.values() if col in valid_metrics.columns]
         
         if available_horizons:

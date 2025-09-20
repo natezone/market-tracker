@@ -1,6 +1,6 @@
 # S&P 500 Market Tracker
 
-A comprehensive institutional-grade market tracking tool with both CLI and Streamlit web interfaces for S&P 500 analysis, portfolio management, and risk assessment.
+A comprehensive market tracking tool with both CLI and Streamlit web interfaces for S&P 500 analysis, portfolio management, and risk assessment.
 
 ## Features
 
@@ -91,7 +91,7 @@ scipy
 ```
 
 ## Data Sources
-- **Stock Data**: Yahoo Finance via yfinance
+- **Stock Data**: Yahoo Finance
 - **S&P 500 Constituents:** Wikipedia (automatically updated)
 - **Technical Indicators:** Calculated from price data
 - **Risk Metrics:** Computed using scipy statistical functions
