@@ -714,6 +714,17 @@ def run_cli(consecutive_days=7, index_key="SP500"):
     print("=" * 60)
 
     valid_metrics = df_metrics[df_metrics['status'] == 'ok'].copy()
+    # Validate consecutive day columns exist
+    if rising_col not in df_metrics.columns:
+        available_rising_cols = [col for col in df_metrics.columns if col.startswith('rising_') and col.endswith('day')]
+        if available_rising_cols:
+            # Use first available as fallback
+            actual_rising_col = available_rising_cols[0]
+            actual_declining_col = actual_rising_col.replace('rising_', 'declining_')
+            fallback_days = actual_rising_col.replace('rising_', '').replace('day', '')
+            st.info(f"Using {fallback_days}-day data. Set consecutive days to {fallback_days} or update data for {consecutive_days}-day analysis.")
+            rising_col = actual_rising_col
+            declining_col = actual_declining_col
     if not valid_metrics.empty:
         print(f"\nOverall Statistics:")
         print(f"  • Total stocks processed: {len(valid_metrics)}")
@@ -928,9 +939,26 @@ def run_streamlit():
             
             col1, col2, col3, col4 = st.columns(4)
             
-            # Use dynamic column names
-            rising_count = len(valid_metrics[valid_metrics.get(rising_col, False) == True])
-            declining_count = len(valid_metrics[valid_metrics.get(declining_col, False) == True])
+            # Safe column access with fallback
+            if rising_col not in valid_metrics.columns:
+                available_rising_cols = [col for col in valid_metrics.columns if col.startswith('rising_') and col.endswith('day')]
+                if available_rising_cols:
+                    rising_col = available_rising_cols[0]
+                    declining_col = rising_col.replace('rising_', 'declining_')
+                    fallback_days = rising_col.replace('rising_', '').replace('day', '')
+                    st.warning(f"⚠️ {consecutive_days}-day data not available. Showing {fallback_days}-day data. Click 'Update Data' to generate {consecutive_days}-day analysis.")
+                else:
+                    st.error("❌ No consecutive day trend data found. Please update the data.")
+                    rising_count = 0
+                    declining_count = 0
+            
+            # Safe column access
+            if rising_col in valid_metrics.columns and declining_col in valid_metrics.columns:
+                rising_count = len(valid_metrics[valid_metrics[rising_col] == True])
+                declining_count = len(valid_metrics[valid_metrics[declining_col] == True])
+            else:
+                rising_count = 0
+                declining_count = 0
             
             with col1:
                 rising_pct = (rising_count/len(valid_metrics)*100)
@@ -1067,7 +1095,10 @@ def run_streamlit():
             tabs = st.tabs([f"Rising Stocks ({consecutive_days}d)", f"Declining Stocks ({consecutive_days}d)", "Most Volatile", "52-Week Highs/Lows"])
             
             with tabs[0]:
-                rising = valid_metrics[valid_metrics.get(rising_col, False) == True]
+                if rising_col in valid_metrics.columns:
+                    rising = valid_metrics[valid_metrics[rising_col] == True]
+                else:
+                    rising = pd.DataFrame()
                 if not rising.empty:
                     # Sort by appropriate percentage column
                     sort_col = 'pct_5d' if consecutive_days <= 5 else 'pct_21d'
@@ -1094,7 +1125,10 @@ def run_streamlit():
                     st.dataframe(rising_display, use_container_width=True)
             
             with tabs[1]:
-                declining = valid_metrics[valid_metrics.get(declining_col, False) == True]
+                if declining_col in valid_metrics.columns:
+                    declining = valid_metrics[valid_metrics[declining_col] == True]
+                else:
+                    declining = pd.DataFrame()
                 if not declining.empty:
                     sort_col = 'pct_5d' if consecutive_days <= 5 else 'pct_21d'
                     if sort_col in declining.columns:
@@ -1258,10 +1292,10 @@ def run_streamlit():
                 ]
 
             # Apply consecutive filters
-            if only_rising:
-                screened_df = screened_df[screened_df.get(rising_col, False) == True]
-            if only_declining:
-                screened_df = screened_df[screened_df.get(declining_col, False) == True]
+            if only_rising and rising_col in screened_df.columns:
+                screened_df = screened_df[screened_df[rising_col] == True]
+            if only_declining and declining_col in screened_df.columns:
+                screened_df = screened_df[screened_df[declining_col] == True]
 
             # Sort options
             sort_columns = [horizon_col, 'ann_vol_pct', 'last_close']
