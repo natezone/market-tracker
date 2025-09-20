@@ -13,6 +13,7 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import warnings
 warnings.filterwarnings('ignore')
+from datetime import timezone, timedelta
 
 # Try importing Streamlit and Plotly for web interface
 try:
@@ -373,29 +374,185 @@ def add_custom_css():
     """, unsafe_allow_html=True)
 
 def show_color_legend():
-    """Display color legend for performance interpretation"""
-    with st.expander("Color Legend"):
-        st.markdown("""
-        **Performance Colors:**
-        - Dark Green: Excellent performance (>5% gains)
-        - Green: Good performance (2-5% gains)  
-        - Light Green: Positive performance (0-2% gains)
-        - Gray: Neutral (0% change)
-        - Yellow: Caution zone
-        - Light Red: Negative performance (0-2% loss)
-        - Red: Poor performance (2-5% loss)
-        - Dark Red: Very poor performance (>5% loss)
+    """Display enhanced color legend with visual graphics for performance interpretation"""
+    with st.expander("🎨 Color Legend & Definitions"):
         
-        **RSI Colors:**
-        - Green: Oversold (potential buy, RSI < 30)
-        - Yellow: Neutral (30-70)
-        - Red: Overbought (potential sell, RSI > 70)
+        # Performance Colors Section
+        st.markdown("### 📈 **Performance Colors**")
+        st.markdown("*Based on percentage gains/losses over selected time period*")
         
-        **Volatility Colors:**
-        - Green: Low risk (< 25%)
-        - Yellow: Medium risk (25-50%)
-        - Red: High risk (> 50%)
-        """)
+        perf_cols = st.columns(4)
+        with perf_cols[0]:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #006400 0%, #228B22 100%); 
+                        color: white; padding: 8px; border-radius: 5px; text-align: center; margin: 2px;">
+                <strong>🟢 Dark Green</strong><br>
+                Excellent (>5% gains)
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #32CD32 0%, #00FF00 100%); 
+                        color: black; padding: 8px; border-radius: 5px; text-align: center; margin: 2px;">
+                <strong>🟢 Green</strong><br>
+                Good (2-5% gains)
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with perf_cols[1]:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #90EE90 0%, #98FB98 100%); 
+                        color: black; padding: 8px; border-radius: 5px; text-align: center; margin: 2px;">
+                <strong>🟢 Light Green</strong><br>
+                Positive (0-2% gains)
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #D3D3D3 0%, #A9A9A9 100%); 
+                        color: black; padding: 8px; border-radius: 5px; text-align: center; margin: 2px;">
+                <strong>⚪ Gray</strong><br>
+                Neutral (0% change)
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with perf_cols[2]:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #FFFF99 0%, #FFD700 100%); 
+                        color: black; padding: 8px; border-radius: 5px; text-align: center; margin: 2px;">
+                <strong>🟡 Yellow</strong><br>
+                Caution Zone
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #FFB3B3 0%, #FFA0A0 100%); 
+                        color: black; padding: 8px; border-radius: 5px; text-align: center; margin: 2px;">
+                <strong>🔴 Light Red</strong><br>
+                Negative (0-2% loss)
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with perf_cols[3]:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #FF6B6B 0%, #FF4444 100%); 
+                        color: white; padding: 8px; border-radius: 5px; text-align: center; margin: 2px;">
+                <strong>🔴 Red</strong><br>
+                Poor (2-5% loss)
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #8B0000 0%, #DC143C 100%); 
+                        color: white; padding: 8px; border-radius: 5px; text-align: center; margin: 2px;">
+                <strong>🔴 Dark Red</strong><br>
+                Very Poor (>5% loss)
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.divider()
+        
+        # RSI Colors Section
+        st.markdown("### 📊 **RSI Colors** (Relative Strength Index)")
+        st.markdown("*Technical indicator measuring overbought/oversold conditions (0-100 scale)*")
+        
+        rsi_cols = st.columns(3)
+        with rsi_cols[0]:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #006400 0%, #32CD32 100%); 
+                        color: white; padding: 12px; border-radius: 5px; text-align: center;">
+                <strong>🟢 Green (RSI < 30)</strong><br>
+                <em>Oversold</em><br>
+                Potential buying opportunity<br>
+                Stock may be undervalued
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with rsi_cols[1]:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #FFFF99 0%, #FFD700 100%); 
+                        color: black; padding: 12px; border-radius: 5px; text-align: center;">
+                <strong>🟡 Yellow (RSI 30-70)</strong><br>
+                <em>Neutral Zone</em><br>
+                Normal trading range<br>
+                No clear signal
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with rsi_cols[2]:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #8B0000 0%, #FF6347 100%); 
+                        color: white; padding: 12px; border-radius: 5px; text-align: center;">
+                <strong>🔴 Red (RSI > 70)</strong><br>
+                <em>Overbought</em><br>
+                Potential selling signal<br>
+                Stock may be overvalued
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.divider()
+        
+        # Volatility Colors Section
+        st.markdown("### 📈📉 **Volatility Colors** (Annualized)")
+        st.markdown("*Measures price fluctuation risk - higher volatility = higher risk/reward potential*")
+        
+        vol_cols = st.columns(3)
+        with vol_cols[0]:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #006400 0%, #32CD32 100%); 
+                        color: white; padding: 12px; border-radius: 5px; text-align: center;">
+                <strong>🟢 Green (< 25%)</strong><br>
+                <em>Low Risk</em><br>
+                Stable, predictable moves<br>
+                Conservative investment
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with vol_cols[1]:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #FFFF99 0%, #FFA500 100%); 
+                        color: black; padding: 12px; border-radius: 5px; text-align: center;">
+                <strong>🟡 Yellow (25-50%)</strong><br>
+                <em>Medium Risk</em><br>
+                Moderate price swings<br>
+                Balanced risk/reward
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with vol_cols[2]:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #8B0000 0%, #FF6347 100%); 
+                        color: white; padding: 12px; border-radius: 5px; text-align: center;">
+                <strong>🔴 Red (> 50%)</strong><br>
+                <em>High Risk</em><br>
+                Large price fluctuations<br>
+                High risk/reward potential
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.divider()
+        
+        # Usage Tips
+        st.markdown("### 💡 **How to Use These Colors**")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            **For Stock Screening:**
+            - Look for green performance + green RSI (oversold winners)
+            - Avoid red performance + red RSI (overbought losers)
+            - Consider volatility for risk tolerance
+            """)
+            
+        with col2:
+            st.markdown("""
+            **Risk Management:**
+            - Green volatility = Safer for conservative portfolios
+            - Red volatility = Higher potential gains but bigger losses
+            - Yellow = Balanced middle ground
+            """)
+        
+        st.info("💡 **Tip:** Colors provide quick visual cues, but always research fundamentals before investing!")
 
 # ---------------------------
 # Metrics Calculation
@@ -797,19 +954,23 @@ def run_streamlit():
     add_custom_css()
 
     # Header
-    col1, col2, col3 = st.columns([2, 1, 1])
-    with col1:
-        st.title("📈 S&P 500 Market Tracker")
-    with col2:
-        st.markdown(f"**Last Update:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    with col3:
-        if st.button("🔄 Refresh", key="refresh_btn_streamlit"):
-            # clear cached data (if using st.cache_data) and rerun
-            try:
-                st.cache_data.clear()
-            except Exception:
-                pass
-            st.rerun()
+    st.title("📈 S&P 500 Market Tracker")
+
+    # Show data freshness info
+    if os.path.exists(os.path.join(DATA_DIR, "latest_metrics.csv")):
+        last_modified = os.path.getmtime(os.path.join(DATA_DIR, "latest_metrics.csv"))
+        last_update = datetime.fromtimestamp(last_modified)
+        
+        # Convert to EST (subtract 5 hours)
+        last_update_est = last_update - timedelta(hours=5)
+        
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.caption(f"Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
+        with col2:
+            st.caption("Updates: 9AM & 5PM EST daily")
+    else:
+        st.error("No data available. Check GitHub Actions workflow.")
 
     # Check for existing data
     data_exists = os.path.exists(os.path.join(DATA_DIR, "latest_metrics.csv"))
