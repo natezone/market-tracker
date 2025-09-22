@@ -43,6 +43,7 @@ jobs:
       - name: Update market data
         run: |
           python market_tracker.py --mode cli --consecutive-days 7
+          streamlit run market_tracker.py
           
       - name: Check if data changed
         id: verify-changed-files
