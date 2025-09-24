@@ -1631,7 +1631,7 @@ def run_cli(consecutive_days=7, index_key="SP500"):
     # Rising and declining lists using configurable period
     rising_col = f'rising_{consecutive_days}day'
     declining_col = f'declining_{consecutive_days}day'
-    
+
     # Rising and declining lists using configurable period
     if consecutive_days in [1, 3, 5, 21, 63, 252]:
         # Use the standard column name
@@ -2378,17 +2378,15 @@ def run_streamlit():
 # ---------------------------
 def main():
     """Main entry point for the application"""
-
-    # Parse command line arguments
+    
+    # Simple detection: if no arguments provided and streamlit is available, run web mode
+    if len(sys.argv) == 1 and STREAMLIT_AVAILABLE:
+        run_streamlit()
+        return
+    
+    # Parse command line arguments for CLI mode
     parser = argparse.ArgumentParser(
-        description="S&P 500 Market Tracker - CLI and Web Interface",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  CLI mode:   python %(prog)s --mode cli
-  Web mode:   python %(prog)s --mode web
-  Or:         streamlit run %(prog)s -- --mode web
-        """
+        description="S&P 500 Market Tracker - CLI and Web Interface"
     )
 
     parser.add_argument(
@@ -2401,35 +2399,11 @@ Examples:
     parser.add_argument(
         '--consecutive-days',
         type=int,
-        default=3,
-        help='Number of consecutive days for trend analysis (default: 3)'
+        default=7,
+        help='Number of consecutive days for trend analysis (default: 7)'
     )
 
-    parser.add_argument(
-        '--data-dir',
-        default='data',
-        help='Directory for storing data files (default: data)'
-    )
-
-    parser.add_argument(
-        '--batch-size',
-        type=int,
-        default=50,
-        help='Batch size for downloading tickers (default: 50)'
-    )
-
-    # Handle streamlit's extra arguments
-    if len(sys.argv) > 0 and 'streamlit' in sys.argv[0]:
-            # If running through "streamlit run", default to web mode
-            args = parser.parse_args(['--mode', 'web'] if len(sys.argv) == 1 else sys.argv[1:])
-    else:
-        # Normal argument parsing for direct python execution
-        args = parser.parse_args()
-
-    # Update global settings
-    global DATA_DIR, BATCH_SIZE
-    DATA_DIR = args.data_dir
-    BATCH_SIZE = args.batch_size
+    args = parser.parse_args()
 
     # Run appropriate mode
     if args.mode == 'cli':
