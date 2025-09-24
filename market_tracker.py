@@ -1631,20 +1631,36 @@ def run_cli(consecutive_days=7, index_key="SP500"):
     # Rising and declining lists using configurable period
     rising_col = f'rising_{consecutive_days}day'
     declining_col = f'declining_{consecutive_days}day'
-    pct_col = f'pct_{consecutive_days}d' if consecutive_days not in [1, 3, 5, 7, 21, 63, 252] else f'pct_{consecutive_days}d'
-
-    # Use closest available percentage column
-    if pct_col not in df_metrics.columns:
-        if consecutive_days <= 3:
+    
+    # Rising and declining lists using configurable period
+    if consecutive_days in [1, 3, 5, 21, 63, 252]:
+        # Use the standard column name
+        pct_col = f'pct_{consecutive_days}d'
+    elif f'pct_{consecutive_days}d' in df_metrics.columns:
+        # Use the custom column if it exists
+        pct_col = f'pct_{consecutive_days}d'
+    else:
+        # Fallback to the closest available column
+        if consecutive_days <= 1:
+            pct_col = 'pct_1d'
+        elif consecutive_days <= 3:
             pct_col = 'pct_3d'
         elif consecutive_days <= 5:
             pct_col = 'pct_5d'
-        elif consecutive_days <= 7:
-            pct_col = 'pct_7d'
         elif consecutive_days <= 21:
             pct_col = 'pct_21d'
-        else:
+        elif consecutive_days <= 63:
             pct_col = 'pct_63d'
+        else:
+            pct_col = 'pct_252d'
+
+    # Verify the column exists before using it
+    if pct_col not in df_metrics.columns:
+        print(f"Warning: Column {pct_col} not found. Available columns: {list(df_metrics.columns)}")
+        # Use pct_5d as final fallback
+        pct_col = 'pct_5d' if 'pct_5d' in df_metrics.columns else df_metrics.columns[0]
+
+    print(f"Using {pct_col} for sorting (consecutive days: {consecutive_days})")
 
     rising = df_metrics[
         (df_metrics['status'] == 'ok') &
@@ -2403,10 +2419,11 @@ Examples:
     )
 
     # Handle streamlit's extra arguments
-    if 'streamlit' in sys.modules:
-        # If running through streamlit, default to web mode
-        args = parser.parse_args(['--mode', 'web'])
+    if len(sys.argv) > 0 and 'streamlit' in sys.argv[0]:
+            # If running through "streamlit run", default to web mode
+            args = parser.parse_args(['--mode', 'web'] if len(sys.argv) == 1 else sys.argv[1:])
     else:
+        # Normal argument parsing for direct python execution
         args = parser.parse_args()
 
     # Update global settings
