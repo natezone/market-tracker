@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import pandas as pd
 import numpy as np
+from streamlit import tabs
 import yfinance as yf
 import requests
 from tqdm import tqdm
@@ -65,15 +66,16 @@ def fetch_sp500_tickers():
         df['Symbol'] = df['Symbol'].str.replace('.', '-', regex=False)
         tickers = df['Symbol'].tolist()
 
-        # Extract sector and industry info
+        # Extract sector, industry, and company name info
         sectors = dict(zip(df['Symbol'], df['GICS Sector']))
         industries = dict(zip(df['Symbol'], df['GICS Sub-Industry']))
+        company_names = dict(zip(df['Symbol'], df['Security']))  
 
-        return tickers, df, sectors, industries
+        return tickers, df, sectors, industries, company_names  
 
     except Exception as e:
         print(f"Error fetching S&P 500 tickers: {e}")
-        return [], pd.DataFrame(), {}, {}
+        return [], pd.DataFrame(), {}, {}, {}  
 
 def batch(iterable, n=1):
     """Batch an iterable into chunks of size n"""
@@ -902,6 +904,7 @@ def get_sector_comparison_data(valid_metrics, selected_tickers):
             row = ticker_data.iloc[0]
             comparison_data.append({
                 'ticker': ticker,
+                'company_name': row.get('company_name', 'Unknown'),
                 'sector': row.get('sector', 'Unknown'),
                 'last_close': row.get('last_close', 0),
                 'pct_1d': row.get('pct_1d', 0),
@@ -1013,15 +1016,26 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label):
     with tabs[1]:
         # Risk vs Return scatter plot
         if 'ann_vol_pct' in comparison_df.columns and 'pct_252d' in comparison_df.columns:
+            # Build hover data list
+            hover_data_list = ['sector', 'ann_vol_pct', 'pct_252d', 'last_close']
+            if 'company_name' in comparison_df.columns:
+                hover_data_list.insert(0, 'company_name')  # Add company name first
+            
             fig = px.scatter(
                 comparison_df,
                 x='ann_vol_pct',
                 y='pct_252d',
                 text='ticker',
                 title="Risk vs Return Analysis (1 Year)",
-                labels={'ann_vol_pct': 'Volatility (%)', 'pct_252d': '1-Year Return (%)'},
+                labels={
+                    'ann_vol_pct': 'Volatility (%)', 
+                    'pct_252d': '1-Year Return (%)',
+                    'last_close': 'Price ($)',
+                    'company_name': 'Company'
+                },
                 size='last_close',
-                color='sector'
+                color='sector',
+                hover_data=hover_data_list
             )
             fig.update_traces(textposition="top center")
             fig.update_layout(height=500)
@@ -1082,8 +1096,11 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label):
                 display_df = top_20_comparison.copy()
                 display_df['rank'] = range(1, len(display_df) + 1)
                 
-                # Reorder columns to show rank first
-                cols = ['rank'] + [col for col in display_df.columns if col != 'rank']
+                # Reorder columns to show rank first, then ticker, company_name
+                cols = ['rank', 'ticker']
+                if 'company_name' in display_df.columns:
+                    cols.append('company_name')
+                cols += [col for col in display_df.columns if col not in cols]
                 display_df = display_df[cols]
                 
                 # Apply color styling instead of manual formatting
@@ -1135,11 +1152,26 @@ def render_historical_analysis_mode(valid_metrics, hist):
     
     # Stock selection
     available_tickers = sorted(valid_metrics['ticker'].unique())
-    selected_ticker = st.selectbox(
-        "Select stock for historical analysis",
-        options=available_tickers,
-        key="historical_ticker"
-    )
+    
+    # Create display options with company names
+    if 'company_name' in valid_metrics.columns:
+        ticker_to_company = valid_metrics.set_index('ticker')['company_name'].to_dict()
+        ticker_options = {
+            f"{ticker_to_company.get(ticker, ticker)} ({ticker})": ticker 
+            for ticker in available_tickers
+        }
+        selected_display = st.selectbox(
+            "Select company for historical analysis",
+            options=list(ticker_options.keys()),
+            key="historical_ticker"
+        )
+        selected_ticker = ticker_options[selected_display]
+    else:
+        selected_ticker = st.selectbox(
+            "Select stock for historical analysis",
+            options=available_tickers,
+            key="historical_ticker"
+        )
     
     if not selected_ticker or selected_ticker not in hist:
         st.info("Please select a valid stock")
@@ -1310,11 +1342,25 @@ def render_risk_management_mode(valid_metrics, hist):
     
     for i in range(num_stocks):
         with col1:
-            stock = st.selectbox(
-                f"Stock {i+1}",
-                options=available_tickers,
-                key=f"portfolio_stock_{i}"
-            )
+            # Create display options with company names
+            if 'company_name' in valid_metrics.columns:
+                ticker_to_company = valid_metrics.set_index('ticker')['company_name'].to_dict()
+                ticker_options = {
+                    f"{ticker_to_company.get(ticker, ticker)} ({ticker})": ticker 
+                    for ticker in available_tickers
+                }
+                stock_display = st.selectbox(
+                    f"Stock {i+1}",
+                    options=list(ticker_options.keys()),
+                    key=f"portfolio_stock_{i}"
+                )
+                stock = ticker_options[stock_display]
+            else:
+                stock = st.selectbox(
+                    f"Stock {i+1}",
+                    options=available_tickers,
+                    key=f"portfolio_stock_{i}"
+                )
         with col2:
             weight = st.number_input(
                 f"Weight {i+1} (%)",
@@ -1415,7 +1461,7 @@ def render_risk_management_mode(valid_metrics, hist):
         st.plotly_chart(fig, use_container_width=True)
     
     with tabs[1]:
-        # Individual stock contributions
+# Individual stock contributions
         individual_metrics = []
         
         for stock in valid_stocks:
@@ -1425,8 +1471,12 @@ def render_risk_management_mode(valid_metrics, hist):
             # Get market data for beta calculation (using SPY as proxy)
             market_returns = portfolio_returns.mean(axis=1)  # Simple market proxy
             
+            # Get company name from valid_metrics
+            company_name = valid_metrics[valid_metrics['ticker'] == stock]['company_name'].iloc[0] if 'company_name' in valid_metrics.columns and not valid_metrics[valid_metrics['ticker'] == stock].empty else 'Unknown'
+            
             metrics = {
                 'Stock': stock,
+                'Company Name': company_name,
                 'Weight': f"{weight*100:.1f}%",
                 'Volatility': f"{stock_returns.std() * np.sqrt(252) * 100:.2f}%",
                 'Beta': f"{calculate_beta(stock_returns, market_returns):.2f}",
@@ -1541,7 +1591,7 @@ def run_cli(consecutive_days=7, index_key="SP500"):
     print("=" * 60)
 
     print("\nFetching S&P 500 tickers...")
-    tickers, sp_df, sectors, industries = fetch_sp500_tickers()
+    tickers, sp_df, sectors, industries, company_names = fetch_sp500_tickers() 
 
     if not tickers:
         print("Failed to fetch tickers. Exiting.")
@@ -1565,38 +1615,40 @@ def run_cli(consecutive_days=7, index_key="SP500"):
     print(f"\nProcessing ticker data with {consecutive_days}-day consecutive analysis...")
 
     for t in tqdm(tickers, desc="Computing metrics"):
-        df = hist.get(t, pd.DataFrame())
+            df = hist.get(t, pd.DataFrame())
 
-        if df is None or df.empty:
-            metrics = None
-        else:
-            # Save per-ticker CSV
-            try:
-                df.to_csv(os.path.join(per_ticker_dir, f"{t}.csv"))
-            except Exception:
-                pass
+            if df is None or df.empty:
+                metrics = None
+            else:
+                # Save per-ticker CSV
+                try:
+                    df.to_csv(os.path.join(per_ticker_dir, f"{t}.csv"))
+                except Exception:
+                    pass
 
-            metrics = compute_metrics_for_ticker(df, consecutive_days)
+                metrics = compute_metrics_for_ticker(df, consecutive_days)
 
-        if metrics is None:
-            metrics_rows.append({
-                "ticker": t,
-                "status": "no_data",
-                "sector": sectors.get(t, "Unknown"),
-                "industry": industries.get(t, "Unknown")
-            })
-        else:
-            metrics['ticker'] = t
-            metrics['status'] = 'ok'
-            metrics['sector'] = sectors.get(t, "Unknown")
-            metrics['industry'] = industries.get(t, "Unknown")
-            metrics_rows.append(metrics)
+            if metrics is None:
+                metrics_rows.append({
+                    "ticker": t,
+                    "company_name": company_names.get(t, "Unknown"),  
+                    "status": "no_data",
+                    "sector": sectors.get(t, "Unknown"),
+                    "industry": industries.get(t, "Unknown")
+                })
+            else:
+                metrics['ticker'] = t
+                metrics['company_name'] = company_names.get(t, "Unknown") 
+                metrics['status'] = 'ok'
+                metrics['sector'] = sectors.get(t, "Unknown")
+                metrics['industry'] = industries.get(t, "Unknown")
+                metrics_rows.append(metrics)
 
     df_metrics = pd.DataFrame(metrics_rows)
 
     # Dynamic column ordering based on consecutive_days
     cols_order = [
-        'ticker', 'status', 'sector', 'industry', 'last_date', 'last_close',
+        'ticker', 'company_name', 'status', 'sector', 'industry', 'last_date', 'last_close',
         'data_points', f'rising_{consecutive_days}day', f'declining_{consecutive_days}day'
     ]
 
@@ -1855,39 +1907,46 @@ def run_streamlit():
             )
             horizon_col = horizon_map[horizon_label]
         else:
-            horizon_label = "N/A"
-            horizon_col = None
-    else:
-        horizon_label = "N/A"
-        horizon_col = None
+                horizon_label = "N/A"
+                horizon_col = None
 
-    # 3. Consecutive days slider
-    consecutive_days = st.sidebar.slider(
-        "Consecutive Days Lookback",
-        min_value=2,
-        max_value=126,  # ~6 months of trading days
-        value=7,
-        step=1,
-        help="Number of consecutive days to analyze for rising/declining trends"
-    )
+        # 3. Consecutive days slider - Initialize session state
+        if 'consecutive_days' not in st.session_state:
+            st.session_state.consecutive_days = 7
+        
+        consecutive_days = st.sidebar.slider(
+            "Consecutive Days Lookback",
+            min_value=2,
+            max_value=126,  # ~6 months of trading days
+            value=st.session_state.consecutive_days,  # Use session state value
+            step=1,
+            help="Number of consecutive days to analyze for rising/declining trends",
+            key="consecutive_days_slider"
+        )
+        
+        # Update session state when slider changes
+        st.session_state.consecutive_days = consecutive_days
 
-    # Add preset buttons
-    col1, col2, col3 = st.sidebar.columns(3)
-    with col1:
-        if st.button("3d", key="preset_3d"):
-            consecutive_days = 3
-    with col2:
-        if st.button("1w", key="preset_1w"):
-            consecutive_days = 7
-    with col3:
-        if st.button("1m", key="preset_1m"):
-            consecutive_days = 21
+        # Add preset buttons - these now update session state and rerun
+        col1, col2, col3 = st.sidebar.columns(3)
+        with col1:
+            if st.button("3d", key="preset_3d"):
+                st.session_state.consecutive_days = 3
+                st.rerun()
+        with col2:
+            if st.button("1w", key="preset_1w"):
+                st.session_state.consecutive_days = 7
+                st.rerun()
+        with col3:
+            if st.button("1m", key="preset_1m"):
+                st.session_state.consecutive_days = 21
+                st.rerun()
 
-    st.sidebar.info(f"Current: {consecutive_days} days ({consecutive_days/5:.1f} weeks)")
+        st.sidebar.info(f"Current: {consecutive_days} days ({consecutive_days/5:.1f} weeks)")
 
-    # Add warning for very long periods
-    if consecutive_days > 63:
-        st.sidebar.warning("⚠️ Long periods may have fewer matching stocks")
+        # Add warning for very long periods
+        if consecutive_days > 63:
+            st.sidebar.warning("⚠️ Long periods may have fewer matching stocks")
 
     # Show color legend
     show_color_legend()
@@ -2014,7 +2073,7 @@ def run_streamlit():
             # Enhanced data table with colors
             st.subheader("📋 All Stocks")
 
-            display_cols = ['ticker', 'sector', 'last_close', horizon_col, 'ann_vol_pct']
+            display_cols = ['ticker', 'company_name', 'sector', 'last_close', horizon_col, 'ann_vol_pct']
             if 'rsi' in valid_metrics.columns:
                 display_cols.append('rsi')
 
@@ -2074,7 +2133,7 @@ def run_streamlit():
                 
                 st.metric(f"Total Rising ({consecutive_days}-day consecutive)", len(rising))
                 if not rising.empty:
-                    display_cols = ['ticker', 'sector', 'last_close', 'pct_1d', 'pct_3d', 'pct_5d']
+                    display_cols = ['ticker', 'company_name', 'sector', 'last_close', 'pct_1d', 'pct_3d', 'pct_5d']
                     if 'pct_21d' in rising.columns:
                         display_cols.append('pct_21d')
                     # Filter to only existing columns
@@ -2096,7 +2155,7 @@ def run_streamlit():
                 
                 st.metric(f"Total Declining ({consecutive_days}-day consecutive)", len(declining))
                 if not declining.empty:
-                    display_cols = ['ticker', 'sector', 'last_close', 'pct_1d', 'pct_3d', 'pct_5d']
+                    display_cols = ['ticker', 'company_name', 'sector', 'last_close', 'pct_1d', 'pct_3d', 'pct_5d']
                     if 'pct_21d' in declining.columns:
                         display_cols.append('pct_21d')
                     # Filter to only existing columns
@@ -2108,8 +2167,22 @@ def run_streamlit():
 
             with tabs[2]:
                 if 'ann_vol_pct' in valid_metrics.columns:
-                    most_volatile = valid_metrics.nlargest(20, 'ann_vol_pct')[['ticker', 'sector', 'last_close', 'ann_vol_pct', horizon_col]].copy()
-                    st.metric("Highest Volatility Stock", f"{most_volatile.iloc[0]['ticker']} ({most_volatile.iloc[0]['ann_vol_pct']:.1f}%)")
+                    # Build column list with company_name if available
+                    volatile_cols = ['ticker']
+                    if 'company_name' in valid_metrics.columns:
+                        volatile_cols.append('company_name')
+                    volatile_cols.extend(['sector', 'last_close', 'ann_vol_pct', horizon_col])
+                    
+                    most_volatile = valid_metrics.nlargest(20, 'ann_vol_pct')[volatile_cols].copy()
+                    
+                    # Display metric with company name if available
+                    top_ticker = most_volatile.iloc[0]['ticker']
+                    top_vol = most_volatile.iloc[0]['ann_vol_pct']
+                    if 'company_name' in most_volatile.columns:
+                        top_company = most_volatile.iloc[0]['company_name']
+                        st.metric("Highest Volatility Stock", f"{top_ticker} - {top_company} ({top_vol:.1f}%)")
+                    else:
+                        st.metric("Highest Volatility Stock", f"{top_ticker} ({top_vol:.1f}%)")
                     
                     # Format the data
                     styled_volatile = format_and_style_dataframe(most_volatile)
@@ -2119,8 +2192,8 @@ def run_streamlit():
 
             with tabs[3]:
                 if 'pct_from_52w_high' in valid_metrics.columns:
-                    near_highs = valid_metrics.nlargest(20, 'pct_from_52w_high')[['ticker', 'sector', 'last_close', '52w_high', 'pct_from_52w_high']].copy()
-                    near_lows = valid_metrics.nsmallest(20, 'pct_from_52w_low')[['ticker', 'sector', 'last_close', '52w_low', 'pct_from_52w_low']].copy()
+                    near_highs = valid_metrics.nlargest(20, 'pct_from_52w_high')[['ticker', 'company_name', 'sector', 'last_close', '52w_high', 'pct_from_52w_high']].copy()
+                    near_lows = valid_metrics.nsmallest(20, 'pct_from_52w_low')[['ticker', 'company_name', 'sector', 'last_close', '52w_low', 'pct_from_52w_low']].copy()
 
                     col1, col2 = st.columns(2)
                     with col1:
@@ -2257,7 +2330,7 @@ def run_streamlit():
             st.subheader(f"📋 Screener Results ({len(screened_df)} stocks)")
 
             if not screened_df.empty:
-                display_cols = ['ticker', 'sector', 'last_close', horizon_col, 'ann_vol_pct']
+                display_cols = ['ticker', 'company_name', 'sector', 'last_close', horizon_col, 'ann_vol_pct']
                 if 'rsi' in screened_df.columns:
                     display_cols.append('rsi')
 
@@ -2268,6 +2341,11 @@ def run_streamlit():
 
                 # Enhanced Visualization with color coding
                 if len(screened_df) > 1 and 'ann_vol_pct' in screened_df.columns:
+                    # Build hover data
+                    hover_data_list = ['ticker', 'sector', 'last_close']
+                    if 'company_name' in screened_df.columns:
+                        hover_data_list.insert(0, 'company_name')
+                    
                     fig = px.scatter(
                         screened_df,
                         x='ann_vol_pct',
@@ -2275,11 +2353,13 @@ def run_streamlit():
                         color=horizon_col,
                         color_continuous_scale=create_gradient_colorscale(screened_df[horizon_col], 'return'),
                         size='last_close',
-                        hover_data=['ticker', 'sector'],
+                        hover_data=hover_data_list,
                         title=f"{horizon_label} Return vs Volatility",
                         labels={
                             'ann_vol_pct': 'Annual Volatility (%)',
-                            horizon_col: f'{horizon_label} Return (%)'
+                            horizon_col: f'{horizon_label} Return (%)',
+                            'last_close': 'Price ($)',
+                            'company_name': 'Company'
                         }
                     )
                     fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
@@ -2288,7 +2368,17 @@ def run_streamlit():
                 # Per-ticker plotting: choose one from screened results
                 tickers_list = screened_df['ticker'].tolist()
                 if tickers_list:
-                    chosen_ticker = st.selectbox("Select ticker to chart", options=tickers_list, key="ts_ticker_chart")
+                    # Create display options with company names
+                    if 'company_name' in screened_df.columns:
+                        ticker_options = {
+                            f"{row['company_name']} ({row['ticker']})": row['ticker'] 
+                            for _, row in screened_df[['ticker', 'company_name']].iterrows()
+                        }
+                        chosen_display = st.selectbox("Select company to chart", options=list(ticker_options.keys()), key="ts_ticker_chart")
+                        chosen_ticker = ticker_options[chosen_display]
+                    else:
+                        chosen_ticker = st.selectbox("Select ticker to chart", options=tickers_list, key="ts_ticker_chart")
+                    
                     # Load per-ticker CSV from data/history/<ticker>.csv and plot
                     ticker_csv_path = os.path.join(DATA_DIR, "history", f"{chosen_ticker}.csv")
                     plot_ticker_price_rsi(ticker_csv_path, chosen_ticker)
@@ -2331,10 +2421,16 @@ def run_streamlit():
                 key="export_sectors"
             )
 
+            # Set default columns including company_name if available
+            default_export_cols = ['ticker']
+            if 'company_name' in valid_metrics.columns:
+                default_export_cols.append('company_name')
+            default_export_cols.extend(['sector', 'last_close', 'pct_1d', 'pct_5d', 'ann_vol_pct'])
+            
             export_cols = st.multiselect(
                 "Select Columns for Export",
                 options=list(valid_metrics.columns),
-                default=['ticker', 'sector', 'last_close', 'pct_1d', 'pct_5d', 'ann_vol_pct'],
+                default=default_export_cols,
                 key="export_cols"
             )
 
