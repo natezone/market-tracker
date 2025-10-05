@@ -1,3 +1,4 @@
+from email import parser
 import os
 import sys
 import time
@@ -76,6 +77,166 @@ def fetch_sp500_tickers():
     except Exception as e:
         print(f"Error fetching S&P 500 tickers: {e}")
         return [], pd.DataFrame(), {}, {}, {}  
+
+def fetch_nasdaq100_tickers():
+    """Scrape Nasdaq-100 tickers from Wikipedia"""
+    url = "https://en.wikipedia.org/wiki/Nasdaq-100"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    
+    try:
+        r = requests.get(url, headers=headers, timeout=20)
+        r.raise_for_status()
+        
+        tables = pd.read_html(r.text)
+        if not tables:
+            raise RuntimeError("No tables found on Nasdaq-100 Wikipedia page")
+        
+        # The components table is typically the 4th or 5th table
+        df = tables[4]
+        
+        # Standardize ticker symbols
+        df['Ticker'] = df['Ticker'].str.replace('.', '-', regex=False)
+        tickers = df['Ticker'].tolist()
+        
+        # Extract company names and sector info
+        company_names = dict(zip(df['Ticker'], df['Company']))
+        sectors = dict(zip(df['Ticker'], df['GICS Sector']))
+        industries = dict(zip(df['Ticker'], df['GICS Sub-Industry']))
+        
+        return tickers, df, sectors, industries, company_names
+        
+    except Exception as e:
+        print(f"Error fetching Nasdaq-100 tickers: {e}")
+        return [], pd.DataFrame(), {}, {}, {}
+
+def fetch_dow30_tickers():
+    """Scrape Dow 30 tickers from Wikipedia"""
+    url = "https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    
+    try:
+        r = requests.get(url, headers=headers, timeout=20)
+        r.raise_for_status()
+        
+        tables = pd.read_html(r.text)
+        if not tables:
+            raise RuntimeError("No tables found on Dow Jones Wikipedia page")
+        
+        # Try different table indices to find the components table
+        df = None
+        for i, table in enumerate(tables):
+            # Convert column names to strings for comparison
+            cols_str = [str(col).lower() for col in table.columns]
+            
+            # Look for a table with ticker/symbol column
+            if any(keyword in ' '.join(cols_str) for keyword in ['symbol', 'ticker', 'company']):
+                df = table
+                print(f"Found components table at index {i}")
+                print(f"Columns: {list(df.columns)}")
+                break
+        
+        if df is None:
+            raise RuntimeError("Could not find Dow components table")
+        
+        # Find the ticker column - it might be called 'Symbol', 'Ticker', or be in a multi-level column
+        ticker_col = None
+        company_col = None
+        industry_col = None
+        
+        for col in df.columns:
+            col_str = str(col).lower()
+            if 'symbol' in col_str or 'ticker' in col_str:
+                ticker_col = col
+            elif 'company' in col_str:
+                company_col = col
+            elif 'industry' in col_str or 'sector' in col_str:
+                industry_col = col
+        
+        if ticker_col is None:
+            print(f"Available columns: {list(df.columns)}")
+            raise RuntimeError("Could not find ticker/symbol column in Dow table")
+        
+        # Standardize ticker symbols
+        df[ticker_col] = df[ticker_col].astype(str).str.replace('.', '-', regex=False)
+        tickers = df[ticker_col].tolist()
+        
+        # Extract company names and industry info
+        if company_col is not None:
+            company_names = dict(zip(df[ticker_col], df[company_col].astype(str)))
+        else:
+            company_names = {ticker: ticker for ticker in tickers}
+        
+        if industry_col is not None:
+            industries = dict(zip(df[ticker_col], df[industry_col].astype(str)))
+        else:
+            industries = {ticker: "Unknown" for ticker in tickers}
+        
+        # Dow doesn't have GICS sectors in the Wikipedia table, so we'll use Industry as sector
+        sectors = industries.copy()
+        
+        print(f"Successfully fetched {len(tickers)} Dow 30 tickers")
+        
+        return tickers, df, sectors, industries, company_names
+        
+    except Exception as e:
+        print(f"Error fetching Dow 30 tickers: {e}")
+        import traceback
+        traceback.print_exc()
+        return [], pd.DataFrame(), {}, {}, {}
+
+def fetch_combined_tickers():
+    """Fetch all tickers from S&P 500, Nasdaq-100, and Dow 30 (deduplicated)"""
+    all_tickers = []
+    all_company_names = {}
+    all_sectors = {}
+    all_industries = {}
+    all_sources = {}  # Track which index each ticker comes from
+    
+    # Fetch S&P 500
+    sp_tickers, sp_df, sp_sectors, sp_industries, sp_names = fetch_sp500_tickers()
+    for ticker in sp_tickers:
+        all_tickers.append(ticker)
+        all_company_names[ticker] = sp_names.get(ticker, "Unknown")
+        all_sectors[ticker] = sp_sectors.get(ticker, "Unknown")
+        all_industries[ticker] = sp_industries.get(ticker, "Unknown")
+        all_sources[ticker] = "S&P 500"
+    
+    # Fetch Nasdaq-100
+    nq_tickers, nq_df, nq_sectors, nq_industries, nq_names = fetch_nasdaq100_tickers()
+    for ticker in nq_tickers:
+        if ticker not in all_tickers:
+            all_tickers.append(ticker)
+            all_company_names[ticker] = nq_names.get(ticker, "Unknown")
+            all_sectors[ticker] = nq_sectors.get(ticker, "Unknown")
+            all_industries[ticker] = nq_industries.get(ticker, "Unknown")
+            all_sources[ticker] = "Nasdaq-100"
+        else:
+            # Ticker in multiple indices
+            all_sources[ticker] += ", Nasdaq-100"
+    
+    # Fetch Dow 30
+    dow_tickers, dow_df, dow_sectors, dow_industries, dow_names = fetch_dow30_tickers()
+    for ticker in dow_tickers:
+        if ticker not in all_tickers:
+            all_tickers.append(ticker)
+            all_company_names[ticker] = dow_names.get(ticker, "Unknown")
+            all_sectors[ticker] = dow_sectors.get(ticker, "Unknown")
+            all_industries[ticker] = dow_industries.get(ticker, "Unknown")
+            all_sources[ticker] = "Dow 30"
+        else:
+            # Ticker in multiple indices
+            all_sources[ticker] += ", Dow 30"
+    
+    # Create combined dataframe
+    combined_df = pd.DataFrame({
+        'Symbol': all_tickers,
+        'Company': [all_company_names[t] for t in all_tickers],
+        'GICS Sector': [all_sectors[t] for t in all_tickers],
+        'GICS Sub-Industry': [all_industries[t] for t in all_tickers],
+        'Source Index': [all_sources[t] for t in all_tickers]
+    })
+    
+    return all_tickers, combined_df, all_sectors, all_industries, all_company_names
 
 def batch(iterable, n=1):
     """Batch an iterable into chunks of size n"""
@@ -1584,14 +1745,35 @@ def render_risk_management_mode(valid_metrics, hist):
 # ---------------------------
 def run_cli(consecutive_days=7, index_key="SP500"):
     """Run the CLI version of the market tracker with configurable consecutive period"""
-    ensure_dir(DATA_DIR)
+    
+    # Create index-specific data directory
+    index_data_dir = os.path.join(DATA_DIR, index_key)
+    ensure_dir(index_data_dir)
 
+    index_names = {
+        "SP500": "S&P 500",
+        "NASDAQ100": "Nasdaq-100",
+        "DOW30": "Dow Jones 30",
+        "COMBINED": "Combined (S&P 500 + Nasdaq-100 + Dow 30)"
+    }
+    
+    index_display = index_names.get(index_key, "S&P 500")
+    
     print("=" * 60)
-    print(f"S&P 500 Market Tracker - CLI Mode (Consecutive: {consecutive_days} days)")
+    print(f"{index_display} Market Tracker - CLI Mode (Consecutive: {consecutive_days} days)")
     print("=" * 60)
 
-    print("\nFetching S&P 500 tickers...")
-    tickers, sp_df, sectors, industries, company_names = fetch_sp500_tickers() 
+    print(f"\nFetching {index_display} tickers...")
+    
+    # Fetch appropriate index
+    if index_key == "NASDAQ100":
+        tickers, sp_df, sectors, industries, company_names = fetch_nasdaq100_tickers()
+    elif index_key == "DOW30":
+        tickers, sp_df, sectors, industries, company_names = fetch_dow30_tickers()
+    elif index_key == "COMBINED":
+        tickers, sp_df, sectors, industries, company_names = fetch_combined_tickers()
+    else:  # Default to S&P 500
+        tickers, sp_df, sectors, industries, company_names = fetch_sp500_tickers()
 
     if not tickers:
         print("Failed to fetch tickers. Exiting.")
@@ -1600,7 +1782,7 @@ def run_cli(consecutive_days=7, index_key="SP500"):
     print(f"Found {len(tickers)} tickers")
 
     # Save constituents snapshot
-    sp_df.to_csv(os.path.join(DATA_DIR, "sp500_constituents_snapshot.csv"), index=False)
+    sp_df.to_csv(os.path.join(index_data_dir, f"{index_key}_constituents_snapshot.csv"), index=False)
 
     # Download historical data
     print("\nDownloading historical price data...")
@@ -1609,7 +1791,7 @@ def run_cli(consecutive_days=7, index_key="SP500"):
     hist = download_history(tickers, period=DOWNLOAD_PERIOD, interval="1d")
 
     metrics_rows = []
-    per_ticker_dir = os.path.join(DATA_DIR, "history")
+    per_ticker_dir = os.path.join(index_data_dir, "history")
     ensure_dir(per_ticker_dir)
 
     print(f"\nProcessing ticker data with {consecutive_days}-day consecutive analysis...")
@@ -1675,8 +1857,8 @@ def run_cli(consecutive_days=7, index_key="SP500"):
     df_metrics = df_metrics[cols]
 
     # Save master CSV
-    master_csv = os.path.join(DATA_DIR, "latest_metrics.csv")
-    ensure_dir(DATA_DIR)
+    master_csv = os.path.join(index_data_dir, "latest_metrics.csv")
+    ensure_dir(index_data_dir)
     df_metrics.to_csv(master_csv, index=False)
     print(f"\n✓ Saved master metrics to {master_csv}")
 
@@ -1724,8 +1906,8 @@ def run_cli(consecutive_days=7, index_key="SP500"):
         (df_metrics[declining_col] == True)
     ].sort_values(by=pct_col)
 
-    rising.to_csv(os.path.join(DATA_DIR, f"rising_{consecutive_days}day.csv"), index=False)
-    declining.to_csv(os.path.join(DATA_DIR, f"declining_{consecutive_days}day.csv"), index=False)
+    rising.to_csv(os.path.join(index_data_dir, f"rising_{consecutive_days}day.csv"), index=False)
+    declining.to_csv(os.path.join(index_data_dir, f"declining_{consecutive_days}day.csv"), index=False)
 
     # Print summary with configurable period
     print("\n" + "=" * 60)
@@ -1806,7 +1988,7 @@ def run_streamlit():
         return
 
     st.set_page_config(
-        page_title="S&P 500 Market Tracker",
+        page_title="Market Tracker",
         page_icon="📈",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -1815,30 +1997,34 @@ def run_streamlit():
     # Add custom CSS
     add_custom_css()
 
-    # Header
-    st.title("📈 S&P 500 Market Tracker")
-
-    # Show data freshness info
-    if os.path.exists(os.path.join(DATA_DIR, "latest_metrics.csv")):
-        last_modified = os.path.getmtime(os.path.join(DATA_DIR, "latest_metrics.csv"))
-        last_update = datetime.fromtimestamp(last_modified)
-        
-        # Convert to EST (subtract 5 hours)
-        last_update_est = last_update - timedelta(hours=5)
-        
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.caption(f"Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
-        with col2:
-            st.caption("Updates: 9AM & 5PM EST daily")
-    else:
-        st.error("No data available. Check GitHub Actions workflow.")
-
-    # Check for existing data
-    data_exists = os.path.exists(os.path.join(DATA_DIR, "latest_metrics.csv"))
-
     # Sidebar - Controls
     st.sidebar.header("⚙️ Settings")
+
+    # 0. Index selection
+    index_selection = st.sidebar.selectbox(
+        "Select Index",
+        ["S&P 500", "Nasdaq-100", "Dow Jones 30", "Combined Stock Indices"],
+        key="index_selector",
+        help="Choose which market index to analyze"
+    )
+    
+    # Map display name to index key
+    index_map = {
+        "S&P 500": "SP500",
+        "Nasdaq-100": "NASDAQ100",
+        "Dow Jones 30": "DOW30",
+        "Combined Stock Indices": "COMBINED"
+    }
+    current_index = index_map[index_selection]
+    
+    # Get current index-specific data directory
+    index_data_dir = os.path.join(DATA_DIR, current_index)
+
+    # Header
+    st.title(f"📈 {index_selection} Market Tracker")
+
+    # Check for existing data
+    data_exists = os.path.exists(os.path.join(index_data_dir, "latest_metrics.csv"))
 
     # 1. View mode
     view_mode = st.sidebar.radio(
@@ -1848,34 +2034,12 @@ def run_streamlit():
         key="view_mode_radio"
     )
 
-    # Load data to check available columns
+# 2. Time Horizon Slider (load data first to get available columns)
     if data_exists:
-        df_metrics = pd.read_csv(os.path.join(DATA_DIR, "latest_metrics.csv"))
+        df_metrics = pd.read_csv(os.path.join(index_data_dir, "latest_metrics.csv"))
         valid_metrics = df_metrics[df_metrics['status'] == 'ok'].copy()
-
-    # Load historical data for advanced modes
-        @st.cache_data(ttl=3600)  # Cache for 1 hour
-        def load_historical_data():
-            hist_dir = os.path.join(DATA_DIR, "history")
-            hist = {}
-            
-            if os.path.exists(hist_dir):
-                for file in os.listdir(hist_dir):
-                    if file.endswith('.csv'):
-                        ticker = file.replace('.csv', '')
-                        try:
-                            df = pd.read_csv(os.path.join(hist_dir, file), 
-                                        parse_dates=True, index_col=0)
-                            if not df.empty:
-                                hist[ticker] = df
-                        except Exception:
-                            continue
-            return hist
         
-        # Load historical data
-        hist = load_historical_data()
-        
-        # 2. Time horizon slider
+        # Time horizon slider options
         horizon_map_full = {
             "1 Day": "pct_1d",
             "3 Days": "pct_3d", 
@@ -1898,7 +2062,7 @@ def run_streamlit():
             else:
                 default_horizon = list(horizon_map.keys())[0]
 
-            # Time horizon selector
+            # Time horizon selector in sidebar
             horizon_label = st.sidebar.select_slider(
                 "Time Horizon",
                 options=list(horizon_map.keys()),
@@ -1907,46 +2071,87 @@ def run_streamlit():
             )
             horizon_col = horizon_map[horizon_label]
         else:
-                horizon_label = "N/A"
-                horizon_col = None
+            horizon_label = "N/A"
+            horizon_col = None
+    else:
+        horizon_label = "N/A"
+        horizon_col = None
+        valid_metrics = None
+    
+    # 3. Consecutive days slider 
+    if 'consecutive_days' not in st.session_state:
+        st.session_state.consecutive_days = 7
+    
+    consecutive_days = st.sidebar.slider(
+        "Consecutive Days Lookback",
+        min_value=2,
+        max_value=126,
+        value=st.session_state.consecutive_days,
+        step=1,
+        help="Number of consecutive days to analyze for rising/declining trends",
+        key="consecutive_days_slider"
+    )
+    
+    # Update session state when slider changes
+    st.session_state.consecutive_days = consecutive_days
 
-        # 3. Consecutive days slider - Initialize session state
-        if 'consecutive_days' not in st.session_state:
+    # Add preset buttons
+    col1, col2, col3 = st.sidebar.columns(3)
+    with col1:
+        if st.button("3d", key="preset_3d"):
+            st.session_state.consecutive_days = 3
+            st.rerun()
+    with col2:
+        if st.button("1w", key="preset_1w"):
             st.session_state.consecutive_days = 7
-        
-        consecutive_days = st.sidebar.slider(
-            "Consecutive Days Lookback",
-            min_value=2,
-            max_value=126,  # ~6 months of trading days
-            value=st.session_state.consecutive_days,  # Use session state value
-            step=1,
-            help="Number of consecutive days to analyze for rising/declining trends",
-            key="consecutive_days_slider"
-        )
-        
-        # Update session state when slider changes
-        st.session_state.consecutive_days = consecutive_days
+            st.rerun()
+    with col3:
+        if st.button("1m", key="preset_1m"):
+            st.session_state.consecutive_days = 21
+            st.rerun()
 
-        # Add preset buttons - these now update session state and rerun
-        col1, col2, col3 = st.sidebar.columns(3)
+    st.sidebar.info(f"Current: {consecutive_days} days ({consecutive_days/5:.1f} weeks)")
+
+    # Add warning for very long periods
+    if consecutive_days > 63:
+        st.sidebar.warning("⚠️ Long periods may have fewer matching stocks")
+
+    # Load historical data if data exists
+    if data_exists:
+        @st.cache_data(ttl=3600)  # Cache for 1 hour
+        def load_historical_data(index_key):
+            hist_dir = os.path.join(DATA_DIR, index_key, "history")
+            hist = {}
+            
+            if os.path.exists(hist_dir):
+                for file in os.listdir(hist_dir):
+                    if file.endswith('.csv'):
+                        ticker = file.replace('.csv', '')
+                        try:
+                            df = pd.read_csv(os.path.join(hist_dir, file), 
+                                        parse_dates=True, index_col=0)
+                            if not df.empty:
+                                hist[ticker] = df
+                        except Exception:
+                            continue
+            return hist
+        
+        # Load historical data
+        hist = load_historical_data(current_index)
+        
+        # Show data freshness info
+        last_modified = os.path.getmtime(os.path.join(index_data_dir, "latest_metrics.csv"))
+        last_update = datetime.fromtimestamp(last_modified)
+        last_update_est = last_update - timedelta(hours=5)
+        
+        col1, col2 = st.columns([3, 1])
         with col1:
-            if st.button("3d", key="preset_3d"):
-                st.session_state.consecutive_days = 3
-                st.rerun()
+            st.caption(f"Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
         with col2:
-            if st.button("1w", key="preset_1w"):
-                st.session_state.consecutive_days = 7
-                st.rerun()
-        with col3:
-            if st.button("1m", key="preset_1m"):
-                st.session_state.consecutive_days = 21
-                st.rerun()
-
-        st.sidebar.info(f"Current: {consecutive_days} days ({consecutive_days/5:.1f} weeks)")
-
-        # Add warning for very long periods
-        if consecutive_days > 63:
-            st.sidebar.warning("⚠️ Long periods may have fewer matching stocks")
+            st.caption("Updates: 9AM & 5PM EST daily")
+    else:
+        hist = {}
+        st.error(f"No data available for {index_selection}. Click 'Fetch All Data' below.")
 
     # Show color legend
     show_color_legend()
@@ -1954,14 +2159,14 @@ def run_streamlit():
     if not data_exists:
         st.sidebar.warning("No data found. Run initial data fetch first.")
         if st.sidebar.button("📥 Fetch All Data", key="fetch_all_data_btn"):
-            with st.spinner("Fetching data... This may take several minutes."):
-                run_cli(consecutive_days)
+            with st.spinner(f"Fetching {index_selection} data... This may take several minutes."):
+                run_cli(consecutive_days, current_index)
             st.success("Data fetched successfully!")
             st.rerun()
     else:
         if st.sidebar.button("🔄 Update Data", key="update_data_btn"):
-            with st.spinner(f"Updating data with {consecutive_days}-day analysis..."):
-                run_cli(consecutive_days)
+            with st.spinner(f"Updating {index_selection} data with {consecutive_days}-day analysis..."):
+                run_cli(consecutive_days, current_index)
             st.success("Data updated!")
             st.rerun()
 
@@ -2083,7 +2288,7 @@ def run_streamlit():
 
         # ---------- Sector Analysis ----------
         elif view_mode == "Sector Analysis":
-            st.subheader("🏢 S&P 500 Sector Performance Analysis")
+            st.subheader(f"🏢 {index_selection} Sector Performance Analysis")
 
             sector_perf = valid_metrics.groupby('sector').agg({
                 horizon_col: ['mean', 'median', 'std'],
@@ -2116,7 +2321,7 @@ def run_streamlit():
 
         # ---------- Top Movers ----------
         elif view_mode == "Top Movers":
-            st.subheader("🎯 S&P 500 Market Movers Analysis")
+            st.subheader(f"🎯 {index_selection} Market Movers Analysis")
             
             tabs = st.tabs([f"Rising Stocks ({consecutive_days}d)", f"Declining Stocks ({consecutive_days}d)", "Most Volatile", "52-Week Highs/Lows"])
             
@@ -2212,7 +2417,7 @@ def run_streamlit():
 
         # ---------- Technical Screener ----------
         elif view_mode == "Technical Screener":
-            st.subheader("🔍 S&P 500 Technical Stock Screener")
+            st.subheader(f"🔍 {index_selection} Technical Stock Screener")
 
             col1, col2, col3 = st.columns(3)
 
@@ -2379,8 +2584,8 @@ def run_streamlit():
                     else:
                         chosen_ticker = st.selectbox("Select ticker to chart", options=tickers_list, key="ts_ticker_chart")
                     
-                    # Load per-ticker CSV from data/history/<ticker>.csv and plot
-                    ticker_csv_path = os.path.join(DATA_DIR, "history", f"{chosen_ticker}.csv")
+                    # Load per-ticker CSV from data/<index>/history/<ticker>.csv and plot
+                    ticker_csv_path = os.path.join(index_data_dir, "history", f"{chosen_ticker}.csv")
                     plot_ticker_price_rsi(ticker_csv_path, chosen_ticker)
             else:
                 st.info("No stocks match the selected criteria")
@@ -2392,14 +2597,14 @@ def run_streamlit():
             st.markdown("### Available Data Files")
 
             files = {
-                "S&P 500 Metrics": "latest_metrics.csv",
-                "S&P 500 Constituents": "sp500_constituents_snapshot.csv",
+                f"{index_selection} Metrics": "latest_metrics.csv",
+                f"{index_selection} Constituents": f"{current_index}_constituents_snapshot.csv",
                 f"Rising Stocks ({consecutive_days}-day)": f"rising_{consecutive_days}day.csv",
                 f"Declining Stocks ({consecutive_days}-day)": f"declining_{consecutive_days}day.csv"
             }
 
             for name, filename in files.items():
-                filepath = os.path.join(DATA_DIR, filename)
+                filepath = os.path.join(index_data_dir, filename)
                 if os.path.exists(filepath):
                     with open(filepath, 'rb') as f:
                         data = f.read()
@@ -2482,7 +2687,7 @@ def main():
     
     # Parse command line arguments for CLI mode
     parser = argparse.ArgumentParser(
-        description="S&P 500 Market Tracker - CLI and Web Interface"
+        description="Market Tracker - CLI and Web Interface"
     )
 
     parser.add_argument(
@@ -2498,12 +2703,19 @@ def main():
         default=7,
         help='Number of consecutive days for trend analysis (default: 7)'
     )
+    
+    parser.add_argument(
+        '--index',
+        choices=['SP500', 'NASDAQ100', 'DOW30', 'COMBINED'],
+        default='SP500',
+        help='Market index to track (default: SP500)'
+    )
 
     args = parser.parse_args()
 
     # Run appropriate mode
     if args.mode == 'cli':
-        run_cli(args.consecutive_days)
+        run_cli(args.consecutive_days, args.index)
     else:
         run_streamlit()
 
