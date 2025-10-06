@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import pandas as pd
 import numpy as np
-from streamlit import tabs
 import yfinance as yf
 import requests
 from tqdm import tqdm
