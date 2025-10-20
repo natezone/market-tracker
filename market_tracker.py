@@ -1099,43 +1099,46 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label):
     # Stock selection
     available_tickers = sorted(valid_metrics['ticker'].unique())
     
+    # Initialize session state ONCE at the top
+    if 'comparison_selected' not in st.session_state:
+        st.session_state.comparison_selected = []
+    
     col1, col2 = st.columns([2, 1])
+    
+    with col2:
+        # Button MUST come before the multiselect
+        if st.button("⭐ Add Top Performers", key="add_top_performers", use_container_width=True):
+            # Get top performers
+            available_return_cols = [col for col in ['pct_21d', 'pct_5d', 'pct_1d'] 
+                                    if col in valid_metrics.columns]
+            
+            if available_return_cols:
+                top_10 = valid_metrics.nlargest(10, available_return_cols[0])['ticker'].tolist()
+                
+                # Merge with existing selections (remove duplicates, limit to 20)
+                current = st.session_state.comparison_selected
+                updated = list(dict.fromkeys(current + top_10))[:20]  # Preserve order, remove dupes
+                
+                # Update state
+                st.session_state.comparison_selected = updated
+                
+                st.success(f"✅ Added top performers! Total selected: {len(updated)}")
+    
     with col1:
-        # Initialize session state for selected tickers if not exists
-        if 'comparison_tickers' not in st.session_state:
-            st.session_state.comparison_tickers = []
-        
-        # Use st.session_state directly as the value
+        # Multiselect reads from session state
         selected_tickers = st.multiselect(
             "Select stocks to compare (2-20 stocks)",
             options=available_tickers,
-            default=st.session_state.comparison_tickers,  # Use session state directly
+            default=st.session_state.comparison_selected,
             max_selections=20,
-            key="comparison_ticker_selector"  # Different key to avoid conflicts
+            key="stock_selector_widget"
         )
-
-    with col2:
-        if st.button("Add Top Performers", key="add_top_performers"):
-            # Get top performers based on available data
-            available_return_cols = [col for col in ['pct_21d', 'pct_5d', 'pct_1d'] if col in valid_metrics.columns]
-            if available_return_cols:
-                top_performers = valid_metrics.nlargest(10, available_return_cols[0])['ticker'].tolist()
-                
-                # Update the session state that the widget reads from
-                current_selections = st.session_state.get('comparison_ticker_selector', [])
-                new_selections = list(set(current_selections + top_performers))[:20]  # Limit to 20
-
-                # Update session state
-                st.session_state.comparison_tickers = new_selections
-                
-                st.success(f"Added top 10 performers: {', '.join(top_performers[:10])}")
-                st.rerun()
-    
-    # Update the session state tracker
-    st.session_state.comparison_tickers = selected_tickers
+        
+        # Update session state when user manually changes selection
+        st.session_state.comparison_selected = selected_tickers
     
     if len(selected_tickers) < 2:
-        st.info("Please select at least 2 stocks to compare")
+        st.info("👆 Please select at least 2 stocks to compare")
         return
     
     # Get comparison data
@@ -1148,7 +1151,6 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label):
     # Display comparison table
     st.subheader("📊 Performance Comparison")
     
-    # Format the comparison table
     styled_comparison = format_and_style_dataframe(comparison_df)
     st.dataframe(styled_comparison, use_container_width=True)
     
@@ -1188,10 +1190,9 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label):
     with tabs[1]:
         # Risk vs Return scatter plot
         if 'ann_vol_pct' in comparison_df.columns and 'pct_252d' in comparison_df.columns:
-            # Build hover data list
             hover_data_list = ['sector', 'ann_vol_pct', 'pct_252d', 'last_close']
             if 'company_name' in comparison_df.columns:
-                hover_data_list.insert(0, 'company_name')  # Add company name first
+                hover_data_list.insert(0, 'company_name')
             
             fig = px.scatter(
                 comparison_df,
@@ -1218,7 +1219,6 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label):
     with tabs[2]:
         # Correlation analysis
         if len(selected_tickers) >= 2:
-            # Get historical data for correlation
             correlation_data = {}
             for ticker in selected_tickers:
                 if ticker in hist and not hist[ticker].empty:
@@ -1248,41 +1248,33 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label):
                 st.info("Insufficient historical data for correlation analysis")
 
     with tabs[3]:
-        # Top Performers - Use selected time horizon
+        # Top Performers
         st.subheader("🏆 Top 20 Performers")
         
-        # Use the current horizon_col instead of hardcoded column
         if horizon_col and horizon_col in valid_metrics.columns:
-            # Get top 20 performers using the selected time horizon
             top_20 = valid_metrics.nlargest(20, horizon_col)
             
-            # Display summary with current horizon
             st.info(f"Showing top 20 performers over {horizon_label}")
             
-            # Auto-populate comparison
             top_20_tickers = top_20['ticker'].tolist()
             top_20_comparison = get_sector_comparison_data(valid_metrics, top_20_tickers)
             
             if not top_20_comparison.empty:
-                # Format display
                 display_df = top_20_comparison.copy()
                 display_df['rank'] = range(1, len(display_df) + 1)
                 
-                # Reorder columns to show rank first, then ticker, company_name
                 cols = ['rank', 'ticker']
                 if 'company_name' in display_df.columns:
                     cols.append('company_name')
                 cols += [col for col in display_df.columns if col not in cols]
                 display_df = display_df[cols]
                 
-                # Apply color styling instead of manual formatting
                 styled_top20 = format_and_style_dataframe(
                     display_df,
-                    format_dict={'rank': '{:.0f}'}  # Keep rank as integer
+                    format_dict={'rank': '{:.0f}'}
                 )
                 st.dataframe(styled_top20, use_container_width=True)
                 
-                # Performance chart for top 20 using selected horizon
                 if horizon_col in top_20.columns:
                     fig = create_enhanced_bar_chart(
                         top_20.head(20), 'ticker', horizon_col,
@@ -1290,7 +1282,6 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label):
                     )
                     st.plotly_chart(fig, use_container_width=True)
                 
-                # Sector breakdown of top performers
                 sector_counts = top_20['sector'].value_counts()
                 
                 col1, col2 = st.columns(2)
@@ -2073,6 +2064,40 @@ def analyze_sentiment_mixed(valid_metrics, horizon_col, max_newsapi_requests=75)
         
         print(f"✓ Completed: {len(all_tickers)} stocks analyzed with Google News RSS")
         return pd.DataFrame(sentiment_data)
+    
+    # PREMIUM: NewsAPI available - use mixed approach
+    print("\n📊 Mixed Strategy: NewsAPI + Google News")
+    
+    valid_metrics['abs_return'] = valid_metrics[horizon_col].abs()
+    top_movers = valid_metrics.nlargest(max_newsapi_requests, 'abs_return')
+    
+    newsapi_tickers = set(top_movers['ticker'].tolist())
+    
+    newsapi_count = 0
+    google_news_count = 0
+    
+    print(f"  • Top {max_newsapi_requests} movers: NewsAPI (premium)")
+    print(f"  • Remaining {len(all_tickers) - max_newsapi_requests}: Google News (free)")
+    
+    for ticker in tqdm(all_tickers, desc="Mixed Analysis"):
+        company_name = company_names.get(ticker, ticker)
+        
+        if ticker in newsapi_tickers and newsapi_count < max_newsapi_requests:
+            sentiment = get_news_sentiment(ticker, company_name)
+            sentiment['source'] = 'NewsAPI'
+            newsapi_count += 1
+            time.sleep(0.5)
+        else:
+            sentiment = get_google_news_sentiment(ticker, company_name)
+            google_news_count += 1
+            time.sleep(0.3)
+        
+        sentiment['ticker'] = ticker
+        sentiment_data.append(sentiment)
+    
+    print(f"✓ Completed: {newsapi_count} NewsAPI + {google_news_count} Google News")
+    
+    return pd.DataFrame(sentiment_data)
     
     # PREMIUM: NewsAPI available - use mixed approach
     print("\n📊 Mixed Strategy: NewsAPI + Google News")
@@ -3517,6 +3542,7 @@ def run_streamlit():
                     
                     **✨ 100% free - no API key required!**
                     """)
+            
         # ---------- Data Export ----------
         elif view_mode == "Data Export":
             st.subheader("📥 Data Export")

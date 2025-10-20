@@ -1,11 +1,11 @@
-# S&P 500 Market Tracker
+# Stock Market Tracker
 
-A comprehensive market tracking tool with both CLI and Streamlit web interfaces for S&P 500 analysis, portfolio management, and risk assessment.
+A comprehensive market tracking tool with both CLI and Streamlit web interfaces for S&P 500, NASDAQ-100, and Dow Jones 30 analysis, portfolio management, and risk assessment.
 
 ## Features
 
 ### Core Analysis
-- Real-time S&P 500 data tracking with automated updates
+- Real-time S&P 500, NASDAQ-100, and Dow Jones 30 data tracking with automated updates
 - Technical analysis indicators (RSI, Moving Averages, MACD, Bollinger Bands)
 - Sector performance analysis with color-coded visualizations
 - Advanced stock screener with multiple filters
