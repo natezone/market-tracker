@@ -17,6 +17,13 @@ warnings.filterwarnings('ignore')
 from datetime import timezone, timedelta
 import scipy.stats as stats
 from scipy.optimize import minimize
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from newsapi import NewsApiClient
+from textblob import TextBlob
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Try importing Streamlit and Plotly for web interface
 try:
@@ -39,6 +46,10 @@ MIN_CONSECUTIVE = 30
 DOWNLOAD_PERIOD = "max"
 VERBOSE = True
 MIN_MARKET_CAP = 0
+
+# Sentiment Analysis Configuration
+NEWS_API_KEY = os.environ.get('NEWS_API_KEY', None)
+sentiment_analyzer = SentimentIntensityAnalyzer()
 
 # ---------------------------
 # Shared Helper Functions
@@ -1091,19 +1102,17 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label):
     col1, col2 = st.columns([2, 1])
     with col1:
         # Initialize session state for selected tickers if not exists
-        if 'comparison_selected_tickers' not in st.session_state:
-            st.session_state.comparison_selected_tickers = []
+        if 'comparison_tickers' not in st.session_state:
+            st.session_state.comparison_tickers = []
         
+        # Use st.session_state directly as the value
         selected_tickers = st.multiselect(
-            "Select stocks to compare (2-15 stocks)",
+            "Select stocks to compare (2-20 stocks)",
             options=available_tickers,
-            default=st.session_state.comparison_selected_tickers,
-            max_selections=15,
-            key="comparison_tickers"
+            default=st.session_state.comparison_tickers,  # Use session state directly
+            max_selections=20,
+            key="comparison_ticker_selector"  # Different key to avoid conflicts
         )
-        
-        # Update session state when selection changes
-        st.session_state.comparison_selected_tickers = selected_tickers
 
     with col2:
         if st.button("Add Top Performers", key="add_top_performers"):
@@ -1112,15 +1121,18 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label):
             if available_return_cols:
                 top_performers = valid_metrics.nlargest(10, available_return_cols[0])['ticker'].tolist()
                 
-                # Combine existing selections with top performers
-                current_selections = st.session_state.comparison_selected_tickers
-                new_selections = list(set(current_selections + top_performers))[:15]  # Limit to 15
+                # Update the session state that the widget reads from
+                current_selections = st.session_state.get('comparison_ticker_selector', [])
+                new_selections = list(set(current_selections + top_performers))[:20]  # Limit to 20
 
                 # Update session state
-                st.session_state.comparison_selected_tickers = new_selections
-
+                st.session_state.comparison_tickers = new_selections
+                
                 st.success(f"Added top 10 performers: {', '.join(top_performers[:10])}")
-                st.rerun()  
+                st.rerun()
+    
+    # Update the session state tracker
+    st.session_state.comparison_tickers = selected_tickers
     
     if len(selected_tickers) < 2:
         st.info("Please select at least 2 stocks to compare")
@@ -1740,6 +1752,505 @@ def render_risk_management_mode(valid_metrics, hist):
         st.dataframe(pd.DataFrame(stress_results), use_container_width=True)
 
 # ---------------------------
+# Sentiment Analysis Module
+# ---------------------------
+
+def get_news_sentiment(ticker, company_name, days_back=7):
+    """
+    Fetch news articles and calculate sentiment score for a ticker
+    
+    Args:
+        ticker: Stock ticker symbol
+        company_name: Full company name for better search results
+        days_back: Number of days to look back for news
+    
+    Returns:
+        Dictionary with sentiment metrics
+    """
+    if not NEWS_API_KEY:
+        return {
+            'sentiment_score': 0,
+            'sentiment_label': 'Neutral',
+            'article_count': 0,
+            'positive_count': 0,
+            'negative_count': 0,
+            'neutral_count': 0,
+            'error': 'No API key configured'
+        }
+    
+    try:
+        newsapi = NewsApiClient(api_key=NEWS_API_KEY)
+        
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days_back)
+        
+        search_query = f'{ticker} OR "{company_name}"'
+        
+        articles = newsapi.get_everything(
+            q=search_query,
+            language='en',
+            from_param=start_date.strftime('%Y-%m-%d'),
+            to=end_date.strftime('%Y-%m-%d'),
+            sort_by='relevancy',
+            page_size=50
+        )
+        
+        if not articles or articles['totalResults'] == 0:
+            return {
+                'sentiment_score': 0,
+                'sentiment_label': 'Neutral',
+                'article_count': 0,
+                'positive_count': 0,
+                'negative_count': 0,
+                'neutral_count': 0
+            }
+        
+        sentiments = []
+        positive_count = 0
+        negative_count = 0
+        neutral_count = 0
+        
+        for article in articles['articles']:
+            text = f"{article.get('title', '')} {article.get('description', '')}"
+            
+            if text.strip():
+                vader_scores = sentiment_analyzer.polarity_scores(text)
+                compound_score = vader_scores['compound']
+                
+                sentiments.append(compound_score)
+                
+                if compound_score >= 0.05:
+                    positive_count += 1
+                elif compound_score <= -0.05:
+                    negative_count += 1
+                else:
+                    neutral_count += 1
+        
+        if sentiments:
+            avg_sentiment = np.mean(sentiments)
+            
+            if avg_sentiment >= 0.05:
+                sentiment_label = 'Positive'
+            elif avg_sentiment <= -0.05:
+                sentiment_label = 'Negative'
+            else:
+                sentiment_label = 'Neutral'
+        else:
+            avg_sentiment = 0
+            sentiment_label = 'Neutral'
+        
+        return {
+            'sentiment_score': float(avg_sentiment),
+            'sentiment_label': sentiment_label,
+            'article_count': len(sentiments),
+            'positive_count': positive_count,
+            'negative_count': negative_count,
+            'neutral_count': neutral_count
+        }
+        
+    except Exception as e:
+        if VERBOSE:
+            print(f"Error fetching sentiment for {ticker}: {e}")
+        return {
+            'sentiment_score': 0,
+            'sentiment_label': 'Neutral',
+            'article_count': 0,
+            'positive_count': 0,
+            'negative_count': 0,
+            'neutral_count': 0,
+            'error': str(e)
+        }
+
+def get_yfinance_news_sentiment(ticker):
+    """
+    Use yfinance news (no API key needed, but limited data)
+    Enhanced with better error handling and fallback methods
+    """
+    try:
+        stock = yf.Ticker(ticker)
+        
+        # Try multiple methods to get news
+        news = None
+        
+        # Method 1: Direct news attribute
+        try:
+            news = stock.news
+        except:
+            pass
+        
+        # Method 2: Try get_news() method if available
+        if not news:
+            try:
+                news = stock.get_news()
+            except:
+                pass
+        
+        # Method 3: Check the info dict for news
+        if not news:
+            try:
+                info = stock.info
+                if 'news' in info:
+                    news = info['news']
+            except:
+                pass
+        
+        # If still no news, return neutral with debug info
+        if not news:
+            return {
+                'sentiment_score': 0,
+                'sentiment_label': 'Neutral',
+                'article_count': 0,
+                'source': 'yfinance',
+                'debug': 'No news available from yfinance'
+            }
+        
+        # Process news articles
+        sentiments = []
+        
+        for article in news[:20]:  # Limit to 20 articles
+            # Handle different article formats
+            if isinstance(article, dict):
+                title = article.get('title', '') or article.get('headline', '')
+            else:
+                title = str(article)
+            
+            if title and len(title) > 5:  # Ensure title has content
+                try:
+                    vader_scores = sentiment_analyzer.polarity_scores(title)
+                    sentiments.append(vader_scores['compound'])
+                except Exception as e:
+                    if VERBOSE:
+                        print(f"Error analyzing sentiment for {ticker}: {e}")
+                    continue
+        
+        # Calculate average sentiment
+        if sentiments:
+            avg_sentiment = np.mean(sentiments)
+            
+            if avg_sentiment >= 0.05:
+                sentiment_label = 'Positive'
+            elif avg_sentiment <= -0.05:
+                sentiment_label = 'Negative'
+            else:
+                sentiment_label = 'Neutral'
+        else:
+            avg_sentiment = 0
+            sentiment_label = 'Neutral'
+        
+        return {
+            'sentiment_score': float(avg_sentiment),
+            'sentiment_label': sentiment_label,
+            'article_count': len(sentiments),
+            'source': 'yfinance',
+            'debug': f'Processed {len(sentiments)} articles from {len(news)} available'
+        }
+        
+    except Exception as e:
+        error_msg = str(e)
+        if VERBOSE:
+            print(f"Error fetching yfinance sentiment for {ticker}: {error_msg}")
+        
+        return {
+            'sentiment_score': 0,
+            'sentiment_label': 'Neutral',
+            'article_count': 0,
+            'source': 'yfinance',
+            'error': error_msg,
+            'debug': 'Exception occurred during sentiment analysis'
+        }
+
+def get_google_news_sentiment(ticker, company_name):
+    """
+    Fallback: Use Google News RSS feed (free, no API key needed)
+    More reliable than yfinance
+    """
+    try:
+        import feedparser
+        
+        # Google News RSS feed
+        query = f"{ticker} stock OR {company_name}"
+        # URL encode the query
+        import urllib.parse
+        encoded_query = urllib.parse.quote(query)
+        url = f"https://news.google.com/rss/search?q={encoded_query}&hl=en-US&gl=US&ceid=US:en"
+        
+        # Parse the RSS feed
+        feed = feedparser.parse(url)
+        
+        if not feed.entries:
+            return {
+                'sentiment_score': 0,
+                'sentiment_label': 'Neutral',
+                'article_count': 0,
+                'source': 'google_news',
+                'debug': 'No articles found in Google News RSS'
+            }
+        
+        sentiments = []
+        positive_count = 0
+        negative_count = 0
+        neutral_count = 0
+        
+        # Analyze up to 20 articles
+        for entry in feed.entries[:20]:
+            title = entry.get('title', '')
+            
+            if title and len(title) > 5:
+                vader_scores = sentiment_analyzer.polarity_scores(title)
+                compound_score = vader_scores['compound']
+                sentiments.append(compound_score)
+                
+                if compound_score >= 0.05:
+                    positive_count += 1
+                elif compound_score <= -0.05:
+                    negative_count += 1
+                else:
+                    neutral_count += 1
+        
+        if sentiments:
+            avg_sentiment = np.mean(sentiments)
+            
+            if avg_sentiment >= 0.05:
+                sentiment_label = 'Positive'
+            elif avg_sentiment <= -0.05:
+                sentiment_label = 'Negative'
+            else:
+                sentiment_label = 'Neutral'
+        else:
+            avg_sentiment = 0
+            sentiment_label = 'Neutral'
+        
+        return {
+            'sentiment_score': float(avg_sentiment),
+            'sentiment_label': sentiment_label,
+            'article_count': len(sentiments),
+            'positive_count': positive_count,
+            'negative_count': negative_count,
+            'neutral_count': neutral_count,
+            'source': 'google_news',
+            'debug': f'Successfully processed {len(sentiments)} articles from Google News'
+        }
+        
+    except Exception as e:
+        if VERBOSE:
+            print(f"Error with Google News for {ticker}: {e}")
+        return {
+            'sentiment_score': 0,
+            'sentiment_label': 'Neutral',
+            'article_count': 0,
+            'source': 'google_news',
+            'error': str(e),
+            'debug': 'Exception occurred'
+        }
+    
+def analyze_sentiment_mixed(valid_metrics, horizon_col, max_newsapi_requests=75):
+    """
+    Smart sentiment analysis - uses Google News by default, NewsAPI for top movers if key available
+    
+    Args:
+        valid_metrics: DataFrame with stock metrics
+        horizon_col: Column to determine "top movers" (only used if NewsAPI available)
+        max_newsapi_requests: Max NewsAPI requests (default 75, only used if NewsAPI available)
+    
+    Returns:
+        DataFrame with sentiment data
+    """
+    sentiment_data = []
+    all_tickers = valid_metrics['ticker'].tolist()
+    company_names = dict(zip(valid_metrics['ticker'], valid_metrics['company_name']))
+    
+    # DEFAULT: Use Google News for everything if no NewsAPI key
+    if not NEWS_API_KEY:
+        print("\n📰 Using Google News RSS for all stocks (free, no API key required)")
+        print(f"Analyzing sentiment for {len(all_tickers)} stocks...")
+        
+        for ticker in tqdm(all_tickers, desc="Google News Analysis"):
+            company_name = company_names.get(ticker, ticker)
+            sentiment = get_google_news_sentiment(ticker, company_name)
+            sentiment['ticker'] = ticker
+            sentiment_data.append(sentiment)
+            time.sleep(0.3)  # Light rate limiting
+        
+        print(f"✓ Completed: {len(all_tickers)} stocks analyzed with Google News RSS")
+        return pd.DataFrame(sentiment_data)
+    
+    # PREMIUM: NewsAPI available - use mixed approach
+    print("\n📊 Mixed Strategy: NewsAPI + Google News")
+    
+    valid_metrics['abs_return'] = valid_metrics[horizon_col].abs()
+    top_movers = valid_metrics.nlargest(max_newsapi_requests, 'abs_return')
+    
+    newsapi_tickers = set(top_movers['ticker'].tolist())
+    
+    newsapi_count = 0
+    google_news_count = 0
+    
+    print(f"  • Top {max_newsapi_requests} movers: NewsAPI (premium)")
+    print(f"  • Remaining {len(all_tickers) - max_newsapi_requests}: Google News (free)")
+    
+    for ticker in tqdm(all_tickers, desc="Mixed Analysis"):
+        company_name = company_names.get(ticker, ticker)
+        
+        if ticker in newsapi_tickers and newsapi_count < max_newsapi_requests:
+            sentiment = get_news_sentiment(ticker, company_name)
+            sentiment['source'] = 'NewsAPI'
+            newsapi_count += 1
+            time.sleep(0.5)
+        else:
+            sentiment = get_google_news_sentiment(ticker, company_name)
+            google_news_count += 1
+            time.sleep(0.3)
+        
+        sentiment['ticker'] = ticker
+        sentiment_data.append(sentiment)
+    
+    print(f"✓ Completed: {newsapi_count} NewsAPI + {google_news_count} Google News")
+    
+    return pd.DataFrame(sentiment_data)
+
+def get_sentiment_strategy_summary(sentiment_df):
+    """Get summary of which source was used"""
+    if sentiment_df.empty or 'source' not in sentiment_df.columns:
+        return None
+    
+    summary = sentiment_df['source'].value_counts()
+    
+    return {
+        'newsapi_count': summary.get('NewsAPI', 0),
+        'google_news_count': summary.get('google_news', 0), 
+        'total': len(sentiment_df)
+    }
+
+def filter_high_quality_sentiment(sentiment_df, min_articles=3):
+    """Filter sentiment data to only high-quality results"""
+    mask = (
+        (sentiment_df['source'] == 'google_news') |
+        ((sentiment_df['source'] == 'NewsAPI') & (sentiment_df['article_count'] >= min_articles))
+    )
+    
+    return sentiment_df[mask]
+
+def get_sentiment_color(sentiment_score):
+    """Get color for sentiment visualization"""
+    if pd.isna(sentiment_score):
+        return '#888888'
+    
+    if sentiment_score >= 0.5:
+        return '#006400'
+    elif sentiment_score >= 0.05:
+        return '#32CD32'
+    elif sentiment_score > -0.05:
+        return '#FFFF99'
+    elif sentiment_score > -0.5:
+        return '#FF6347'
+    else:
+        return '#8B0000'
+
+def create_sentiment_chart(sentiment_df, top_n=20):
+    """Create sentiment visualization chart"""
+    if sentiment_df.empty:
+        return None
+    
+    sorted_df = sentiment_df.nlargest(top_n, 'sentiment_score')
+    
+    colors = [get_sentiment_color(score) for score in sorted_df['sentiment_score']]
+    
+    fig = go.Figure(data=[
+        go.Bar(
+            x=sorted_df['ticker'],
+            y=sorted_df['sentiment_score'],
+            marker_color=colors,
+            text=sorted_df['sentiment_label'],
+            textposition='outside',
+            hovertemplate='<b>%{x}</b><br>' +
+                          'Sentiment: %{y:.3f}<br>' +
+                          'Articles: %{customdata}<extra></extra>',
+            customdata=sorted_df['article_count']
+        )
+    ])
+    
+    fig.update_layout(
+        title=f'Top {top_n} Stocks by News Sentiment',
+        xaxis_title='Ticker',
+        yaxis_title='Sentiment Score',
+        height=400,
+        yaxis=dict(range=[-1, 1])
+    )
+    
+    fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+    
+    return fig
+
+def merge_sentiment_with_metrics(metrics_df, sentiment_df):
+    """Merge sentiment data with existing metrics"""
+    return metrics_df.merge(
+        sentiment_df[['ticker', 'sentiment_score', 'sentiment_label', 'article_count', 'source']],
+        on='ticker',
+        how='left'
+    )
+
+def get_sector_sentiment_summary(sentiment_df, metrics_df):
+    """Calculate average sentiment by sector"""
+    merged = sentiment_df.merge(
+        metrics_df[['ticker', 'sector']], 
+        on='ticker', 
+        how='left'
+    )
+    
+    sector_summary = merged.groupby('sector').agg({
+        'sentiment_score': 'mean',
+        'article_count': 'sum',
+        'ticker': 'count'
+    }).round(3)
+    
+    sector_summary.columns = ['Avg Sentiment', 'Total Articles', 'Stock Count']
+    sector_summary = sector_summary.sort_values('Avg Sentiment', ascending=False)
+    
+    return sector_summary
+
+def create_sentiment_comparison_chart(sentiment_df):
+    """Create chart comparing NewsAPI vs yfinance sentiment quality"""
+    if 'source' not in sentiment_df.columns:
+        return None
+    
+    source_summary = sentiment_df.groupby('source').agg({
+        'sentiment_score': 'mean',
+        'article_count': 'mean',
+        'ticker': 'count'
+    }).round(3)
+    
+    source_summary.columns = ['Avg Sentiment', 'Avg Articles', 'Stock Count']
+    
+    fig = go.Figure()
+    
+    fig.add_trace(go.Bar(
+        name='Stock Count',
+        x=source_summary.index,
+        y=source_summary['Stock Count'],
+        yaxis='y',
+        marker_color='lightblue'
+    ))
+    
+    fig.add_trace(go.Bar(
+        name='Avg Articles',
+        x=source_summary.index,
+        y=source_summary['Avg Articles'],
+        yaxis='y2',
+        marker_color='orange'
+    ))
+    
+    fig.update_layout(
+        title='Sentiment Data Sources Comparison',
+        xaxis_title='Source',
+        yaxis=dict(title='Stock Count', side='left'),
+        yaxis2=dict(title='Avg Articles per Stock', overlaying='y', side='right'),
+        height=400,
+        barmode='group'
+    )
+    
+    return fig
+
+# ---------------------------
 # CLI Main Function
 # ---------------------------
 def run_cli(consecutive_days=7, index_key="SP500"):
@@ -2029,6 +2540,7 @@ def run_streamlit():
     view_mode = st.sidebar.radio(
         "View Mode",
         ["Dashboard", "Sector Analysis", "Top Movers", "Technical Screener", 
+        "Sentiment Analysis",
         "Comparison Mode", "Historical Analysis", "Risk Management", "Data Export"],
         key="view_mode_radio"
     )
@@ -2589,6 +3101,422 @@ def run_streamlit():
             else:
                 st.info("No stocks match the selected criteria")
 
+        # ---------- Sentiment Analysis ----------
+        elif view_mode == "Sentiment Analysis":
+            st.subheader("📰 Market Sentiment Analysis")
+            
+            # Strategy explanation
+            with st.expander("ℹ️ How Sentiment Analysis Works"):
+                if NEWS_API_KEY:
+                    st.markdown("""
+                    **🎯 Mixed Source Strategy** (NewsAPI key detected)
+                    
+                    You have NewsAPI configured! This gives you the best of both worlds:
+                    
+                    1. **NewsAPI (Premium)**: For top movers
+                    - Comprehensive article coverage (50+ articles per stock)
+                    - Better quality and more sources
+                    - Limited to 75-100 stocks/day (free tier)
+                    - Automatically targets the most volatile stocks
+                    
+                    2. **Google News RSS (Free)**: For remaining stocks
+                    - Free and unlimited
+                    - Good general sentiment coverage
+                    - 10-20 articles per stock
+                    
+                    **Result:** Premium coverage where it matters most, free coverage for everything else!
+                    """)
+                else:
+                    st.markdown("""
+                    **📰 Google News RSS Strategy** (No API key required)
+                    
+                    Using 100% free sentiment analysis:
+                    
+                    - **No API key needed** - works out of the box
+                    - **No rate limits** - analyze as many stocks as you want
+                    - **Reliable data** - Google News aggregates from major sources
+                    - **10-20 articles per stock** - sufficient for sentiment analysis
+                    
+                    ---
+                    
+                    **💡 Want premium coverage?**
+                    
+                    Get a free NewsAPI key for enhanced analysis of top movers:
+                    1. Sign up at [newsapi.org](https://newsapi.org) (free tier available)
+                    2. Add `NEWS_API_KEY=your_key_here` to your `.env` file
+                    3. Restart the app
+                    
+                    With NewsAPI, you'll get 50+ articles for the most important stocks!
+                    """)
+            
+            # Configuration section
+            st.markdown("### ⚙️ Configuration")
+            
+            if NEWS_API_KEY:
+                # Show NewsAPI controls
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    max_newsapi = st.slider(
+                        "NewsAPI stocks (top movers)", 
+                        10, 100, 75,
+                        help="How many top movers to analyze with NewsAPI"
+                    )
+                    if max_newsapi > 100:
+                        st.warning("⚠️ Free tier limit is 100 requests/day")
+                
+                with col2:
+                    min_articles = st.number_input(
+                        "Min articles (NewsAPI only)", 
+                        0, 20, 3,
+                        help="Filter out NewsAPI results with too few articles"
+                    )
+                
+                with col3:
+                    st.success("✅ NewsAPI Active")
+                    st.caption(f"Premium analysis enabled")
+                    if horizon_col:
+                        st.info(f"Top movers: **{horizon_label}** returns")
+            else:
+                # Show Google News only info
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.info("📰 **Free Mode:** Using Google News RSS for all stocks")
+                    st.caption("No API key required • No rate limits • Unlimited stocks")
+                
+                with col2:
+                    if st.button("🔑 Setup NewsAPI", key="setup_newsapi"):
+                        st.markdown("""
+                        **Quick Setup:**
+                        1. Get key: [newsapi.org](https://newsapi.org)
+                        2. Add to `.env`: `NEWS_API_KEY=your_key`
+                        3. Restart app
+                        """)
+                
+                # Set defaults for Google News only mode
+                max_newsapi = 0
+                min_articles = 0
+            
+            # Analyze button
+            st.markdown("### 🔍 Run Analysis")
+            
+            if st.button("📊 Analyze Market Sentiment", key="analyze_sentiment_btn", type="primary"):
+                with st.spinner("Analyzing market sentiment... This may take 5-10 minutes."):
+                    try:
+                        sentiment_df = analyze_sentiment_mixed(
+                            valid_metrics, 
+                            horizon_col,
+                            max_newsapi_requests=max_newsapi
+                        )
+                        
+                        # Filter quality only if using NewsAPI
+                        if NEWS_API_KEY:
+                            sentiment_df_filtered = filter_high_quality_sentiment(
+                                sentiment_df, 
+                                min_articles=min_articles
+                            )
+                        else:
+                            # Keep all Google News results
+                            sentiment_df_filtered = sentiment_df
+                        
+                        st.session_state.sentiment_df = sentiment_df_filtered
+                        st.session_state.sentiment_df_raw = sentiment_df
+                        
+                        # Success message based on mode
+                        strategy = get_sentiment_strategy_summary(sentiment_df)
+                        if strategy:
+                            if NEWS_API_KEY:
+                                st.success(f"""
+                                ✅ **Sentiment analysis complete!**
+                                
+                                - 🎯 NewsAPI: {strategy['newsapi_count']} stocks (premium)
+                                - 📰 Google News: {strategy['google_news_count']} stocks (free)
+                                - 📊 Total: {strategy['total']} stocks analyzed
+                                - ⭐ High quality: {len(sentiment_df_filtered)} stocks
+                                """)
+                            else:
+                                st.success(f"""
+                                ✅ **Sentiment analysis complete!**
+                                
+                                - 📰 Google News: {strategy['google_news_count']} stocks
+                                - 📊 Total: {strategy['total']} stocks analyzed
+                                - 💯 100% free coverage (no API key required)
+                                """)
+                        
+                    except Exception as e:
+                        st.error(f"❌ Error during sentiment analysis: {e}")
+                        with st.expander("🐛 Debug Information"):
+                            import traceback
+                            st.code(traceback.format_exc())
+            
+            # Display results (rest of the code remains the same)
+            if 'sentiment_df' in st.session_state and not st.session_state.sentiment_df.empty:
+                sentiment_df = st.session_state.sentiment_df
+                sentiment_df_raw = st.session_state.get('sentiment_df_raw', sentiment_df)
+                
+                merged_data = merge_sentiment_with_metrics(valid_metrics, sentiment_df)
+                
+                # Summary metrics
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    avg_sentiment = sentiment_df['sentiment_score'].mean()
+                    color = get_sentiment_color(avg_sentiment)
+                    st.markdown(f"""
+                        <div style="background-color: {color}; padding: 15px; border-radius: 10px; text-align: center;">
+                            <h4>Market Sentiment</h4>
+                            <h2>{avg_sentiment:.3f}</h2>
+                        </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    positive_pct = (sentiment_df['sentiment_label'] == 'Positive').sum() / len(sentiment_df) * 100
+                    st.metric("📈 Positive Stocks", f"{positive_pct:.1f}%")
+                
+                with col3:
+                    negative_pct = (sentiment_df['sentiment_label'] == 'Negative').sum() / len(sentiment_df) * 100
+                    st.metric("📉 Negative Stocks", f"{negative_pct:.1f}%")
+                
+                with col4:
+                    total_articles = sentiment_df['article_count'].sum()
+                    st.metric("📰 Total Articles", f"{total_articles:,}")
+                
+                # Tabs for results
+                tabs = st.tabs([
+                    "Top Sentiment", 
+                    "Sector Sentiment", 
+                    "Sentiment vs Performance", 
+                    "Data Sources",
+                    "Detailed Table"
+                ])
+                
+                with tabs[0]:
+                    st.subheader("🏆 Top 20 Stocks by Sentiment")
+                    
+                    top_20 = sentiment_df.nlargest(20, 'sentiment_score')
+                    
+                    fig = create_sentiment_chart(top_20, 20)
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Source breakdown
+                    if NEWS_API_KEY:
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            newsapi_in_top = (top_20['source'] == 'NewsAPI').sum()
+                            st.metric("🎯 NewsAPI Coverage", newsapi_in_top)
+                        with col2:
+                            google_news_in_top = (top_20['source'] == 'google_news').sum()
+                            st.metric("📰 Google News Coverage", google_news_in_top)
+                    else:
+                        st.info("📰 All sentiment data from Google News RSS (free)")
+                
+                with tabs[1]:
+                    sector_sentiment = get_sector_sentiment_summary(sentiment_df, valid_metrics)
+                    
+                    st.subheader("🏢 Sentiment by Sector")
+                    
+                    styled_sector = sector_sentiment.style.background_gradient(
+                        subset=['Avg Sentiment'],
+                        cmap='RdYlGn',
+                        vmin=-1,
+                        vmax=1
+                    )
+                    st.dataframe(styled_sector, use_container_width=True)
+                    
+                    fig = go.Figure(data=[
+                        go.Bar(
+                            x=sector_sentiment.index,
+                            y=sector_sentiment['Avg Sentiment'],
+                            marker_color=[get_sentiment_color(s) for s in sector_sentiment['Avg Sentiment']],
+                            text=sector_sentiment['Avg Sentiment'].apply(lambda x: f"{x:.3f}"),
+                            textposition='outside'
+                        )
+                    ])
+                    fig.update_layout(
+                        title="Average Sentiment by Sector",
+                        xaxis_title="Sector",
+                        yaxis_title="Average Sentiment",
+                        xaxis_tickangle=-45,
+                        height=400,
+                        yaxis=dict(range=[-1, 1])
+                    )
+                    fig.add_hline(y=0, line_dash="dash", opacity=0.5)
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                with tabs[2]:
+                    if horizon_col in merged_data.columns:
+                        st.subheader(f"📊 Sentiment vs {horizon_label} Performance")
+                        
+                        plot_data = merged_data.dropna(subset=['sentiment_score', horizon_col])
+                        
+                        fig = px.scatter(
+                            plot_data,
+                            x='sentiment_score',
+                            y=horizon_col,
+                            color='source',
+                            size='article_count',
+                            hover_data=['ticker', 'company_name', 'sector'],
+                            title=f"Sentiment vs Performance Correlation",
+                            labels={
+                                'sentiment_score': 'Sentiment Score',
+                                horizon_col: f'{horizon_label} Return (%)',
+                                'source': 'Data Source'
+                            },
+                            color_discrete_map={
+                                'NewsAPI': '#1f77b4', 
+                                'google_news': '#ff7f0e'
+                            }
+                        )
+                        fig.add_hline(y=0, line_dash="dash", opacity=0.3)
+                        fig.add_vline(x=0, line_dash="dash", opacity=0.3)
+                        fig.update_layout(height=500)
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Correlation metrics
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            corr_all = plot_data[['sentiment_score', horizon_col]].corr().iloc[0, 1]
+                            st.metric("📊 Overall Correlation", f"{corr_all:.3f}")
+                        
+                        with col2:
+                            if NEWS_API_KEY:
+                                newsapi_data = plot_data[plot_data['source'] == 'NewsAPI']
+                                if len(newsapi_data) > 10:
+                                    corr_newsapi = newsapi_data[['sentiment_score', horizon_col]].corr().iloc[0, 1]
+                                    st.metric("🎯 NewsAPI Correlation", f"{corr_newsapi:.3f}")
+                                else:
+                                    st.info("Not enough NewsAPI data")
+                            else:
+                                google_data = plot_data[plot_data['source'] == 'google_news']
+                                if len(google_data) > 10:
+                                    corr_google = google_data[['sentiment_score', horizon_col]].corr().iloc[0, 1]
+                                    st.metric("📰 Google News Correlation", f"{corr_google:.3f}")
+                
+                with tabs[3]:
+                    st.subheader("📊 Data Source Analysis")
+                    
+                    if NEWS_API_KEY:
+                        fig = create_sentiment_comparison_chart(sentiment_df_raw)
+                        if fig:
+                            st.plotly_chart(fig, use_container_width=True)
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.markdown("**🎯 NewsAPI Stocks (Top Movers)**")
+                            newsapi_stocks = sentiment_df_raw[sentiment_df_raw['source'] == 'NewsAPI']
+                            if not newsapi_stocks.empty:
+                                st.dataframe(
+                                    newsapi_stocks[['ticker', 'sentiment_score', 'article_count']].head(10),
+                                    use_container_width=True
+                                )
+                            else:
+                                st.info("No NewsAPI data")
+                        
+                        with col2:
+                            st.markdown("**📰 Google News Stocks**")
+                            google_stocks = sentiment_df_raw[sentiment_df_raw['source'] == 'google_news']
+                            if not google_stocks.empty:
+                                st.dataframe(
+                                    google_stocks[['ticker', 'sentiment_score', 'article_count']].head(10),
+                                    use_container_width=True
+                                )
+                            else:
+                                st.info("No Google News data")
+                        
+                        st.markdown("**📈 Quality Metrics by Source**")
+                        quality_comparison = sentiment_df_raw.groupby('source').agg({
+                            'article_count': ['mean', 'median', 'max'],
+                            'sentiment_score': ['mean', 'std'],
+                            'ticker': 'count'
+                        }).round(3)
+                        st.dataframe(quality_comparison, use_container_width=True)
+                    else:
+                        st.info("📰 **All sentiment data from Google News RSS**")
+                        
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            avg_articles = sentiment_df_raw['article_count'].mean()
+                            st.metric("Avg Articles/Stock", f"{avg_articles:.1f}")
+                        
+                        with col2:
+                            total_stocks = len(sentiment_df_raw)
+                            st.metric("Total Stocks", total_stocks)
+                        
+                        with col3:
+                            with_articles = (sentiment_df_raw['article_count'] > 0).sum()
+                            coverage = with_articles / total_stocks * 100
+                            st.metric("Coverage", f"{coverage:.1f}%")
+                        
+                        st.markdown("**📊 Article Distribution**")
+                        fig = px.histogram(
+                            sentiment_df_raw,
+                            x='article_count',
+                            nbins=20,
+                            title="Distribution of Articles per Stock",
+                            labels={'article_count': 'Articles per Stock'}
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                
+                with tabs[4]:
+                    st.subheader("📋 All Sentiment Data")
+                    
+                    display_cols = ['ticker', 'company_name', 'sentiment_score', 'sentiment_label', 
+                                'article_count', 'source']
+                    
+                    if horizon_col in merged_data.columns:
+                        display_cols.insert(4, horizon_col)
+                    
+                    if 'sector' in merged_data.columns:
+                        display_cols.insert(3, 'sector')
+                    
+                    display_data = merged_data[display_cols].sort_values('sentiment_score', ascending=False)
+                    
+                    st.dataframe(
+                        display_data.style.background_gradient(
+                            subset=['sentiment_score'],
+                            cmap='RdYlGn',
+                            vmin=-1,
+                            vmax=1
+                        ),
+                        use_container_width=True,
+                        height=400
+                    )
+                    
+                    csv = display_data.to_csv(index=False)
+                    st.download_button(
+                        label="📥 Download Sentiment Data",
+                        data=csv,
+                        file_name=f"sentiment_analysis_{datetime.now().strftime('%Y%m%d')}.csv",
+                        mime="text/csv"
+                    )
+            
+            else:
+                st.info("👆 Click 'Analyze Market Sentiment' to start analysis")
+                
+                if NEWS_API_KEY:
+                    st.markdown("""
+                    **📊 What you'll get:**
+                    - Comprehensive sentiment for top movers (NewsAPI)
+                    - Free sentiment for remaining stocks (Google News)
+                    - Sector sentiment breakdown
+                    - Sentiment vs performance correlation
+                    - Exportable data
+                    """)
+                else:
+                    st.markdown("""
+                    **📊 What you'll get:**
+                    - Free sentiment analysis for all stocks
+                    - Google News RSS coverage (10-20 articles/stock)
+                    - Sector sentiment breakdown
+                    - Sentiment vs performance correlation
+                    - Exportable data
+                    
+                    **✨ 100% free - no API key required!**
+                    """)
         # ---------- Data Export ----------
         elif view_mode == "Data Export":
             st.subheader("📥 Data Export")

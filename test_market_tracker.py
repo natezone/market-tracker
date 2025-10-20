@@ -13,6 +13,8 @@ import tempfile
 import shutil
 from unittest.mock import patch, MagicMock, call
 import warnings
+
+from market_tracker import NEWS_API_KEY, get_google_news_sentiment, get_news_sentiment, get_yfinance_news_sentiment
 warnings.filterwarnings('ignore')
 
 # Add the main script directory to path
@@ -430,6 +432,49 @@ class TestAdvancedAnalytics(TestMarketTracker):
         # 99% VaR should be more negative than 95% VaR
         if not np.isnan(var_95) and not np.isnan(var_99):
             self.assertLess(var_99, var_95)
+            
+    def test_all_sentiment_sources(ticker='AAPL'):
+        """Test all sentiment sources for comparison"""
+        company_name = 'Apple Inc.'
+        
+        print(f"\nTesting all sentiment sources for {ticker}")
+        print("="*60)
+        
+        # Test NewsAPI
+        if NEWS_API_KEY:
+            print("\n1. Testing NewsAPI...")
+            newsapi_result = get_news_sentiment(ticker, company_name)
+            print(f"   Score: {newsapi_result['sentiment_score']:.3f}")
+            print(f"   Articles: {newsapi_result['article_count']}")
+        else:
+            print("\n1. NewsAPI: Not configured")
+        
+        # Test yfinance
+        print("\n2. Testing yfinance...")
+        yfinance_result = get_yfinance_news_sentiment(ticker)
+        print(f"   Score: {yfinance_result['sentiment_score']:.3f}")
+        print(f"   Articles: {yfinance_result['article_count']}")
+        
+        # Test Google News
+        print("\n3. Testing Google News...")
+        google_result = get_google_news_sentiment(ticker, company_name)
+        print(f"   Score: {google_result['sentiment_score']:.3f}")
+        print(f"   Articles: {google_result['article_count']}")
+        
+        print("\n" + "="*60)
+        
+        # Comparison
+        print("\nComparison:")
+        if NEWS_API_KEY:
+            print(f"  NewsAPI:     {newsapi_result['article_count']:3d} articles, sentiment: {newsapi_result['sentiment_score']:+.3f}")
+        print(f"  yfinance:    {yfinance_result['article_count']:3d} articles, sentiment: {yfinance_result['sentiment_score']:+.3f}")
+        print(f"  Google News: {google_result['article_count']:3d} articles, sentiment: {google_result['sentiment_score']:+.3f}")
+        
+        return {
+            'newsapi': newsapi_result if NEWS_API_KEY else None,
+            'yfinance': yfinance_result,
+            'google_news': google_result
+        }
 
 class TestMetricsCalculation(TestMarketTracker):
     """Test metrics calculation functions"""

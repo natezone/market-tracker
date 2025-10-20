@@ -47,16 +47,26 @@ pip install -r requirements.txt
   - 52-week highs and lows identification
 
 - **Technical Screener**
-    - Advanced filtering by price, volatility, RSI, and returns
-    - Sector-based filtering
-    - Risk vs return scatter plots
-    - Individual stock technical charts
+  - Advanced filtering by price, volatility, RSI, and returns
+  - Sector-based filtering
+  - Risk vs return scatter plots
+  - Individual stock technical charts
+
+- **Sentiment Analysis**
+  - News sentiment analysis for all stocks using NLP
+  - Mixed source strategy: NewsAPI (premium) + Google News RSS (free)
+  - 100% free mode with Google News (no API key required)
+  - Sentiment vs performance correlation analysis
+  - Sector sentiment breakdown and heatmaps
+  - Top positive/negative stocks identification
+  - Data source quality comparison
+  - Exportable sentiment data with article counts
 
 - **Comparison Mode**
-    - Select and compare 2-10 stocks side-by-side
-    - Performance correlation analysis
-    - Risk vs return visualization
-    - Top 20 performers auto-selection
+  - Select and compare 2-15 stocks side-by-side
+  - Performance correlation analysis
+  - Risk vs return visualization
+  - Top 20 performers auto-selection
 
 - **Historical Analysis**
   - Custom date range analysis
@@ -70,6 +80,12 @@ pip install -r requirements.txt
   - Beta and Alpha calculations vs market
   - Stress testing with market crash scenarios
   - Portfolio correlation analysis
+
+- **Data Export**
+  - Download all metrics in CSV format
+  - Custom filtering for exports
+  - Index-specific data files
+  - Rising/declining stock lists
 
 ## Automated Data Updates
 The system includes GitHub Actions automation:
