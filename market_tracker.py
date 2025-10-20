@@ -1123,6 +1123,7 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label):
                 st.session_state.comparison_selected = updated
                 
                 st.success(f"✅ Added top performers! Total selected: {len(updated)}")
+                st.rerun()
     
     with col1:
         # Multiselect reads from session state
@@ -3341,13 +3342,29 @@ def run_streamlit():
                     
                     st.subheader("🏢 Sentiment by Sector")
                     
-                    styled_sector = sector_sentiment.style.background_gradient(
-                        subset=['Avg Sentiment'],
-                        cmap='RdYlGn',
-                        vmin=-1,
-                        vmax=1
-                    )
-                    st.dataframe(styled_sector, use_container_width=True)
+                    # Try to use background_gradient with fall back to simple display
+                    try:
+                        styled_sector = sector_sentiment.style.background_gradient(
+                            subset=['Avg Sentiment'],
+                            cmap='RdYlGn',
+                            vmin=-1,
+                            vmax=1
+                        )
+                        st.dataframe(styled_sector, use_container_width=True)
+                    except ImportError:
+                        # Fallback: Use custom color function instead
+                        def color_sentiment(val):
+                            """Color cells based on sentiment value"""
+                            if pd.isna(val):
+                                return ''
+                            color = get_sentiment_color(val)
+                            return f'background-color: {color}'
+                        
+                        styled_sector = sector_sentiment.style.applymap(
+                            color_sentiment, 
+                            subset=['Avg Sentiment']
+                        )
+                        st.dataframe(styled_sector, use_container_width=True)
                     
                     fig = go.Figure(data=[
                         go.Bar(

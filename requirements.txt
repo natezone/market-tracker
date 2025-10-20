@@ -13,3 +13,4 @@ newsapi-python
 textblob
 python-dotenv
 feedparser
+matplotlib
