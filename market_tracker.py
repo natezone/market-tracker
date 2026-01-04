@@ -3309,6 +3309,18 @@ def run_streamlit():
     # Get current index-specific data directory
     index_data_dir = os.path.join(DATA_DIR, current_index)
 
+    # Auto-fetch data if not present
+    if not os.path.exists(os.path.join(index_data_dir, "latest_metrics.csv")):
+        if 'data_fetched' not in st.session_state:
+            with st.spinner(f"First time setup: Fetching {index_selection} data... This will take about 5-10 minutes."):
+                try:
+                    run_cli(consecutive_days=7, index_key=current_index)
+                    st.session_state.data_fetched = True
+                    st.success("✅ Data fetched successfully!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to fetch data: {e}")
+                    st.info("Click 'Fetch All Data' in the sidebar to try again.")
     # Header
     st.title(f"📈 {index_selection} Market Tracker")
 
