@@ -355,37 +355,53 @@ def load_price_history_from_db(ticker):
 
 def get_database_stats():
     """
-    Get statistics about the database.
-    
-    Returns:
-        Dictionary with database statistics
+    Get statistics about the database (split databases).
     """
     try:
-        with get_db_connection() as conn:
-            # Count stocks by index
-            stocks_query = """
-                SELECT index_name, COUNT(*) as count 
-                FROM stocks 
-                GROUP BY index_name
-            """
-            stocks_df = pd.read_sql_query(stocks_query, conn)
+        total_stocks = 0
+        stocks_by_index = []
+        total_size = 0
+        last_update = None
+        
+        indices = ['SP500', 'SP400', 'SP600', 'NASDAQ100', 'DOW30', 'COMBINED']
+        
+        for index_key in indices:
+            db_path = db_manager.get_database_path(index_key)
             
-            # Total stocks
-            total_stocks = pd.read_sql_query("SELECT COUNT(*) as count FROM stocks", conn)
-            
-            # Database size
-            db_size_mb = os.path.getsize(DATABASE_PATH) / (1024 * 1024) if os.path.exists(DATABASE_PATH) else 0
-            
-            # Last update time
-            last_update_query = "SELECT MAX(updated_at) as last_update FROM stocks"
-            last_update_df = pd.read_sql_query(last_update_query, conn)
-            
-            return {
-                'total_stocks': int(total_stocks['count'].iloc[0]),
-                'stocks_by_index': stocks_df.to_dict('records'),
-                'size_mb': round(db_size_mb, 2),
-                'last_update': last_update_df['last_update'].iloc[0]
-            }
+            if os.path.exists(db_path):
+                # Get size
+                size_mb = os.path.getsize(db_path) / (1024 * 1024)
+                total_size += size_mb
+                
+                # Get count
+                try:
+                    conn = sqlite3.connect(db_path)
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT COUNT(*) FROM stocks")
+                    count = cursor.fetchone()[0]
+                    total_stocks += count
+                    
+                    stocks_by_index.append({
+                        'index_name': index_key,
+                        'count': count
+                    })
+                    
+                    # Get last update
+                    cursor.execute("SELECT MAX(updated_at) FROM stocks")
+                    update = cursor.fetchone()[0]
+                    if update and (not last_update or update > last_update):
+                        last_update = update
+                    
+                    conn.close()
+                except:
+                    pass
+        
+        return {
+            'total_stocks': total_stocks,
+            'stocks_by_index': stocks_by_index,
+            'size_mb': round(total_size, 2),
+            'last_update': last_update
+        }
     except Exception as e:
         if VERBOSE:
             print(f"Error getting database stats: {e}")
@@ -3232,14 +3248,21 @@ def plot_ticker_price_rsi(ticker_csv_path, ticker):
 @cache_data(ttl=3600, show_spinner=False)  # Cache for 1 hour
 def load_data_from_database(index_name):
     """
-    Load data from SQLite database with caching.
+    Load data from split database with caching.
     """
-    # Check if database exists
-    if not os.path.exists(DATABASE_PATH):
-        return None
+    # Use split database manager
+    df = db_manager.load_metrics(index_name)
     
-    # Load from database
-    df = load_metrics_from_db(index_name)
+    # If database is empty, try to load from CSV and populate database
+    if df.empty:
+        csv_path = os.path.join(DATA_DIR, index_name, 'latest_metrics.csv')
+        if os.path.exists(csv_path):
+            df = pd.read_csv(csv_path)
+            # Try to save to database for next time
+            try:
+                db_manager.save_metrics(df, index_name)
+            except:
+                pass
     
     return df if not df.empty else None
 
