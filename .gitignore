@@ -1,0 +1,53 @@
+# Keep CSV files ignored by default, but track everything inside the `data/` folder
+*.csv
+!/data/
+!/data/**
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.py[cod]
+
+# Environment
+.env
+.venv
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large database
+data/market_data.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# History folders (will regenerate locally)
+data/*/history/
+
+# Ignore large split databases (will be auto-built from CSV on Streamlit)
+data/COMBINED/combined_data.db
+
+# Allow smaller databases to be committed
+!data/SP500/sp500_data.db
+!data/SP400/sp400_data.db
+!data/SP600/sp600_data.db
+!data/NASDAQ100/nasdaq100_data.db
+!data/DOW30/dow30_data.db
