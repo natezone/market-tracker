@@ -1,0 +1,282 @@
+name: Update Market Data
+
+on:
+  schedule:
+    # Run at 9 AM EST weekdays only (before market open)
+    - cron: '0 14 * * 1-5'   # 14:00 UTC = 9:00 AM EST (Mon-Fri)
+    # Run at 5 PM EST weekdays only (after market close)  
+    - cron: '0 22 * * 1-5'   # 22:00 UTC = 5:00 PM EST (Mon-Fri)
+  workflow_dispatch:
+    inputs:
+      index:
+        description: 'Market index to update'
+        required: false
+        default: 'ALL'
+        type: choice
+        options:
+          - ALL
+          - SP500
+          - SP400
+          - SP600
+          - NASDAQ100
+          - DOW30
+          - COMBINED
+  
+permissions:
+  contents: write  
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy yfinance requests tqdm python-dateutil scipy lxml vaderSentiment newsapi-python textblob python-dotenv feedparser
+          
+      - name: Create data directory structure
+        run: |
+          mkdir -p data/SP500/history
+          mkdir -p data/SP400/history
+          mkdir -p data/SP600/history
+          mkdir -p data/NASDAQ100/history
+          mkdir -p data/DOW30/history
+          mkdir -p data/COMBINED/history
+          
+      - name: Update S&P 500 data
+        if: github.event.inputs.index == 'SP500' || github.event.inputs.index == 'ALL' || github.event_name == 'schedule'
+        run: |
+          python -c "
+          import sys
+          try:
+              from market_tracker import run_cli
+              print('Starting S&P 500 data update...')
+              run_cli(consecutive_days=7, index_key='SP500')
+              print('S&P 500 data update completed!')
+          except Exception as e:
+              print(f'Error updating S&P 500 data: {e}')
+              import traceback
+              traceback.print_exc()
+              sys.exit(1)
+          "
+          
+      - name: Update S&P MidCap 400 data
+        if: github.event.inputs.index == 'SP400' || github.event.inputs.index == 'ALL' || github.event_name == 'schedule'
+        run: |
+          python -c "
+          import sys
+          try:
+              from market_tracker import run_cli
+              print('Starting S&P MidCap 400 data update...')
+              run_cli(consecutive_days=7, index_key='SP400')
+              print('S&P MidCap 400 data update completed!')
+          except Exception as e:
+              print(f'Error updating S&P MidCap 400 data: {e}')
+              import traceback
+              traceback.print_exc()
+              sys.exit(1)
+          "
+          
+      - name: Update S&P SmallCap 600 data
+        if: github.event.inputs.index == 'SP600' || github.event.inputs.index == 'ALL' || github.event_name == 'schedule'
+        run: |
+          python -c "
+          import sys
+          try:
+              from market_tracker import run_cli
+              print('Starting S&P SmallCap 600 data update...')
+              run_cli(consecutive_days=7, index_key='SP600')
+              print('S&P SmallCap 600 data update completed!')
+          except Exception as e:
+              print(f'Error updating S&P SmallCap 600 data: {e}')
+              import traceback
+              traceback.print_exc()
+              sys.exit(1)
+          "
+          
+      - name: Update Nasdaq-100 data
+        if: github.event.inputs.index == 'NASDAQ100' || github.event.inputs.index == 'ALL' || github.event_name == 'schedule'
+        run: |
+          python -c "
+          import sys
+          try:
+              from market_tracker import run_cli
+              print('Starting Nasdaq-100 data update...')
+              run_cli(consecutive_days=7, index_key='NASDAQ100')
+              print('Nasdaq-100 data update completed!')
+          except Exception as e:
+              print(f'Error updating Nasdaq-100 data: {e}')
+              import traceback
+              traceback.print_exc()
+              sys.exit(1)
+          "
+          
+      - name: Update Dow Jones 30 data
+        if: github.event.inputs.index == 'DOW30' || github.event.inputs.index == 'ALL' || github.event_name == 'schedule'
+        run: |
+          python -c "
+          import sys
+          try:
+              from market_tracker import run_cli
+              print('Starting Dow Jones 30 data update...')
+              run_cli(consecutive_days=7, index_key='DOW30')
+              print('Dow Jones 30 data update completed!')
+          except Exception as e:
+              print(f'Error updating Dow Jones 30 data: {e}')
+              import traceback
+              traceback.print_exc()
+              sys.exit(1)
+          "
+          
+      - name: Update Combined indices data
+        if: github.event.inputs.index == 'COMBINED' || github.event.inputs.index == 'ALL' || github.event_name == 'schedule'
+        run: |
+          python -c "
+          import sys
+          try:
+              from market_tracker import run_cli
+              print('Starting Combined indices data update...')
+              run_cli(consecutive_days=7, index_key='COMBINED')
+              print('Combined indices data update completed!')
+          except Exception as e:
+              print(f'Error updating Combined indices data: {e}')
+              import traceback
+              traceback.print_exc()
+              sys.exit(1)
+          "
+          
+      - name: Verify data files were created
+        run: |
+          echo "Checking for data files..."
+          
+          # Function to check index data
+          check_index() {
+            INDEX=$1
+            echo ""
+            echo "=== Checking $INDEX ==="
+            
+            if [ -f "data/$INDEX/latest_metrics.csv" ]; then
+              echo "✓ latest_metrics.csv created ($(wc -l < data/$INDEX/latest_metrics.csv) lines)"
+            else
+              echo "✗ latest_metrics.csv missing"
+            fi
+            
+            if [ -f "data/$INDEX/rising_7day.csv" ]; then
+              echo "✓ rising_7day.csv created ($(wc -l < data/$INDEX/rising_7day.csv) lines)"
+            else
+              echo "✗ rising_7day.csv missing"
+            fi
+            
+            if [ -f "data/$INDEX/declining_7day.csv" ]; then
+              echo "✓ declining_7day.csv created ($(wc -l < data/$INDEX/declining_7day.csv) lines)"
+            else
+              echo "✗ declining_7day.csv missing"
+            fi
+          }
+          
+          # Check each index
+          check_index "SP500"
+          check_index "SP400"
+          check_index "SP600"
+          check_index "NASDAQ100"
+          check_index "DOW30"
+          check_index "COMBINED"
+          
+      - name: Check if data changed
+        id: verify-changed-files
+        run: |
+          git status --porcelain
+          
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Data files have changed"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes in data files"
+          fi
+          
+      - name: Show what changed
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          echo "Files that changed:"
+          git status --porcelain
+          echo ""
+          echo "Git diff summary:"
+          git diff --stat
+          
+      - name: Commit and push changes
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Bot"
+          
+          git add data/
+          
+          TIMESTAMP=$(date +'%Y-%m-%d %H:%M UTC')
+          CHANGED_FILES=$(git status --porcelain | wc -l)
+          
+          git commit -m "📊 Update market data - ${TIMESTAMP}
+
+          - Updated ${CHANGED_FILES} files across all indices
+          - Indices: S&P 500, S&P MidCap 400, S&P SmallCap 600, Nasdaq-100, Dow Jones 30, Combined
+          - Analysis period: 7-day consecutive trends
+          - Data source: Yahoo Finance via yfinance"
+          
+          for i in {1..3}; do
+            if git push; then
+              echo "Successfully pushed changes"
+              break
+            else
+              echo "Push attempt $i failed, retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+          
+      - name: No changes detected
+        if: steps.verify-changed-files.outputs.changed == 'false'
+        run: |
+          echo "No changes in market data detected"
+          
+      - name: Summary
+        if: always()
+        run: |
+          echo "=== Workflow Summary ==="
+          echo "Timestamp: $(date)"
+          echo "Data changed: ${{ steps.verify-changed-files.outputs.changed }}"
+          
+          # Summary for each index
+          for INDEX in SP500 SP400 SP600 NASDAQ100 DOW30 COMBINED; do
+            echo ""
+            echo "--- $INDEX ---"
+            if [ -f "data/$INDEX/latest_metrics.csv" ]; then
+              STOCK_COUNT=$(tail -n +2 data/$INDEX/latest_metrics.csv | wc -l)
+              echo "Stocks processed: ${STOCK_COUNT}"
+            fi
+            
+            if [ -f "data/$INDEX/rising_7day.csv" ]; then
+              RISING_COUNT=$(tail -n +2 data/$INDEX/rising_7day.csv | wc -l)
+              echo "Rising stocks (7-day): ${RISING_COUNT}"
+            fi
+            
+            if [ -f "data/$INDEX/declining_7day.csv" ]; then
+              DECLINING_COUNT=$(tail -n +2 data/$INDEX/declining_7day.csv | wc -l)
+              echo "Declining stocks (7-day): ${DECLINING_COUNT}"
+            fi
+          done

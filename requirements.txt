@@ -1,0 +1,16 @@
+streamlit
+pandas
+numpy
+yfinance
+plotly
+requests
+beautifulsoup4
+tqdm
+python-dateutil
+scipy
+vaderSentiment
+newsapi-python
+textblob
+python-dotenv
+feedparser
+matplotlib
