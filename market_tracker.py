@@ -112,21 +112,28 @@ def ensure_dir(d):
 POSTGRES_URL = os.environ.get('DATABASE_URL')  # From Streamlit secrets
 
 if POSTGRES_URL:
-    # Fix for Render/Heroku postgres:// URLs (need postgresql://)
     if POSTGRES_URL.startswith('postgres://'):
         POSTGRES_URL = POSTGRES_URL.replace('postgres://', 'postgresql://', 1)
     
-    # Create SQLAlchemy engine
-    engine = create_engine(
-        POSTGRES_URL,
-        poolclass=NullPool, 
-        connect_args={
-            'connect_timeout': 10,
-            'options': '-c statement_timeout=30000'
-        }
-    )
+    try:
+        engine = create_engine(
+            POSTGRES_URL,
+            poolclass=NullPool,
+            connect_args={
+                'connect_timeout': 10,
+                'options': '-c statement_timeout=30000'
+            }
+        )
+        # Test connection
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        print("✅ PostgreSQL connection successful")
+    except Exception as e:
+        print(f"⚠️ PostgreSQL connection failed: {e}")
+        print("📁 App will use CSV fallback mode")
+        engine = None
 else:
-    print("WARNING: No DATABASE_URL found. Using fallback CSV mode.")
+    print("ℹ️ No DATABASE_URL found. Using CSV mode.")
     engine = None
 
 class PostgreSQLManager:
@@ -135,7 +142,11 @@ class PostgreSQLManager:
     def __init__(self, engine):
         self.engine = engine
         self.metadata = MetaData()
-        self._create_tables()
+        try:
+            self._create_tables()
+        except Exception as e:
+            print(f"⚠️ Could not create tables: {e}")
+            pass
     
     def _create_tables(self):
         """Create tables if they don't exist"""
@@ -340,9 +351,17 @@ class PostgreSQLManager:
 
 # Initialize PostgreSQL manager
 if engine:
-    pg_manager = PostgreSQLManager(engine)
+    try:
+        pg_manager = PostgreSQLManager(engine)
+        print("✅ PostgreSQL connection successful")
+    except Exception as e:
+        print(f"⚠️ PostgreSQL connection failed: {e}")
+        print("📁 Falling back to CSV mode")
+        engine = None
+        pg_manager = None
 else:
     pg_manager = None
+    print("ℹ️ No DATABASE_URL configured - using CSV mode")
 
 def sanitize_filename_windows(filename):
     """

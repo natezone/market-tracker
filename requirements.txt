@@ -8,6 +8,8 @@ beautifulsoup4
 tqdm
 python-dateutil
 scipy
+lxml
+html5lib
 vaderSentiment
 newsapi-python
 textblob
