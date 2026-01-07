@@ -47,3 +47,9 @@ data/*/history/
 !data/NASDAQ100/nasdaq100_data.db
 !data/DOW30/dow30_data.db
 !data/COMBINED/combined_data.db
+
+# Secrets
+secrets.toml
+
+# testing
+test.py

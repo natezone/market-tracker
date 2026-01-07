@@ -22,101 +22,41 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from newsapi import NewsApiClient
 from textblob import TextBlob
 from dotenv import load_dotenv
-import sqlite3
-from contextlib import contextmanager
+from sqlalchemy import create_engine, text, Table, Column, Integer, String, Float, MetaData, DateTime
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
+import os
+from stock_recommendations import (
+    generate_recommendations,
+    calculate_stock_score,
+    build_diversified_portfolio,
+    InvestmentStrategy,
+    RecommendationLevel,
+    ScoringWeights,
+    MarketRegime,
+    ConfidenceLevel,
+    MarketRegimeData,              
+    RegimeAdjustmentMultipliers,   
+    TimeHorizon,                   
+    CatalystType,                  
+    RiskManagementGuidance,        
+    detect_market_regime,
+    calculate_market_breadth
+)
+
+try:
+    from enhanced_data_fetcher import (
+        fetch_all_enhanced_data,
+        fetch_enhanced_data_batch,
+        merge_enhanced_with_base_metrics
+    )
+    ENHANCED_DATA_AVAILABLE = True
+except ImportError:
+    ENHANCED_DATA_AVAILABLE = False
+    print("Note: Enhanced data fetcher not available. Some features will be limited.")
 
 # Load environment variables
 load_dotenv()
-
-class SplitDatabaseManager:
-    """Manage separate database files for each index"""
-    
-    def __init__(self, data_dir):
-        self.data_dir = data_dir
-    
-    def get_database_path(self, index_key):
-        """Get database path for specific index"""
-        return os.path.join(self.data_dir, index_key, f"{index_key.lower()}_data.db")
-    
-    def load_metrics(self, index_key):
-        """Load metrics from index-specific database"""
-        db_path = self.get_database_path(index_key)
-        
-        if not os.path.exists(db_path):
-            return pd.DataFrame()
-        
-        conn = sqlite3.connect(db_path)
-        df = pd.read_sql("SELECT * FROM stocks", conn)
-        conn.close()
-        
-        # Rename columns back to original format
-        if 'high_52w' in df.columns:
-            df = df.rename(columns={
-                'high_52w': '52w_high',
-                'low_52w': '52w_low'
-            })
-        
-        return df
-    
-    def save_metrics(self, metrics_df, index_key):
-        """Save metrics to index-specific database"""
-        db_path = self.get_database_path(index_key)
-        
-        # Create directory if needed
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
-        
-        # Rename columns for SQLite
-        df = metrics_df.copy()
-        if '52w_high' in df.columns:
-            df = df.rename(columns={
-                '52w_high': 'high_52w',
-                '52w_low': 'low_52w'
-            })
-        
-        # Initialize database if needed
-        conn = sqlite3.connect(db_path)
-        
-        # Create table if doesn't exist
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS stocks (
-                ticker TEXT PRIMARY KEY,
-                company_name TEXT,
-                sector TEXT,
-                industry TEXT,
-                last_date TEXT,
-                last_close REAL,
-                pe_ratio REAL,
-                status TEXT,
-                data_points INTEGER,
-                rising_3day INTEGER,
-                declining_3day INTEGER,
-                rising_7day INTEGER,
-                declining_7day INTEGER,
-                rising_14day INTEGER,
-                declining_14day INTEGER,
-                rising_21day INTEGER,
-                declining_21day INTEGER,
-                pct_1d REAL,
-                pct_3d REAL,
-                pct_5d REAL,
-                pct_21d REAL,
-                pct_63d REAL,
-                pct_252d REAL,
-                ann_vol_pct REAL,
-                rsi REAL,
-                high_52w REAL,
-                low_52w REAL,
-                pct_from_52w_high REAL,
-                pct_from_52w_low REAL,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Save data
-        df.to_sql('stocks', conn, if_exists='replace', index=False)
-        conn.commit()
-        conn.close()
 
 # Try importing Streamlit and Plotly for web interface
 try:
@@ -151,7 +91,6 @@ else:
 # ---------------------------
 UNIVERSE = "SP500"
 DATA_DIR = "data"
-db_manager = SplitDatabaseManager(DATA_DIR)
 BATCH_SIZE = 50
 MIN_CONSECUTIVE = 30
 DOWNLOAD_PERIOD = "max"
@@ -169,243 +108,241 @@ def ensure_dir(d):
     """Create directory if it doesn't exist"""
     os.makedirs(d, exist_ok=True)
 
-# Database configuration
-DATABASE_PATH = os.path.join(DATA_DIR, "market_data.db")
+# PostgreSQL Database configuration
+POSTGRES_URL = os.environ.get('DATABASE_URL')  # From Streamlit secrets
 
-@contextmanager
-def get_db_connection():
-    """
-    Context manager for database connections.
-    Automatically handles commit/rollback and closing.
-    """
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row  # Return rows as dictionaries
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+if POSTGRES_URL:
+    # Fix for Render/Heroku postgres:// URLs (need postgresql://)
+    if POSTGRES_URL.startswith('postgres://'):
+        POSTGRES_URL = POSTGRES_URL.replace('postgres://', 'postgresql://', 1)
+    
+    # Create SQLAlchemy engine
+    engine = create_engine(
+        POSTGRES_URL,
+        poolclass=NullPool, 
+        connect_args={
+            'connect_timeout': 10,
+            'options': '-c statement_timeout=30000'
+        }
+    )
+else:
+    print("WARNING: No DATABASE_URL found. Using fallback CSV mode.")
+    engine = None
 
-def init_database():
-    """
-    Initialize database with schema.
-    Safe to call multiple timesonly creates if doesn't exist.
-    """
-    with get_db_connection() as conn:
-        conn.executescript('''
-            -- Main stocks metrics table
-            CREATE TABLE IF NOT EXISTS stocks (
-                ticker TEXT PRIMARY KEY,
-                company_name TEXT,
-                sector TEXT,
-                industry TEXT,
-                index_name TEXT,
-                status TEXT,
-                last_date TEXT,
-                last_close REAL,
-                pe_ratio REAL,
-                data_points INTEGER,
-                rising_3day INTEGER,
-                declining_3day INTEGER,
-                rising_7day INTEGER,
-                declining_7day INTEGER,
-                rising_14day INTEGER,
-                declining_14day INTEGER,
-                rising_21day INTEGER,
-                declining_21day INTEGER,
-                pct_1d REAL,
-                pct_3d REAL,
-                pct_5d REAL,
-                pct_21d REAL,
-                pct_63d REAL,
-                pct_252d REAL,
-                avg_1y REAL,
-                avg_2y REAL,
-                avg_5y REAL,
-                avg_max REAL,
-                cum_return_from_start_pct REAL,
-                ann_vol_pct REAL,
-                rsi REAL,
-                high_52w REAL,
-                low_52w REAL,
-                pct_from_52w_high REAL,
-                pct_from_52w_low REAL,
-                avg_volume_20d REAL,
-                volume_vs_avg REAL,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-            
-            -- Price history table (optional - for detailed charts)
-            CREATE TABLE IF NOT EXISTS price_history (
-                ticker TEXT,
-                date TEXT,
-                open REAL,
-                high REAL,
-                low REAL,
-                close REAL,
-                volume INTEGER,
-                PRIMARY KEY (ticker, date)
-            );
-            
-            -- Indexes for fast queries
-            CREATE INDEX IF NOT EXISTS idx_ticker ON stocks(ticker);
-            CREATE INDEX IF NOT EXISTS idx_sector ON stocks(sector);
-            CREATE INDEX IF NOT EXISTS idx_index ON stocks(index_name);
-            CREATE INDEX IF NOT EXISTS idx_pct_5d ON stocks(pct_5d);
-            CREATE INDEX IF NOT EXISTS idx_pct_21d ON stocks(pct_21d);
-            CREATE INDEX IF NOT EXISTS idx_rising_7day ON stocks(rising_7day);
-            CREATE INDEX IF NOT EXISTS idx_declining_7day ON stocks(declining_7day);
-            CREATE INDEX IF NOT EXISTS idx_history_ticker ON price_history(ticker);
-            CREATE INDEX IF NOT EXISTS idx_history_date ON price_history(date);
-        ''')
+class PostgreSQLManager:
+    """Manage PostgreSQL database operations"""
     
-    if VERBOSE:
-        print(f"✓ Database initialized at {DATABASE_PATH}")
-
-def save_metrics_to_db(metrics_df, index_name):
-    """
-    Save metrics DataFrame to split database.
+    def __init__(self, engine):
+        self.engine = engine
+        self.metadata = MetaData()
+        self._create_tables()
     
-    Args:
-        metrics_df: DataFrame with stock metrics
-        index_name: Index name (SP500, NASDAQ100, etc.)
-    """
-    if metrics_df.empty:
-        print(f"Warning: Empty metrics DataFrame for {index_name}")
-        return
-    
-    db_manager.save_metrics(metrics_df, index_name)
-    
-    if VERBOSE:
-        print(f"✓ Saved {len(metrics_df)} stocks to database for {index_name}")
-
-def save_price_history_to_db(ticker, price_df):
-    """
-    Save price history for a single ticker to database.
-    
-    Args:
-        ticker: Stock ticker symbol
-        price_df: DataFrame with OHLCV data
-    """
-    if price_df.empty:
-        return
-    
-    with get_db_connection() as conn:
-        # Prepare data
-        df_to_save = price_df.copy()
-        df_to_save['ticker'] = ticker
-        df_to_save['date'] = df_to_save.index.astype(str)
-        df_to_save = df_to_save.reset_index(drop=True)
+    def _create_tables(self):
+        """Create tables if they don't exist"""
+        if not self.engine:
+            return
         
-        # Select only needed columns
-        columns = ['ticker', 'date', 'Open', 'High', 'Low', 'Close', 'Volume']
-        df_to_save = df_to_save[columns]
-        df_to_save.columns = ['ticker', 'date', 'open', 'high', 'low', 'close', 'volume']
+        with self.engine.begin() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS stocks (
+                    id SERIAL PRIMARY KEY,
+                    ticker VARCHAR(20) NOT NULL,
+                    index_name VARCHAR(50) NOT NULL,
+                    company_name VARCHAR(255),
+                    sector VARCHAR(100),
+                    industry VARCHAR(100),
+                    status VARCHAR(20),
+                    last_date DATE,
+                    last_close FLOAT,
+                    pe_ratio FLOAT,
+                    data_points INTEGER,
+                    rising_3day BOOLEAN,
+                    declining_3day BOOLEAN,
+                    rising_7day BOOLEAN,
+                    declining_7day BOOLEAN,
+                    rising_14day BOOLEAN,
+                    declining_14day BOOLEAN,
+                    rising_21day BOOLEAN,
+                    declining_21day BOOLEAN,
+                    pct_1d FLOAT,
+                    pct_3d FLOAT,
+                    pct_5d FLOAT,
+                    pct_21d FLOAT,
+                    pct_63d FLOAT,
+                    pct_252d FLOAT,
+                    ann_vol_pct FLOAT,
+                    rsi FLOAT,
+                    high_52w FLOAT,
+                    low_52w FLOAT,
+                    pct_from_52w_high FLOAT,
+                    pct_from_52w_low FLOAT,
+                    avg_volume_20d FLOAT,
+                    volume_vs_avg FLOAT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(ticker, index_name)
+                );
+                
+                CREATE INDEX IF NOT EXISTS idx_ticker ON stocks(ticker);
+                CREATE INDEX IF NOT EXISTS idx_index ON stocks(index_name);
+                CREATE INDEX IF NOT EXISTS idx_sector ON stocks(sector);
+                CREATE INDEX IF NOT EXISTS idx_pct_21d ON stocks(pct_21d);
+            """))
+    
+    def save_metrics(self, metrics_df, index_name):
+        """Save metrics to PostgreSQL"""
+        if not self.engine or metrics_df.empty:
+            return
         
-        # Upsert: delete existing, then insert
-        conn.execute("DELETE FROM price_history WHERE ticker = ?", (ticker,))
-        df_to_save.to_sql('price_history', conn, if_exists='append', index=False)
-
-def load_metrics_from_db(index_name):
-    """
-    Load metrics from split database.
-    
-    Args:
-        index_name: Index name (SP500, NASDAQ100, etc.) - REQUIRED
-    
-    Returns:
-        DataFrame with stock metrics
-    """
-    return db_manager.load_metrics(index_name)
-
-def load_price_history_from_db(ticker):
-    """
-    Load price history for a ticker from database.
-    
-    Args:
-        ticker: Stock ticker symbol
-    
-    Returns:
-        DataFrame with OHLCV data, indexed by date
-    """
-    try:
-        with get_db_connection() as conn:
-            query = """
-                SELECT date, open, high, low, close, volume 
-                FROM price_history 
-                WHERE ticker = ? 
-                ORDER BY date
-            """
-            df = pd.read_sql_query(query, conn, params=[ticker])
+        try:
+            # Make a clean copy
+            df = metrics_df.copy()
             
-            if not df.empty:
-                df['date'] = pd.to_datetime(df['date'])
-                df.set_index('date', inplace=True)
-                # Capitalize column names to match original format
-                df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+            # Add index_name column
+            df['index_name'] = index_name
+            
+            # Rename 52w columns if they exist
+            if '52w_high' in df.columns:
+                df = df.rename(columns={
+                    '52w_high': 'high_52w',
+                    '52w_low': 'low_52w'
+                })
+            
+            # Define valid columns that match database schema
+            valid_columns = [
+                'ticker', 'index_name', 'company_name', 'sector', 'industry', 'status',
+                'last_date', 'last_close', 'pe_ratio', 'data_points',
+                'rising_3day', 'declining_3day', 'rising_7day', 'declining_7day',
+                'rising_14day', 'declining_14day', 'rising_21day', 'declining_21day',
+                'pct_1d', 'pct_3d', 'pct_5d', 'pct_21d', 'pct_63d', 'pct_252d',
+                'ann_vol_pct', 'rsi', 'high_52w', 'low_52w', 'pct_from_52w_high',
+                'pct_from_52w_low', 'avg_volume_20d', 'volume_vs_avg'
+            ]
+            
+            # Keep only valid columns that exist in DataFrame
+            df = df[[col for col in valid_columns if col in df.columns]]
+            
+            print(f"📊 Saving {len(df)} stocks with {len(df.columns)} columns to PostgreSQL...")
+            
+            # Delete existing records for this index
+            with self.engine.begin() as conn:
+                conn.execute(
+                    text("DELETE FROM stocks WHERE index_name = :idx"),
+                    {"idx": index_name}
+                )
+            
+            # Insert new data (suppress verbose output)
+            df.to_sql(
+                'stocks',
+                self.engine,
+                if_exists='append',
+                index=False,
+                method='multi',
+                chunksize=100
+            )
+            
+            # Verify the save
+            with self.engine.connect() as conn:
+                result = conn.execute(
+                    text("SELECT COUNT(*) FROM stocks WHERE index_name = :idx"),
+                    {"idx": index_name}
+                )
+                count = result.scalar()
+                
+                if count > 0:
+                    print(f"✓ Saved {count} stocks to PostgreSQL for {index_name}")
+                else:
+                    print(f"⚠️ Warning: 0 rows in database after save!")
+            
+        except Exception as e:
+            print(f"❌ Error saving to PostgreSQL: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def load_metrics(self, index_name):
+        """Load metrics from PostgreSQL"""
+        if not self.engine:
+            return pd.DataFrame()
+        
+        try:
+            query = text("""
+                SELECT * FROM stocks 
+                WHERE index_name = :idx 
+                ORDER BY ticker
+            """)
+            
+            with self.engine.connect() as conn:
+                df = pd.read_sql(query, conn, params={"idx": index_name})
+            
+            print(f"🔍 DEBUG load_metrics: Loaded {len(df)} rows for {index_name}")
+            
+            if df.empty:
+                print(f"⚠️ WARNING: No data found for index_name = '{index_name}'")
+                print(f"   Checking what's in the database...")
+                
+                # Check what index_names exist
+                with self.engine.connect() as conn:
+                    check = conn.execute(text("SELECT DISTINCT index_name, COUNT(*) FROM stocks GROUP BY index_name"))
+                    print(f"   Available indices:")
+                    for row in check:
+                        print(f"     - {row[0]}: {row[1]} stocks")
+            
+            # Rename columns back
+            if 'high_52w' in df.columns:
+                df = df.rename(columns={
+                    'high_52w': '52w_high',
+                    'low_52w': '52w_low'
+                })
+            
+            # Drop PostgreSQL-specific columns
+            df = df.drop(columns=['id', 'updated_at'], errors='ignore')
             
             return df
-    except Exception as e:
-        if VERBOSE:
-            print(f"Error loading price history for {ticker}: {e}")
-        return pd.DataFrame()
-
-def get_database_stats():
-    """
-    Get statistics about the database (split databases).
-    """
-    try:
-        total_stocks = 0
-        stocks_by_index = []
-        total_size = 0
-        last_update = None
-        
-        indices = ['SP500', 'SP400', 'SP600', 'NASDAQ100', 'DOW30', 'COMBINED']
-        
-        for index_key in indices:
-            db_path = db_manager.get_database_path(index_key)
             
-            if os.path.exists(db_path):
-                # Get size
-                size_mb = os.path.getsize(db_path) / (1024 * 1024)
-                total_size += size_mb
-                
-                # Get count
-                try:
-                    conn = sqlite3.connect(db_path)
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT COUNT(*) FROM stocks")
-                    count = cursor.fetchone()[0]
-                    total_stocks += count
-                    
-                    stocks_by_index.append({
-                        'index_name': index_key,
-                        'count': count
-                    })
-                    
-                    # Get last update
-                    cursor.execute("SELECT MAX(updated_at) FROM stocks")
-                    update = cursor.fetchone()[0]
-                    if update and (not last_update or update > last_update):
-                        last_update = update
-                    
-                    conn.close()
-                except:
-                    pass
+        except Exception as e:
+            print(f"❌ Error loading from PostgreSQL: {e}")
+            import traceback
+            traceback.print_exc()
+            return pd.DataFrame()
+    
+    def get_stats(self):
+        """Get database statistics"""
+        if not self.engine:
+            return {}
         
-        return {
-            'total_stocks': total_stocks,
-            'stocks_by_index': stocks_by_index,
-            'size_mb': round(total_size, 2),
-            'last_update': last_update
-        }
-    except Exception as e:
-        if VERBOSE:
-            print(f"Error getting database stats: {e}")
-        return {}
+        try:
+            with self.engine.connect() as conn:
+                # Total stocks
+                result = conn.execute(text("SELECT COUNT(*) FROM stocks"))
+                total = result.scalar()
+                
+                # Stocks by index
+                result = conn.execute(text("""
+                    SELECT index_name, COUNT(*) as count 
+                    FROM stocks 
+                    GROUP BY index_name
+                """))
+                by_index = [{"index_name": row[0], "count": row[1]} for row in result]
+                
+                # Last update
+                result = conn.execute(text("""
+                    SELECT MAX(updated_at) FROM stocks
+                """))
+                last_update = result.scalar()
+                
+                return {
+                    'total_stocks': total,
+                    'stocks_by_index': by_index,
+                    'last_update': str(last_update) if last_update else None
+                }
+        except Exception as e:
+            print(f"Error getting stats: {e}")
+            return {}
+
+# Initialize PostgreSQL manager
+if engine:
+    pg_manager = PostgreSQLManager(engine)
+else:
+    pg_manager = None
 
 def sanitize_filename_windows(filename):
     """
@@ -1420,6 +1357,620 @@ def format_and_style_dataframe(df, format_dict=None, metrics_columns=None):
         styled_df = styled_df.format(default_format)
     
     return styled_df
+
+def render_opportunity_recommendations_mode(valid_metrics, hist):
+    """
+    Render the Opportunity Ranking interface
+    With Market Regime Awareness and Confidence Scoring
+    """
+    st.subheader("🎯 Opportunity Ranking")
+    
+    # Methodology explanation
+    with st.expander("📚 How Opportunity Ranking Works"):
+        st.markdown("""
+        ### Three-Question Framework
+        
+        Each stock is evaluated to answer:
+        
+        1. **Is this stock attractive right now?**
+           - Composite Score (0-100) across Technical, Fundamental, Sentiment, and Risk
+        
+        2. **Why is it attractive right now?**
+           - Top 3 contributing factors auto-identified
+           - Detailed score breakdown
+        
+        3. **How confident should I be given current market conditions?**
+           - Confidence Level (High/Medium/Low) based on data quality
+           - Market Regime Fit (Bull/Neutral/Bear alignment)
+        
+        ---
+        
+        ### Market Regime Awareness
+        
+        Your recommendations are **adjusted for market conditions**:
+        
+        | Regime | Characteristics | Best Strategies |
+        |--------|----------------|-----------------|
+        | 🟢 **Bull Market** | Strong uptrend, low volatility | Growth, Momentum |
+        | 🟡 **Neutral Market** | Mixed signals, moderate volatility | Balanced, Value |
+        | 🔴 **Bear Market** | Decline or high volatility | Value, Contrarian |
+        
+        **Score Adjustment Example:**
+        - Base Score: 75
+        - Strategy: Growth
+        - Regime: Bull Market
+        - **Adjusted Score: 75 × 1.05 = 78.75** ✅
+        
+        ---
+        
+        ### Confidence Scoring
+        
+        Confidence reflects:
+        - ✅ **Data Completeness**: All metrics available?
+        - ✅ **Sentiment Quality**: Sufficient news articles?
+        - ✅ **Volatility**: Predictable price behavior?
+        - ✅ **Score Consistency**: Aligned signals across factors?
+        
+        | Confidence | Meaning |
+        |-----------|---------|
+        | 🟢 **High** | Strong data, clear signals |
+        | 🟡 **Medium** | Good data, some uncertainty |
+        | 🔴 **Low** | Limited data or conflicting signals |
+        """)
+    
+    # -------------------- MARKET REGIME DETECTION --------------------
+    st.markdown("### 🌍 Current Market Regime")
+    
+    # Calculate market-level metrics
+    with st.spinner("Analyzing market conditions..."):
+        index_metrics = pd.Series({
+            'pct_21d': valid_metrics['pct_21d'].median(),
+            'pct_63d': valid_metrics['pct_63d'].median() if 'pct_63d' in valid_metrics.columns else 0,
+            'ann_vol_pct': valid_metrics['ann_vol_pct'].median() if 'ann_vol_pct' in valid_metrics.columns else 25,
+            'breadth': calculate_market_breadth(valid_metrics)
+        })
+        
+        market_regime = detect_market_regime(index_metrics)
+    
+    # Display regime
+    regime_colors = {
+        "Bull Market": "#006400",
+        "Neutral Market": "#FFD700",
+        "Bear Market": "#8B0000"
+    }
+    
+    regime_color = regime_colors.get(market_regime.regime.value, "#888888")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown(f"""
+        <div style="background: {regime_color}; color: white; padding: 15px; 
+                    border-radius: 10px; text-align: center;">
+            <h3 style="margin: 0;">{market_regime.regime.value}</h3>
+            <p style="margin: 5px 0;">Confidence: {market_regime.confidence:.0%}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.metric("21-Day Return", f"{market_regime.pct_21d:.2f}%")
+    
+    with col3:
+        st.metric("63-Day Return", f"{market_regime.pct_63d:.2f}%")
+    
+    with col4:
+        st.metric("Market Volatility", f"{market_regime.volatility:.1f}%")
+    
+    st.caption(f"📊 Market Breadth: {market_regime.breadth:.1f}% of stocks above 50-day average")
+    
+    st.divider()
+    
+    # -------------------- STRATEGY SELECTION --------------------
+    st.markdown("### 🎲 Select Investment Strategy")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        strategy = st.selectbox(
+            "Investment Strategy",
+            options=[
+                "Balanced (All-around best)",
+                "Growth (High momentum)",
+                "Value (Undervalued picks)",
+                "Momentum (Trending stocks)",
+                "Contrarian (Oversold gems)"
+            ],
+            help="Strategy determines score weighting and regime adjustments"
+        )
+    
+    with col2:
+        top_n = st.slider(
+            "Number of Opportunities",
+            min_value=5,
+            max_value=50,
+            value=20,
+            step=5
+        )
+    
+    # Parse strategy
+    strategy_map = {
+        "Balanced (All-around best)": InvestmentStrategy.BALANCED,
+        "Growth (High momentum)": InvestmentStrategy.GROWTH,
+        "Value (Undervalued picks)": InvestmentStrategy.VALUE,
+        "Momentum (Trending stocks)": InvestmentStrategy.MOMENTUM,
+        "Contrarian (Oversold gems)": InvestmentStrategy.CONTRARIAN
+    }
+    
+    selected_strategy = strategy_map[strategy]
+    
+    # Show regime fit
+    st.info(f"""
+    **Strategy-Regime Alignment:**  
+    {selected_strategy.value.capitalize()} strategy in {market_regime.regime.value} → 
+    Score multiplier: **{RegimeAdjustmentMultipliers.for_strategy(selected_strategy).get_multiplier(market_regime.regime):.2f}x**
+    """)
+    
+    # -------------------- ADVANCED OPTIONS --------------------
+    with st.expander("⚙️ Advanced Filters"):
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            min_score = st.number_input(
+                "Minimum Score",
+                min_value=0,
+                max_value=100,
+                value=50,
+                step=5
+            )
+        
+        with col2:
+            min_confidence = st.selectbox(
+                "Minimum Confidence",
+                ["Any", "Medium or Higher", "High Only"],
+                index=0
+            )
+        
+        with col3:
+            max_volatility = st.number_input(
+                "Max Volatility (%)",
+                min_value=10,
+                max_value=100,
+                value=60,
+                step=5
+            )
+    
+    # -------------------- GENERATE RECOMMENDATIONS --------------------
+    if st.button("🚀 Rank Opportunities", type="primary", use_container_width=True):
+        with st.spinner("Analyzing opportunities with market regime awareness..."):
+            try:
+                # Generate recommendations with regime awareness
+                recommendations, regime_data = generate_recommendations(
+                    valid_metrics,
+                    strategy=selected_strategy,
+                    include_sentiment=True,
+                    top_n=top_n,
+                    index_metrics=index_metrics
+                )
+                
+                if recommendations.empty:
+                    st.warning("No opportunities found. Try adjusting filters.")
+                    return
+                
+                # Apply filters
+                recommendations = recommendations[
+                    recommendations['composite_score'] >= min_score
+                ]
+                
+                # Confidence filter
+                if min_confidence == "High Only":
+                    recommendations = recommendations[
+                        recommendations['confidence_level'] == "High Confidence"
+                    ]
+                elif min_confidence == "Medium or Higher":
+                    recommendations = recommendations[
+                        recommendations['confidence_level'].isin(["High Confidence", "Medium Confidence"])
+                    ]
+                
+                # Volatility filter
+                if 'volatility' in recommendations.columns:
+                    recommendations = recommendations[
+                        (recommendations['volatility'].isna()) | 
+                        (recommendations['volatility'] <= max_volatility)
+                    ]
+                
+                # Store in session state
+                st.session_state.ai_recommendations = recommendations
+                st.session_state.market_regime = regime_data
+                
+                st.success(f"✅ Ranked {len(recommendations)} opportunities!")
+                
+            except Exception as e:
+                st.error(f"Error generating recommendations: {e}")
+                import traceback
+                with st.expander("🐛 Debug"):
+                    st.code(traceback.format_exc())
+                return
+    
+    # -------------------- DISPLAY RECOMMENDATIONS --------------------
+    if 'ai_recommendations' in st.session_state and not st.session_state.ai_recommendations.empty:
+        recommendations = st.session_state.ai_recommendations
+        regime_data = st.session_state.get('market_regime', market_regime)
+        
+        # Summary
+        st.markdown("### 📊 Opportunity Summary")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            avg_score = recommendations['composite_score'].mean()
+            st.metric("Avg Score", f"{avg_score:.1f}")
+        
+        with col2:
+            high_conf = (recommendations['confidence_level'] == 'High Confidence').sum()
+            st.metric("High Confidence", high_conf)
+        
+        with col3:
+            buy_signals = recommendations[
+                recommendations['recommendation_str'].isin(['Strong Buy', 'Buy'])
+            ].shape[0]
+            st.metric("Buy Signals", buy_signals)
+        
+        with col4:
+            avg_adj = recommendations['regime_multiplier'].mean()
+            st.metric("Avg Regime Adj", f"{avg_adj:.2f}x")
+        
+        # Tabs
+        tabs = st.tabs([
+            "🎯 Ranked Opportunities",
+            "📊 Detailed Analysis",
+            "📈 Visual Insights",
+            "💼 Portfolio Builder",
+            "📥 Export"
+        ])
+        
+        with tabs[0]:
+            st.markdown("### 🏆 Top Ranked Opportunities")
+            
+            # Display top opportunities
+            for idx, (_, row) in enumerate(recommendations.head(15).iterrows(), 1):
+                
+                # Confidence color
+                conf_colors = {
+                    'High Confidence': '#006400',
+                    'Medium Confidence': '#FFD700',
+                    'Low Confidence': '#FF6347'
+                }
+                conf_color = conf_colors.get(row['confidence_level'], '#888888')
+                
+                # Recommendation color
+                rec_colors = {
+                    'Strong Buy': '#006400',
+                    'Buy': '#32CD32',
+                    'Hold': '#FFD700',
+                    'Sell': '#FF6347',
+                    'Strong Sell': '#8B0000'
+                }
+                rec_color = rec_colors.get(row['recommendation_str'], '#888888')
+                
+                with st.container():
+                    # Header row
+                    col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+                    
+                    with col1:
+                        st.markdown(f"""
+                        **#{idx} {row['ticker']} - {row['company_name']}**  
+                        <small>{row['sector']}</small>
+                        """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        st.markdown(f"""
+                        <div style="background: {rec_color}; padding: 8px; border-radius: 5px; 
+                                    text-align: center; color: white;">
+                            <strong>{row['recommendation_str']}</strong>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col3:
+                        st.markdown(f"""
+                        <div style="background: {conf_color}; padding: 8px; border-radius: 5px; 
+                                    text-align: center; color: white;">
+                            {row['confidence_level'].replace(' Confidence', '')}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col4:
+                        st.metric("Score", f"{row['composite_score']:.1f}")
+                    
+                    # Details row
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.caption("💰 **Price & Valuation**")
+                        if row['current_price']:
+                            st.write(f"${row['current_price']:.2f}")
+                        if row['pe_ratio']:
+                            st.write(f"P/E: {row['pe_ratio']:.1f}")
+                    
+                    with col2:
+                        st.caption("📈 **Score Breakdown**")
+                        st.write(f"Tech: {row['technical_score']:.0f}")
+                        st.write(f"Fund: {row['fundamental_score']:.0f}")
+                    
+                    with col3:
+                        st.caption("🌍 **Market Fit**")
+                        st.write(f"{row['market_regime']}")
+                        st.write(f"Adj: {row['regime_multiplier']:.2f}x")
+                    
+                    with col4:
+                        st.caption("⚡ **Key Strengths**")
+                        factors = row.get('top_factors', [])
+                        if factors:
+                            for factor in factors[:2]:
+                                st.write(f"• {factor}")
+                    
+                    st.divider()
+        
+        with tabs[1]:
+            st.markdown("### 🔍 Detailed Scoring Analysis")
+            
+            # Comprehensive table
+            display_cols = [
+                'ticker', 'company_name', 'composite_score', 'base_score',
+                'recommendation_str', 'confidence_level', 'confidence_score',
+                'technical_score', 'fundamental_score', 'sentiment_score', 'risk_score',
+                'regime_multiplier', 'current_price', 'pe_ratio', 'volatility'
+            ]
+            
+            display_df = recommendations[[col for col in display_cols if col in recommendations.columns]].copy()
+            
+            # Format
+            format_dict = {
+                'composite_score': '{:.1f}',
+                'base_score': '{:.1f}',
+                'confidence_score': '{:.2f}',
+                'technical_score': '{:.0f}',
+                'fundamental_score': '{:.0f}',
+                'sentiment_score': '{:.0f}',
+                'risk_score': '{:.0f}',
+                'regime_multiplier': '{:.2f}',
+                'current_price': '${:.2f}',
+                'pe_ratio': '{:.1f}',
+                'volatility': '{:.1f}%'
+            }
+            
+            styled_df = display_df.style.format(format_dict)
+            
+            st.dataframe(styled_df, use_container_width=True, height=400)
+            
+            # Score distributions
+            st.markdown("### 📊 Score Distributions")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                fig = px.histogram(
+                    recommendations,
+                    x='composite_score',
+                    nbins=20,
+                    title="Composite Score Distribution",
+                    color='confidence_level',
+                    color_discrete_map={
+                        'High Confidence': '#006400',
+                        'Medium Confidence': '#FFD700',
+                        'Low Confidence': '#FF6347'
+                    }
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with col2:
+                fig = px.box(
+                    recommendations,
+                    x='recommendation_str',
+                    y='composite_score',
+                    color='confidence_level',
+                    title="Score by Recommendation Level",
+                    color_discrete_map={
+                        'High Confidence': '#006400',
+                        'Medium Confidence': '#FFD700',
+                        'Low Confidence': '#FF6347'
+                    }
+                )
+                st.plotly_chart(fig, use_container_width=True)
+        
+        with tabs[2]:
+            st.markdown("### 📈 Visual Opportunity Analysis")
+            
+            # Risk vs Opportunity
+            fig = px.scatter(
+                recommendations,
+                x='volatility',
+                y='composite_score',
+                size='confidence_score',
+                color='recommendation_str',
+                hover_data=['ticker', 'company_name', 'sector', 'confidence_level'],
+                title="Risk vs Opportunity (size = confidence)",
+                labels={
+                    'volatility': 'Volatility (Risk %)',
+                    'composite_score': 'Opportunity Score'
+                },
+                color_discrete_map={
+                    'Strong Buy': '#006400',
+                    'Buy': '#32CD32',
+                    'Hold': '#FFD700',
+                    'Sell': '#FF6347',
+                    'Strong Sell': '#8B0000'
+                }
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Regime adjustment impact
+            st.markdown("### 🌍 Regime Adjustment Impact")
+            
+            recommendations['adjustment_impact'] = (
+                recommendations['composite_score'] - recommendations['base_score']
+            )
+            
+            fig = px.bar(
+                recommendations.head(20),
+                x='ticker',
+                y='adjustment_impact',
+                color='adjustment_impact',
+                color_continuous_scale='RdYlGn',
+                color_continuous_midpoint=0,
+                title="Top 20: Regime Adjustment Impact on Scores",
+                labels={'adjustment_impact': 'Score Change from Regime'}
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Confidence breakdown
+            st.markdown("### 🎯 Confidence Analysis")
+            
+            conf_dist = recommendations['confidence_level'].value_counts()
+            
+            fig = px.pie(
+                values=conf_dist.values,
+                names=conf_dist.index,
+                title="Confidence Level Distribution",
+                color=conf_dist.index,
+                color_discrete_map={
+                    'High Confidence': '#006400',
+                    'Medium Confidence': '#FFD700',
+                    'Low Confidence': '#FF6347'
+                }
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with tabs[3]:
+            st.markdown("### 💼 Build Opportunity Portfolio")
+            
+            st.info("""
+            **Smart Diversification**: Build a portfolio that balances high-score opportunities 
+            with sector diversification and confidence levels.
+            """)
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                portfolio_size = st.slider("Portfolio Size", 5, 30, 10)
+            
+            with col2:
+                max_per_sector = st.slider("Max per Sector", 1, 5, 3)
+            
+            with col3:
+                min_portfolio_score = st.slider("Min Score", 50, 90, 65)
+            
+            if st.button("🏗️ Build Portfolio", use_container_width=True):
+                with st.spinner("Optimizing portfolio..."):
+                    # Filter by score first
+                    eligible = recommendations[
+                        recommendations['composite_score'] >= min_portfolio_score
+                    ]
+                    
+                    if eligible.empty:
+                        st.warning("No stocks meet the minimum score requirement.")
+                    else:
+                        # Build diversified portfolio
+                        portfolio = []
+                        sector_counts = {}
+                        
+                        # Prioritize high confidence, then high score
+                        eligible = eligible.sort_values(
+                            ['confidence_score', 'composite_score'],
+                            ascending=[False, False]
+                        )
+                        
+                        for _, row in eligible.iterrows():
+                            sector = row['sector']
+                            if len(portfolio) >= portfolio_size:
+                                break
+                            
+                            if sector_counts.get(sector, 0) < max_per_sector:
+                                portfolio.append(row)
+                                sector_counts[sector] = sector_counts.get(sector, 0) + 1
+                        
+                        if portfolio:
+                            portfolio_df = pd.DataFrame(portfolio)
+                            st.session_state.opportunity_portfolio = portfolio_df
+                            st.success(f"✅ Built portfolio with {len(portfolio_df)} opportunities!")
+            
+            # Display portfolio
+            if 'opportunity_portfolio' in st.session_state:
+                portfolio = st.session_state.opportunity_portfolio
+                
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric("Stocks", len(portfolio))
+                
+                with col2:
+                    st.metric("Avg Score", f"{portfolio['composite_score'].mean():.1f}")
+                
+                with col3:
+                    high_conf = (portfolio['confidence_level'] == 'High Confidence').sum()
+                    st.metric("High Confidence", high_conf)
+                
+                with col4:
+                    st.metric("Avg Volatility", f"{portfolio['volatility'].mean():.1f}%")
+                
+                # Sector breakdown
+                st.markdown("#### 📊 Portfolio Composition")
+                
+                sector_dist = portfolio['sector'].value_counts()
+                fig = px.pie(
+                    values=sector_dist.values,
+                    names=sector_dist.index,
+                    title="Sector Allocation"
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Holdings table
+                st.markdown("#### 📋 Portfolio Holdings")
+                
+                holdings_cols = [
+                    'ticker', 'company_name', 'composite_score', 'confidence_level',
+                    'recommendation_str', 'current_price', 'sector'
+                ]
+                
+                st.dataframe(
+                    portfolio[[col for col in holdings_cols if col in portfolio.columns]],
+                    use_container_width=True
+                )
+        
+        with tabs[4]:
+            st.markdown("### 📥 Export Opportunities")
+            
+            # Prepare export
+            export_cols = [
+                'ticker', 'company_name', 'sector',
+                'composite_score', 'base_score', 'regime_multiplier',
+                'recommendation_str', 'confidence_level', 'confidence_score',
+                'technical_score', 'fundamental_score', 'sentiment_score', 'risk_score',
+                'market_regime', 'current_price', 'pe_ratio', 'volatility',
+                'top_factors'
+            ]
+            
+            export_df = recommendations[[col for col in export_cols if col in recommendations.columns]]
+            
+            # Convert list columns to strings
+            if 'top_factors' in export_df.columns:
+                export_df['top_factors'] = export_df['top_factors'].apply(
+                    lambda x: '; '.join(x) if isinstance(x, list) else x
+                )
+            
+            csv = export_df.to_csv(index=False)
+            
+            st.download_button(
+                label="📥 Download Opportunities (CSV)",
+                data=csv,
+                file_name=f"opportunity_ranking_{selected_strategy.value}_{pd.Timestamp.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+            
+            st.dataframe(export_df, use_container_width=True, height=400)
+    
+    else:
+        st.info("👆 Configure your preferences and click 'Rank Opportunities' to begin!")
 
 # ---------------------------
 # Metrics Calculation
@@ -3073,6 +3624,24 @@ def run_cli(consecutive_days=7, index_key="SP500"):
     print("\nFetching P/E ratios...")
     df_metrics = fetch_pe_ratios(tickers, df_metrics)
 
+    # Save to PostgreSQL
+    print("\n" + "=" * 60)
+    print("SAVING TO DATABASE")
+    print("=" * 60)
+    
+    if pg_manager:
+        print(f"📊 Saving {len(df_metrics)} stocks to PostgreSQL...")
+        try:
+            pg_manager.save_metrics(df_metrics, index_key)
+            print(f"✅ Successfully saved to PostgreSQL!")
+        except Exception as e:
+            print(f"❌ PostgreSQL save failed: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print("⚠️ No PostgreSQL connection. Skipping database save.")
+    
+    print("=" * 60 + "\n")
 
     # Dynamic column ordering based on consecutive_days
     cols_order = [
@@ -3102,28 +3671,18 @@ def run_cli(consecutive_days=7, index_key="SP500"):
     cols += [c for c in df_metrics.columns if c not in cols]
     df_metrics = df_metrics[cols]
 
+    # Save to PostgreSQL
+    if pg_manager:
+        pg_manager.save_metrics(df_metrics, index_key)
+    else:
+        # Fallback to CSV only
+        st.warning("No database connection. Data saved to CSV only.")
+
     # Save master CSV
     master_csv = os.path.join(index_data_dir, "latest_metrics.csv")
     ensure_dir(index_data_dir)
     df_metrics.to_csv(master_csv, index=False)
     print(f"\n✓ Saved master metrics to {master_csv}")
-
-    # Save to database
-    init_database()
-    save_metrics_to_db(df_metrics, index_key)
-    
-    # Optionally save price history for top movers
-    if VERBOSE:
-        print("Saving top movers to database...")
-    
-    if 'pct_21d' in df_metrics.columns:
-        top_performers = df_metrics.nlargest(50, 'pct_21d')['ticker'].tolist()
-        top_decliners = df_metrics.nsmallest(50, 'pct_21d')['ticker'].tolist()
-        tickers_to_save = list(set(top_performers + top_decliners))
-        
-        for ticker in tickers_to_save:
-            if ticker in hist and not hist[ticker].empty:
-                save_price_history_to_db(ticker, hist[ticker])
 
     # Rising and declining lists using configurable period
     rising_col = f'rising_{consecutive_days}day'
@@ -3214,9 +3773,6 @@ def run_cli(consecutive_days=7, index_key="SP500"):
 def plot_ticker_price_rsi(ticker_csv_path, ticker):
     """Helper: load per-ticker data and produce a 2-row plot: price and RSI"""
     
-    # Try loading from database first
-    df = load_price_history_from_db(ticker)
-    
     # Fallback to CSV if not in database
     if df.empty and os.path.exists(ticker_csv_path):
         df = pd.read_csv(ticker_csv_path, parse_dates=True, index_col=0)
@@ -3245,27 +3801,188 @@ def plot_ticker_price_rsi(ticker_csv_path, ticker):
     fig.update_layout(height=600, title_text=f"{ticker} Price + RSI")
     st.plotly_chart(fig, width='stretch')
 
-@cache_data(ttl=3600, show_spinner=False)  # Cache for 1 hour
-def load_data_from_database(index_name):
+# ENHANCED DATA FETCHING AND CACHING
+def fetch_and_enhance_metrics(valid_metrics: pd.DataFrame, 
+                              force_refresh: bool = False) -> pd.DataFrame:
     """
-    Load data from split database with caching.
-    """
-    # Use split database manager
-    df = db_manager.load_metrics(index_name)
+    Fetch enhanced data and merge with base metrics
     
-    # If database is empty, try to load from CSV and populate database
-    if df.empty:
-        csv_path = os.path.join(DATA_DIR, index_name, 'latest_metrics.csv')
-        if os.path.exists(csv_path):
-            df = pd.read_csv(csv_path)
-            # Try to save to database for next time
+    This function:
+    1. Checks if enhanced_data_fetcher.py is available
+    2. Uses cached data if less than 24 hours old
+    3. Fetches fresh comprehensive data if needed
+    4. Merges enhanced data with base metrics
+    
+    Args:
+        valid_metrics: Base metrics DataFrame from your existing system
+        force_refresh: Force fetch even if cached (useful for daily updates)
+    
+    Returns:
+        Enhanced metrics DataFrame (or base metrics if enhancement fails)
+    """
+    # Check if enhanced data fetcher is available
+    if not ENHANCED_DATA_AVAILABLE:
+        st.warning("⚠️ Enhanced data fetcher not installed. Using base metrics only.")
+        with st.expander("ℹ️ How to Enable Enhanced Features"):
+            st.markdown("""
+            To enable comprehensive fundamental and institutional analysis:
+            
+            1. Ensure `enhanced_data_fetcher.py` is in the same directory as `market_tracker.py`
+            2. The enhanced fetcher provides:
+               - Forward P/E ratios
+               - Earnings dates and beat rates
+               - Revenue/earnings growth metrics
+               - Profit margins and ROE
+               - Institutional ownership data
+               - Insider trading activity
+               - Short interest data
+               - Analyst recommendations
+            
+            **Note:** All data comes from free yfinance API (no API key needed)
+            """)
+        return valid_metrics
+    
+    cache_file = os.path.join(DATA_DIR, "enhanced_metrics_cache.pkl")
+    
+    # Check cache (24-hour validity)
+    if not force_refresh and os.path.exists(cache_file):
+        cache_age = time.time() - os.path.getmtime(cache_file)
+        hours_old = cache_age / 3600
+        
+        if cache_age < 86400:  # 24 hours
+            st.info(f"📦 Loading enhanced data from cache ({hours_old:.1f} hours old)...")
             try:
-                db_manager.save_metrics(df, index_name)
-            except:
-                pass
+                enhanced_df = pd.read_pickle(cache_file)
+                merged = merge_enhanced_with_base_metrics(valid_metrics, enhanced_df)
+                st.success(f"✅ Loaded {len(enhanced_df)} enhanced records from cache")
+                
+                # Show what's included
+                with st.expander("📊 Enhanced Data Summary"):
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        has_earnings = enhanced_df['days_to_earnings'].notna().sum()
+                        st.metric("Stocks with Earnings Data", has_earnings)
+                    
+                    with col2:
+                        has_institutional = enhanced_df['institutional_ownership_pct'].notna().sum()
+                        st.metric("Institutional Data", has_institutional)
+                    
+                    with col3:
+                        has_analyst = enhanced_df['analyst_target_price'].notna().sum()
+                        st.metric("Analyst Coverage", has_analyst)
+                
+                return merged
+                
+            except Exception as e:
+                st.warning(f"⚠️ Cache error: {e}. Fetching fresh data...")
     
-    return df if not df.empty else None
+    # Fetch fresh data
+    st.info("🔄 Fetching comprehensive fundamental and institutional data...")
+    st.caption("""
+    **What's being fetched (FREE via yfinance):**
+    - ⏰ Earnings dates and history
+    - 📊 Forward P/E and valuation metrics
+    - 📈 Revenue/earnings growth
+    - 💰 Profit margins and ROE
+    - 🏢 Institutional ownership
+    - 👔 Insider trading activity
+    - 📉 Short interest data
+    - 🎯 Analyst recommendations
+    
+    **Time estimate:** ~3-5 minutes for 500 stocks
+    """)
+    
+    tickers = valid_metrics['ticker'].tolist()
+    
+    # Show progress estimate
+    total_tickers = len(tickers)
+    estimated_minutes = (total_tickers * 0.3) / 60  # ~0.3 seconds per ticker
+    
+    st.info(f"📊 Fetching data for {total_tickers} tickers (est. {estimated_minutes:.1f} minutes)")
+    
+    try:
+        # Create progress tracking
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        # Fetch data in batches with progress updates
+        from enhanced_data_fetcher import fetch_enhanced_data_batch
+        
+        status_text.text(f"Fetching enhanced data for {total_tickers} stocks...")
+        enhanced_df = fetch_enhanced_data_batch(tickers, verbose=False)
+        
+        progress_bar.progress(100)
+        status_text.text("✅ Enhanced data fetch complete!")
+        
+        # Save to cache
+        try:
+            enhanced_df.to_pickle(cache_file)
+            st.success(f"✅ Cached {len(enhanced_df)} enhanced records for future use")
+        except Exception as e:
+            st.warning(f"⚠️ Could not cache data: {e}")
+        
+        # Merge with base metrics
+        merged = merge_enhanced_with_base_metrics(valid_metrics, enhanced_df)
+        
+        # Show summary
+        with st.expander("📊 Enhanced Data Summary"):
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                has_earnings = enhanced_df['days_to_earnings'].notna().sum()
+                pct_earnings = (has_earnings / len(enhanced_df) * 100)
+                st.metric("Earnings Data", f"{has_earnings} ({pct_earnings:.0f}%)")
+            
+            with col2:
+                has_institutional = enhanced_df['institutional_ownership_pct'].notna().sum()
+                pct_inst = (has_institutional / len(enhanced_df) * 100)
+                st.metric("Institutional", f"{has_institutional} ({pct_inst:.0f}%)")
+            
+            with col3:
+                has_analyst = enhanced_df['analyst_target_price'].notna().sum()
+                pct_analyst = (has_analyst / len(enhanced_df) * 100)
+                st.metric("Analyst Data", f"{has_analyst} ({pct_analyst:.0f}%)")
+            
+            with col4:
+                has_insider = enhanced_df['insider_buy_sell_ratio'].notna().sum()
+                pct_insider = (has_insider / len(enhanced_df) * 100)
+                st.metric("Insider Data", f"{has_insider} ({pct_insider:.0f}%)")
+        
+        st.balloons()
+        
+        return merged
+        
+    except Exception as e:
+        st.error(f"❌ Error fetching enhanced data: {e}")
+        
+        with st.expander("🐛 Error Details"):
+            import traceback
+            st.code(traceback.format_exc())
+        
+        st.warning("⚠️ Falling back to base metrics only.")
+        st.info("💡 You can still use the recommendation system with base metrics, but some features will be limited.")
+        
+        return valid_metrics
 
+# PostgreSQL data loading with cache
+@cache_data(ttl=3600, show_spinner=False)
+def load_data_from_postgres(index_name):
+    """Load data from PostgreSQL with caching"""
+    if pg_manager:
+        df = pg_manager.load_metrics(index_name)
+        
+        if df is not None and not df.empty:
+            return df
+    
+    # Fallback to CSV if PostgreSQL unavailable or empty
+    csv_path = os.path.join(DATA_DIR, index_name, "latest_metrics.csv")
+    if os.path.exists(csv_path):
+        return pd.read_csv(csv_path)
+    
+    return None
+
+# STREAMLIT WEB INTERFACE
 def run_streamlit():
     """Run the Streamlit web interface"""
 
@@ -3280,7 +3997,6 @@ def run_streamlit():
         layout="wide",
         initial_sidebar_state="expanded"
     )
-
     # Add custom CSS
     add_custom_css()
 
@@ -3312,7 +4028,7 @@ def run_streamlit():
     # Auto-fetch data if not present
     if not os.path.exists(os.path.join(index_data_dir, "latest_metrics.csv")):
         if 'data_fetched' not in st.session_state:
-            with st.spinner(f"First time setup: Fetching {index_selection} data... This will take about 5-10 minutes."):
+            with st.spinner(f"First time setup: Fetching {index_selection} data... This will take about5-10 minutes."):
                 try:
                     run_cli(consecutive_days=7, index_key=current_index)
                     st.session_state.data_fetched = True
@@ -3331,23 +4047,18 @@ def run_streamlit():
     view_mode = st.sidebar.radio(
         "View Mode",
         ["Dashboard", "Sector Analysis", "Top Movers", "Technical Screener", 
-        "Sentiment Analysis",
+        "Sentiment Analysis", "Opportunity Ranking",
         "Comparison Mode", "Historical Analysis", "Risk Management", "Data Export"],
         key="view_mode_radio"
     )
 
     # 2. Load data and set up time horizon
     if data_exists:
-        # Load from database (fast) or fallback to CSV
-        df_metrics = load_data_from_database(current_index)
-        
-        if df_metrics is None:
-            csv_path = os.path.join(index_data_dir, "latest_metrics.csv")
-            if os.path.exists(csv_path):
-                df_metrics = pd.read_csv(csv_path)
+        # Load from PostgreSQL (fast) or fallback to CSV
+        df_metrics = load_data_from_postgres(current_index)
         
         if df_metrics is not None:
-            valid_metrics = df_metrics[df_metrics['status'] == 'ok'].copy()
+            valid_metrics = df_metrics[df_metrics['status'] == 'ok'].copy()         
             
             # Time horizon configuration
             horizon_map_full = {
@@ -3498,961 +4209,1021 @@ def run_streamlit():
                 st.success("Data regenerated!")
                 st.rerun()
             return
-    
-    # Show database stats in sidebar
-    if os.path.exists(DATABASE_PATH):
+
+    # Database status indicator
+    if pg_manager:
         with st.sidebar.expander("📊 Database Info"):
-            stats = get_database_stats()
+            stats = pg_manager.get_stats()
             
             if stats:
                 st.metric("Total Stocks", f"{stats['total_stocks']:,}")
-                st.metric("Database Size", f"{stats['size_mb']} MB")
                 
-                if 'last_update' in stats and stats['last_update']:
-                    st.caption(f"Last updated: {stats['last_update']}")
+                if stats.get('last_update'):
+                    last_update = stats['last_update']
+                    st.caption(f"Last updated: {last_update}")
                 
                 if stats.get('stocks_by_index'):
                     st.caption("**Stocks by Index:**")
                     for item in stats['stocks_by_index']:
                         st.caption(f"• {item['index_name']}: {item['count']}")
+    else:
+        with st.sidebar.expander("⚠️ Database Status"):
+            st.warning("No PostgreSQL connection")
+            st.info("Using CSV fallback mode")
+            
+            if not os.environ.get('DATABASE_URL'):
+                st.markdown("""
+                **Setup PostgreSQL:**
+                1. Get free database from:
+                   - [Supabase](https://supabase.com) or
+                   - [Neon](https://neon.tech)
+                2. Add to Streamlit secrets:
+```
+                   DATABASE_URL = "postgresql://..."
+```
+                3. Restart app
+                """)
 
-        # ---------- Dashboard ----------
-        if view_mode == "Dashboard":
-            st.subheader("📊 Market Overview")
-            
-            col1, col2, col3, col4 = st.columns(4)
-            
-            # Safe column access with fallback
-            if rising_col not in valid_metrics.columns:
-                available_rising_cols = [col for col in valid_metrics.columns if col.startswith('rising_') and col.endswith('day')]
-                if available_rising_cols:
-                    rising_col = available_rising_cols[0]
-                    declining_col = rising_col.replace('rising_', 'declining_')
-                    fallback_days = rising_col.replace('rising_', '').replace('day', '')
-                    st.warning(f"⚠️ {consecutive_days}-day data not available. Showing {fallback_days}-day data. Click 'Update Data' to generate {consecutive_days}-day analysis.")
-                else:
-                    st.error("❌ No consecutive day trend data found. Please update the data.")
-                    rising_count = 0
-                    declining_count = 0
-            
-            # Safe column access
-            if rising_col in valid_metrics.columns and declining_col in valid_metrics.columns:
-                rising_count = len(valid_metrics[valid_metrics[rising_col] == True])
-                declining_count = len(valid_metrics[valid_metrics[declining_col] == True])
+    # ---------- Dashboard ----------
+    if view_mode == "Dashboard":
+        st.subheader("📊 Market Overview")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        # Safe column access with fallback
+        if rising_col not in valid_metrics.columns:
+            available_rising_cols = [col for col in valid_metrics.columns if col.startswith('rising_') and col.endswith('day')]
+            if available_rising_cols:
+                rising_col = available_rising_cols[0]
+                declining_col = rising_col.replace('rising_', 'declining_')
+                fallback_days = rising_col.replace('rising_', '').replace('day', '')
+                st.warning(f"⚠️ {consecutive_days}-day data not available. Showing {fallback_days}-day data. Click 'Update Data' to generate {consecutive_days}-day analysis.")
             else:
+                st.error("❌ No consecutive day trend data found. Please update the data.")
                 rising_count = 0
                 declining_count = 0
-            
-            with col1:
-                rising_pct = (rising_count/len(valid_metrics)*100)
-                create_colored_metric_card(
-                    f"Rising ({consecutive_days}d)", 
-                    rising_pct, 
-                    'return',
-                    lambda x: f"{rising_count} ({x:.1f}%)"
-                )
-            
-            with col2:
-                declining_pct = (declining_count/len(valid_metrics)*100)
-                create_colored_metric_card(
-                    f"Declining ({consecutive_days}d)", 
-                    -declining_pct,  # Negative to show as red
-                    'return',
-                    lambda x: f"{declining_count} ({abs(x):.1f}%)"
-                )
+        
+        # Safe column access
+        if rising_col in valid_metrics.columns and declining_col in valid_metrics.columns:
+            rising_count = len(valid_metrics[valid_metrics[rising_col] == True])
+            declining_count = len(valid_metrics[valid_metrics[declining_col] == True])
+        else:
+            rising_count = 0
+            declining_count = 0
+        
+        with col1:
+            rising_pct = (rising_count/len(valid_metrics)*100)
+            create_colored_metric_card(
+                f"Rising ({consecutive_days}d)", 
+                rising_pct, 
+                'return',
+                lambda x: f"{rising_count} ({x:.1f}%)"
+            )
+        
+        with col2:
+            declining_pct = (declining_count/len(valid_metrics)*100)
+            create_colored_metric_card(
+                f"Declining ({consecutive_days}d)", 
+                -declining_pct,  # Negative to show as red
+                'return',
+                lambda x: f"{declining_count} ({abs(x):.1f}%)"
+            )
 
-            with col3:
-                avg_volatility = valid_metrics['ann_vol_pct'].mean() if 'ann_vol_pct' in valid_metrics.columns else np.nan
-                if not pd.isna(avg_volatility):
-                    create_colored_metric_card("Avg Volatility", avg_volatility, 'volatility', format_percentage)
+        with col3:
+            avg_volatility = valid_metrics['ann_vol_pct'].mean() if 'ann_vol_pct' in valid_metrics.columns else np.nan
+            if not pd.isna(avg_volatility):
+                create_colored_metric_card("Avg Volatility", avg_volatility, 'volatility', format_percentage)
 
-            with col4:
-                if 'rsi' in valid_metrics.columns:
-                    avg_rsi = valid_metrics['rsi'].mean()
-                    create_colored_metric_card("Avg RSI", avg_rsi, 'rsi', lambda x: f"{x:.1f}")
-
-            # Enhanced top movers with color gradients
-            st.subheader(f"🚀 Top Movers ({horizon_label})")
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.markdown("### 📈 Top Gainers")
-                top_gainers = valid_metrics.nlargest(10, horizon_col)
-                fig_gainers = create_enhanced_bar_chart(
-                    top_gainers, 'ticker', horizon_col, 
-                    f"Top Gainers ({horizon_label})", 'return'
-                )
-                st.plotly_chart(fig_gainers, use_container_width=True)
-
-            with col2:
-                st.markdown("### 📉 Top Decliners")
-                top_losers = valid_metrics.nsmallest(10, horizon_col)
-                fig_losers = create_enhanced_bar_chart(
-                    top_losers, 'ticker', horizon_col, 
-                    f"Top Decliners ({horizon_label})", 'return'
-                )
-                st.plotly_chart(fig_losers, use_container_width=True)
-
-            # Add sector heatmap
-            st.subheader("🏢 Sector Performance Heatmap")
-            sector_perf = valid_metrics.groupby('sector')[horizon_col].mean().sort_values(ascending=False)
-            fig_heatmap = create_sector_heatmap(sector_perf, horizon_col, f"Sector Performance ({horizon_label})")
-            st.plotly_chart(fig_heatmap, use_container_width=True)
-
-            # Enhanced data table with colors
-            st.subheader("📋 All Stocks")
-
-            # Build display columns safely as some datasets may not have pe_ratio
-            display_cols = ['ticker', 'company_name', 'sector', 'last_close', horizon_col, 'ann_vol_pct']
-            # Include P/E if available or add a placeholder column so table layout is consistent
-            if 'pe_ratio' in valid_metrics.columns:
-                display_cols.insert(4, 'pe_ratio')
-            else:
-                valid_metrics = valid_metrics.copy()
-                valid_metrics['pe_ratio'] = np.nan
-                display_cols.insert(4, 'pe_ratio')
-
+        with col4:
             if 'rsi' in valid_metrics.columns:
+                avg_rsi = valid_metrics['rsi'].mean()
+                create_colored_metric_card("Avg RSI", avg_rsi, 'rsi', lambda x: f"{x:.1f}")
+
+        # Enhanced top movers with color gradients
+        st.subheader(f"🚀 Top Movers ({horizon_label})")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("### 📈 Top Gainers")
+            top_gainers = valid_metrics.nlargest(10, horizon_col)
+            fig_gainers = create_enhanced_bar_chart(
+                top_gainers, 'ticker', horizon_col, 
+                f"Top Gainers ({horizon_label})", 'return'
+            )
+            st.plotly_chart(fig_gainers, use_container_width=True)
+
+        with col2:
+            st.markdown("### 📉 Top Decliners")
+            top_losers = valid_metrics.nsmallest(10, horizon_col)
+            fig_losers = create_enhanced_bar_chart(
+                top_losers, 'ticker', horizon_col, 
+                f"Top Decliners ({horizon_label})", 'return'
+            )
+            st.plotly_chart(fig_losers, use_container_width=True)
+
+        # Add sector heatmap
+        st.subheader("🏢 Sector Performance Heatmap")
+        sector_perf = valid_metrics.groupby('sector')[horizon_col].mean().sort_values(ascending=False)
+        fig_heatmap = create_sector_heatmap(sector_perf, horizon_col, f"Sector Performance ({horizon_label})")
+        st.plotly_chart(fig_heatmap, use_container_width=True)
+
+        # Enhanced data table with colors
+        st.subheader("📋 All Stocks")
+
+        # Build display columns safely as some datasets may not have pe_ratio
+        display_cols = ['ticker', 'company_name', 'sector', 'last_close', horizon_col, 'ann_vol_pct']
+        # Include P/E if available or add a placeholder column so table layout is consistent
+        if 'pe_ratio' in valid_metrics.columns:
+            display_cols.insert(4, 'pe_ratio')
+        else:
+            valid_metrics = valid_metrics.copy()
+            valid_metrics['pe_ratio'] = np.nan
+            display_cols.insert(4, 'pe_ratio')
+
+        if 'rsi' in valid_metrics.columns:
+            display_cols.append('rsi')
+
+        display_df = valid_metrics[display_cols].copy()
+        styled_df = format_and_style_dataframe(display_df)
+        st.dataframe(styled_df, use_container_width=True, height=400)
+
+    # ---------- Sector Analysis ----------
+    elif view_mode == "Sector Analysis":
+        st.subheader(f"🏢 {index_selection} Sector Performance Analysis")
+
+        sector_perf = valid_metrics.groupby('sector').agg({
+            horizon_col: ['mean', 'median', 'std'],
+            'ticker': 'count',
+            'ann_vol_pct': 'mean'
+        }).round(2)
+
+        sector_perf.columns = ['Mean Return', 'Median Return', 'Std Dev', 'Count', 'Avg Volatility']
+        sector_perf = sector_perf.sort_values('Mean Return', ascending=False)
+
+        # Enhanced Bar chart with colors
+        fig_sector = create_enhanced_bar_chart(
+            sector_perf.reset_index(), 'sector', 'Mean Return',
+            f"Average Sector Returns ({horizon_label})", 'return'
+        )
+        fig_sector.update_layout(xaxis_tickangle=-45)
+        st.plotly_chart(fig_sector, use_container_width=True)
+
+        styled_sector = format_and_style_dataframe(
+            sector_perf,
+            format_dict={'Count': '{:.0f}'},
+            metrics_columns={
+                'Mean Return': 'return',
+                'Median Return': 'return', 
+                'Std Dev': 'volatility',
+                'Avg Volatility': 'volatility'
+            }
+        )
+        st.dataframe(styled_sector, use_container_width=True)
+
+    # ---------- Top Movers ----------
+    elif view_mode == "Top Movers":
+        st.subheader(f"🎯 {index_selection} Market Movers Analysis")
+        
+        tabs = st.tabs([f"Rising Stocks ({consecutive_days}d)", f"Declining Stocks ({consecutive_days}d)", "Most Volatile", "52-Week Highs/Lows"])
+        
+        with tabs[0]:
+            if rising_col in valid_metrics.columns:
+                rising = valid_metrics[valid_metrics[rising_col] == True]
+            else:
+                rising = pd.DataFrame()
+            if not rising.empty:
+                # Sort by appropriate percentage column
+                sort_col = 'pct_5d' if consecutive_days <= 5 else 'pct_21d'
+                if sort_col in rising.columns:
+                    rising = rising.sort_values(sort_col, ascending=False)
+            
+            st.metric(f"Total Rising ({consecutive_days}-day consecutive)", len(rising))
+            if not rising.empty:
+                display_cols = ['ticker', 'company_name', 'sector', 'last_close', 'pe_ratio', 'pct_1d', 'pct_3d', 'pct_5d']
+                if 'pct_21d' in rising.columns:
+                    display_cols.append('pct_21d')
+                # Filter to only existing columns
+                display_cols = [col for col in display_cols if col in rising.columns]
+                
+                rising_display = rising[display_cols].head(20)
+                styled_rising = format_and_style_dataframe(rising_display)
+                st.dataframe(styled_rising, use_container_width=True)
+        
+        with tabs[1]:
+            if declining_col in valid_metrics.columns:
+                declining = valid_metrics[valid_metrics[declining_col] == True]
+            else:
+                declining = pd.DataFrame()
+            if not declining.empty:
+                sort_col = 'pct_5d' if consecutive_days <= 5 else 'pct_21d'
+                if sort_col in declining.columns:
+                    declining = declining.sort_values(sort_col)
+            
+            st.metric(f"Total Declining ({consecutive_days}-day consecutive)", len(declining))
+            if not declining.empty:
+                display_cols = ['ticker', 'company_name', 'sector', 'last_close', 'pe_ratio', 'pct_1d', 'pct_3d', 'pct_5d']
+                if 'pct_21d' in declining.columns:
+                    display_cols.append('pct_21d')
+                # Filter to only existing columns
+                display_cols = [col for col in display_cols if col in declining.columns]
+                
+                declining_display = declining[display_cols].head(20)
+                styled_declining = format_and_style_dataframe(declining_display)
+                st.dataframe(styled_declining, use_container_width=True)
+
+        with tabs[2]:
+            if 'ann_vol_pct' in valid_metrics.columns:
+                # Build column list with company_name if available
+                volatile_cols = ['ticker']
+                if 'company_name' in valid_metrics.columns:
+                    volatile_cols.append('company_name')
+                volatile_cols.extend(['sector', 'last_close', 'pe_ratio', 'ann_vol_pct', horizon_col])
+                
+                most_volatile = valid_metrics.nlargest(20, 'ann_vol_pct')[volatile_cols].copy()
+                
+                # Display metric with company name if available
+                top_ticker = most_volatile.iloc[0]['ticker']
+                top_vol = most_volatile.iloc[0]['ann_vol_pct']
+                if 'company_name' in most_volatile.columns:
+                    top_company = most_volatile.iloc[0]['company_name']
+                    st.metric("Highest Volatility Stock", f"{top_ticker} - {top_company} ({top_vol:.1f}%)")
+                else:
+                    st.metric("Highest Volatility Stock", f"{top_ticker} ({top_vol:.1f}%)")
+                
+                # Format the data
+                styled_volatile = format_and_style_dataframe(most_volatile)
+                st.dataframe(styled_volatile, use_container_width=True)
+            else:
+                st.info("Volatility data not available")
+
+        with tabs[3]:
+            if 'pct_from_52w_high' in valid_metrics.columns:
+                near_highs = valid_metrics.nlargest(20, 'pct_from_52w_high')[['ticker', 'company_name', 'sector', 'pe_ratio', 'last_close', '52w_high', 'pct_from_52w_high']].copy()
+                near_lows = valid_metrics.nsmallest(20, 'pct_from_52w_low')[['ticker', 'company_name', 'sector', 'pe_ratio', 'last_close', '52w_low', 'pct_from_52w_low']].copy()
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("### Near 52-Week Highs")
+                    # Format the data
+                    styled_highs = format_and_style_dataframe(near_highs)
+                    st.dataframe(styled_highs, use_container_width=True)
+                    
+                with col2:
+                    st.markdown("### Near 52-Week Lows")
+                    # Format the data
+                    styled_lows = format_and_style_dataframe(near_lows)
+                    st.dataframe(styled_lows, use_container_width=True)
+            else:
+                st.info("52-week high/low data not available")
+
+    # ---------- Technical Screener ----------
+    elif view_mode == "Technical Screener":
+        st.subheader(f"🔍 {index_selection} Technical Stock Screener")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            min_return = st.number_input(
+                f"Min {horizon_label} Return (%)",
+                value=-100.0,
+                max_value=100.0,
+                step=1.0,
+                key="ts_min_return"
+            )
+            max_return = st.number_input(
+                f"Max {horizon_label} Return (%)",
+                value=100.0,
+                min_value=-100.0,
+                step=1.0,
+                key="ts_max_return"
+            )
+
+        with col2:
+            min_volatility = st.number_input(
+                "Min Volatility (%)",
+                value=0.0,
+                max_value=200.0,
+                step=1.0,
+                key="ts_min_vol"
+            )
+            max_volatility = st.number_input(
+                "Max Volatility (%)",
+                value=200.0,
+                min_value=0.0,
+                step=1.0,
+                key="ts_max_vol"
+            )
+
+        with col3:
+            min_price = st.number_input(
+                "Min Price ($)",
+                value=0.0,
+                max_value=10000.0,
+                step=1.0,
+                key="ts_min_price"
+            )
+            max_price = st.number_input(
+                "Max Price ($)",
+                value=10000.0,
+                min_value=0.0,
+                step=1.0,
+                key="ts_max_price"
+            )
+
+        # RSI filters
+        col1, col2 = st.columns(2)
+        with col1:
+            if 'rsi' in valid_metrics.columns:
+                min_rsi = st.number_input("Min RSI", value=0.0, max_value=100.0, step=1.0, key="ts_min_rsi")
+            else:
+                min_rsi = 0
+        with col2:
+            if 'rsi' in valid_metrics.columns:
+                max_rsi = st.number_input("Max RSI", value=100.0, min_value=0.0, step=1.0, key="ts_max_rsi")
+            else:
+                max_rsi = 100
+    
+        # Add P/E ratio filters
+        col1, col2 = st.columns(2)
+        with col1:
+            if 'pe_ratio' in valid_metrics.columns:
+                min_pe = st.number_input("Min P/E Ratio", value=0.0, max_value=200.0, step=1.0, key="ts_min_pe")
+            else:
+                min_pe = 0
+        with col2:
+            if 'pe_ratio' in valid_metrics.columns:
+                max_pe = st.number_input("Max P/E Ratio", value=200.0, min_value=0.0, step=1.0, key="ts_max_pe")
+            else:
+                max_pe = 200
+
+        # Sector filter
+        all_sectors = sorted(valid_metrics['sector'].unique())
+        selected_sectors = st.multiselect(
+            "Filter by Sectors",
+            options=all_sectors,
+            default=all_sectors,
+            key="ts_sector_multiselect"
+        )
+
+        # Additional filters
+        col1, col2 = st.columns(2)
+        with col1:
+            only_rising = st.checkbox(f"Only Rising ({consecutive_days}-day)", False, key="ts_only_rising")
+        with col2:
+            only_declining = st.checkbox(f"Only Declining ({consecutive_days}-day)", False, key="ts_only_declining")
+
+        # Apply filters
+        screened_df = valid_metrics[
+            (valid_metrics[horizon_col] >= min_return) &
+            (valid_metrics[horizon_col] <= max_return) &
+            (valid_metrics.get('ann_vol_pct', 0) >= min_volatility) &
+            (valid_metrics.get('ann_vol_pct', 0) <= max_volatility) &
+            (valid_metrics['sector'].isin(selected_sectors)) &
+            (valid_metrics['last_close'] >= min_price) &
+            (valid_metrics['last_close'] <= max_price)
+        ].copy()
+    
+        if 'pe_ratio' in valid_metrics.columns:
+            screened_df = screened_df[
+                (screened_df['pe_ratio'].isna()) | 
+                ((screened_df['pe_ratio'] >= min_pe) & (screened_df['pe_ratio'] <= max_pe))
+            ]
+
+        if 'rsi' in valid_metrics.columns:
+            screened_df = screened_df[
+                (screened_df['rsi'] >= min_rsi) &
+                (screened_df['rsi'] <= max_rsi)
+            ]
+
+        # Apply consecutive filters
+        if only_rising and rising_col in screened_df.columns:
+            screened_df = screened_df[screened_df[rising_col] == True]
+        if only_declining and declining_col in screened_df.columns:
+            screened_df = screened_df[screened_df[declining_col] == True]
+
+        # Sort options
+        sort_columns = [horizon_col, 'ann_vol_pct', 'last_close']
+        if 'rsi' in screened_df.columns:
+            sort_columns.append('rsi')
+
+        sort_by = st.selectbox("Sort By", options=sort_columns, key="ts_sort_by")
+        sort_order = st.radio("Sort Order", ["Descending", "Ascending"], horizontal=True, key="ts_sort_order")
+
+        screened_df = screened_df.sort_values(sort_by, ascending=(sort_order == "Ascending"))
+
+        # Results
+        st.subheader(f"📋 Screener Results ({len(screened_df)} stocks)")
+
+        if not screened_df.empty:
+            display_cols = ['ticker', 'company_name', 'sector', 'last_close', 'pe_ratio', horizon_col, 'ann_vol_pct']
+            if 'rsi' in screened_df.columns:
                 display_cols.append('rsi')
 
-            display_df = valid_metrics[display_cols].copy()
-            styled_df = format_and_style_dataframe(display_df)
-            st.dataframe(styled_df, use_container_width=True, height=400)
+            # Format the screener results
+            screener_results = screened_df[display_cols]
+            styled_screener = format_and_style_dataframe(screener_results)
+            st.dataframe(styled_screener, use_container_width=True, height=400)
 
-        # ---------- Sector Analysis ----------
-        elif view_mode == "Sector Analysis":
-            st.subheader(f"🏢 {index_selection} Sector Performance Analysis")
+            # Enhanced Visualization with color coding
+            if len(screened_df) > 1 and 'ann_vol_pct' in screened_df.columns:
+                # Build hover data
+                hover_data_list = ['ticker', 'sector', 'last_close']
+                if 'company_name' in screened_df.columns:
+                    hover_data_list.insert(0, 'company_name')
+                
+                fig = px.scatter(
+                    screened_df,
+                    x='ann_vol_pct',
+                    y=horizon_col,
+                    color=horizon_col,
+                    color_continuous_scale=create_gradient_colorscale(screened_df[horizon_col], 'return'),
+                    size='last_close',
+                    hover_data=hover_data_list,
+                    title=f"{horizon_label} Return vs Volatility",
+                    labels={
+                        'ann_vol_pct': 'Annual Volatility (%)',
+                        horizon_col: f'{horizon_label} Return (%)',
+                        'last_close': 'Price ($)',
+                        'company_name': 'Company'
+                    }
+                )
+                fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+                st.plotly_chart(fig, use_container_width=True)
 
-            sector_perf = valid_metrics.groupby('sector').agg({
-                horizon_col: ['mean', 'median', 'std'],
-                'ticker': 'count',
-                'ann_vol_pct': 'mean'
-            }).round(2)
+            # Per-ticker plotting: choose one from screened results
+            tickers_list = screened_df['ticker'].tolist()
+            if tickers_list:
+                # Create display options with company names
+                if 'company_name' in screened_df.columns:
+                    ticker_options = {
+                        f"{row['company_name']} ({row['ticker']})": row['ticker'] 
+                        for _, row in screened_df[['ticker', 'company_name']].iterrows()
+                    }
+                    chosen_display = st.selectbox("Select company to chart", options=list(ticker_options.keys()), key="ts_ticker_chart")
+                    chosen_ticker = ticker_options[chosen_display]
+                else:
+                    chosen_ticker = st.selectbox("Select ticker to chart", options=tickers_list, key="ts_ticker_chart")
+                
+                # Load per-ticker CSV from data/<index>/history/<ticker>.csv and plot
+                ticker_csv_path = os.path.join(index_data_dir, "history", f"{chosen_ticker}.csv")
+                plot_ticker_price_rsi(ticker_csv_path, chosen_ticker)
+        else:
+            st.info("No stocks match the selected criteria")
 
-            sector_perf.columns = ['Mean Return', 'Median Return', 'Std Dev', 'Count', 'Avg Volatility']
-            sector_perf = sector_perf.sort_values('Mean Return', ascending=False)
-
-            # Enhanced Bar chart with colors
-            fig_sector = create_enhanced_bar_chart(
-                sector_perf.reset_index(), 'sector', 'Mean Return',
-                f"Average Sector Returns ({horizon_label})", 'return'
-            )
-            fig_sector.update_layout(xaxis_tickangle=-45)
-            st.plotly_chart(fig_sector, use_container_width=True)
-
-            styled_sector = format_and_style_dataframe(
-                sector_perf,
-                format_dict={'Count': '{:.0f}'},
-                metrics_columns={
-                    'Mean Return': 'return',
-                    'Median Return': 'return', 
-                    'Std Dev': 'volatility',
-                    'Avg Volatility': 'volatility'
-                }
-            )
-            st.dataframe(styled_sector, use_container_width=True)
-
-        # ---------- Top Movers ----------
-        elif view_mode == "Top Movers":
-            st.subheader(f"🎯 {index_selection} Market Movers Analysis")
+    # ---------- Sentiment Analysis ----------
+    elif view_mode == "Sentiment Analysis":
+        st.subheader("📰 Market Sentiment Analysis")
+        
+        # Strategy explanation
+        with st.expander("ℹ️ How Sentiment Analysis Works"):
+            if NEWS_API_KEY:
+                st.markdown("""
+                **🎯 Mixed Source Strategy** (NewsAPI key detected)
+                
+                You have NewsAPI configured! This gives you the best of both worlds:
+                
+                1. **NewsAPI (Premium)**: For top movers
+                - Comprehensive article coverage (50+ articles per stock)
+                - Better quality and more sources
+                - Limited to 75-100 stocks/day (free tier)
+                - Automatically targets the most volatile stocks
+                
+                2. **Google News RSS (Free)**: For remaining stocks
+                - Free and unlimited
+                - Good general sentiment coverage
+                - 10-20 articles per stock
+                
+                **Result:** Premium coverage where it matters most, free coverage for everything else!
+                """)
+            else:
+                st.markdown("""
+                **📰 Google News RSS Strategy** (No API key required)
+                
+                Using 100% free sentiment analysis:
+                
+                - **No API key needed** - works out of the box
+                - **No rate limits** - analyze as many stocks as you want
+                - **Reliable data** - Google News aggregates from major sources
+                - **10-20 articles per stock** - sufficient for sentiment analysis
+                
+                ---
+                
+                **💡 Want premium coverage?**
+                
+                Get a free NewsAPI key for enhanced analysis of top movers:
+                1. Sign up at [newsapi.org](https://newsapi.org) (free tier available)
+                2. Add `NEWS_API_KEY=your_key_here` to your `.env` file
+                3. Restart the app
+                
+                With NewsAPI, you'll get 50+ articles for the most important stocks!
+                """)
+        
+        # Configuration section
+        st.markdown("### ⚙️ Configuration")
+        
+        if NEWS_API_KEY:
+            # Show NewsAPI controls
+            col1, col2, col3 = st.columns(3)
             
-            tabs = st.tabs([f"Rising Stocks ({consecutive_days}d)", f"Declining Stocks ({consecutive_days}d)", "Most Volatile", "52-Week Highs/Lows"])
+            with col1:
+                max_newsapi = st.slider(
+                    "NewsAPI stocks (top movers)", 
+                    10, 100, 75,
+                    help="How many top movers to analyze with NewsAPI"
+                )
+                if max_newsapi > 100:
+                    st.warning("⚠️ Free tier limit is 100 requests/day")
+            
+            with col2:
+                min_articles = st.number_input(
+                    "Min articles (NewsAPI only)", 
+                    0, 20, 3,
+                    help="Filter out NewsAPI results with too few articles"
+                )
+            
+            with col3:
+                st.success("✅ NewsAPI Active")
+                st.caption(f"Premium analysis enabled")
+                if horizon_col:
+                    st.info(f"Top movers: **{horizon_label}** returns")
+        else:
+            # Show Google News only info
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                st.info("📰 **Free Mode:** Using Google News RSS for all stocks")
+                st.caption("No API key required • No rate limits • Unlimited stocks")
+            
+            with col2:
+                if st.button("🔑 Setup NewsAPI", key="setup_newsapi"):
+                    st.markdown("""
+                    **Quick Setup:**
+                    1. Get key: [newsapi.org](https://newsapi.org)
+                    2. Add to `.env`: `NEWS_API_KEY=your_key`
+                    3. Restart app
+                    """)
+            
+            # Set defaults for Google News only mode
+            max_newsapi = 0
+            min_articles = 0
+        
+        # Analyze button
+        st.markdown("### 🔍 Run Analysis")
+        
+        if st.button("📊 Analyze Market Sentiment", key="analyze_sentiment_btn", type="primary"):
+            with st.spinner("Analyzing market sentiment... This may take 5-10 minutes."):
+                try:
+                    sentiment_df = analyze_sentiment_mixed(
+                        valid_metrics, 
+                        horizon_col,
+                        max_newsapi_requests=max_newsapi
+                    )
+                    
+                    # Filter quality only if using NewsAPI
+                    if NEWS_API_KEY:
+                        sentiment_df_filtered = filter_high_quality_sentiment(
+                            sentiment_df, 
+                            min_articles=min_articles
+                        )
+                    else:
+                        # Keep all Google News results
+                        sentiment_df_filtered = sentiment_df
+                    
+                    st.session_state.sentiment_df = sentiment_df_filtered
+                    st.session_state.sentiment_df_raw = sentiment_df
+                    
+                    # Success message based on mode
+                    strategy = get_sentiment_strategy_summary(sentiment_df)
+                    if strategy:
+                        if NEWS_API_KEY:
+                            st.success(f"""
+                            ✅ **Sentiment analysis complete!**
+                            
+                            - 🎯 NewsAPI: {strategy['newsapi_count']} stocks (premium)
+                            - 📰 Google News: {strategy['google_news_count']} stocks (free)
+                            - 📊 Total: {strategy['total']} stocks analyzed
+                            - ⭐ High quality: {len(sentiment_df_filtered)} stocks
+                            """)
+                        else:
+                            st.success(f"""
+                            ✅ **Sentiment analysis complete!**
+                            
+                            - 📰 Google News: {strategy['google_news_count']} stocks
+                            - 📊 Total: {strategy['total']} stocks analyzed
+                            - 💯 100% free coverage (no API key required)
+                            """)
+                    
+                except Exception as e:
+                    st.error(f"❌ Error during sentiment analysis: {e}")
+                    with st.expander("🐛 Debug Information"):
+                        import traceback
+                        st.code(traceback.format_exc())
+        
+        # Display results
+        if 'sentiment_df' in st.session_state and not st.session_state.sentiment_df.empty:
+            sentiment_df = st.session_state.sentiment_df
+            sentiment_df_raw = st.session_state.get('sentiment_df_raw', sentiment_df)
+            
+            merged_data = merge_sentiment_with_metrics(valid_metrics, sentiment_df)
+            
+            # Summary metrics
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                avg_sentiment = sentiment_df['sentiment_score'].mean()
+                color = get_sentiment_color(avg_sentiment)
+                st.markdown(f"""
+                    <div style="background-color: {color}; padding: 15px; border-radius: 10px; text-align: center;">
+                        <h4>Market Sentiment</h4>
+                        <h2>{avg_sentiment:.3f}</h2>
+                    </div>
+                """, unsafe_allow_html=True)
+            
+            with col2:
+                positive_pct = (sentiment_df['sentiment_label'] == 'Positive').sum() / len(sentiment_df) * 100
+                st.metric("📈 Positive Stocks", f"{positive_pct:.1f}%")
+            
+            with col3:
+                negative_pct = (sentiment_df['sentiment_label'] == 'Negative').sum() / len(sentiment_df) * 100
+                st.metric("📉 Negative Stocks", f"{negative_pct:.1f}%")
+            
+            with col4:
+                total_articles = sentiment_df['article_count'].sum()
+                st.metric("📰 Total Articles", f"{total_articles:,}")
+            
+            # Tabs for results
+            tabs = st.tabs([
+                "Top Sentiment", 
+                "Sector Sentiment", 
+                "Sentiment vs Performance", 
+                "Data Sources",
+                "Detailed Table"
+            ])
             
             with tabs[0]:
-                if rising_col in valid_metrics.columns:
-                    rising = valid_metrics[valid_metrics[rising_col] == True]
-                else:
-                    rising = pd.DataFrame()
-                if not rising.empty:
-                    # Sort by appropriate percentage column
-                    sort_col = 'pct_5d' if consecutive_days <= 5 else 'pct_21d'
-                    if sort_col in rising.columns:
-                        rising = rising.sort_values(sort_col, ascending=False)
+                st.subheader("🏆 Top 20 Stocks by Sentiment")
                 
-                st.metric(f"Total Rising ({consecutive_days}-day consecutive)", len(rising))
-                if not rising.empty:
-                    display_cols = ['ticker', 'company_name', 'sector', 'last_close', 'pe_ratio', 'pct_1d', 'pct_3d', 'pct_5d']
-                    if 'pct_21d' in rising.columns:
-                        display_cols.append('pct_21d')
-                    # Filter to only existing columns
-                    display_cols = [col for col in display_cols if col in rising.columns]
-                    
-                    rising_display = rising[display_cols].head(20)
-                    styled_rising = format_and_style_dataframe(rising_display)
-                    st.dataframe(styled_rising, use_container_width=True)
-            
-            with tabs[1]:
-                if declining_col in valid_metrics.columns:
-                    declining = valid_metrics[valid_metrics[declining_col] == True]
-                else:
-                    declining = pd.DataFrame()
-                if not declining.empty:
-                    sort_col = 'pct_5d' if consecutive_days <= 5 else 'pct_21d'
-                    if sort_col in declining.columns:
-                        declining = declining.sort_values(sort_col)
+                top_20 = sentiment_df.nlargest(20, 'sentiment_score')
                 
-                st.metric(f"Total Declining ({consecutive_days}-day consecutive)", len(declining))
-                if not declining.empty:
-                    display_cols = ['ticker', 'company_name', 'sector', 'last_close', 'pe_ratio', 'pct_1d', 'pct_3d', 'pct_5d']
-                    if 'pct_21d' in declining.columns:
-                        display_cols.append('pct_21d')
-                    # Filter to only existing columns
-                    display_cols = [col for col in display_cols if col in declining.columns]
-                    
-                    declining_display = declining[display_cols].head(20)
-                    styled_declining = format_and_style_dataframe(declining_display)
-                    st.dataframe(styled_declining, use_container_width=True)
-
-            with tabs[2]:
-                if 'ann_vol_pct' in valid_metrics.columns:
-                    # Build column list with company_name if available
-                    volatile_cols = ['ticker']
-                    if 'company_name' in valid_metrics.columns:
-                        volatile_cols.append('company_name')
-                    volatile_cols.extend(['sector', 'last_close', 'pe_ratio', 'ann_vol_pct', horizon_col])
-                    
-                    most_volatile = valid_metrics.nlargest(20, 'ann_vol_pct')[volatile_cols].copy()
-                    
-                    # Display metric with company name if available
-                    top_ticker = most_volatile.iloc[0]['ticker']
-                    top_vol = most_volatile.iloc[0]['ann_vol_pct']
-                    if 'company_name' in most_volatile.columns:
-                        top_company = most_volatile.iloc[0]['company_name']
-                        st.metric("Highest Volatility Stock", f"{top_ticker} - {top_company} ({top_vol:.1f}%)")
-                    else:
-                        st.metric("Highest Volatility Stock", f"{top_ticker} ({top_vol:.1f}%)")
-                    
-                    # Format the data
-                    styled_volatile = format_and_style_dataframe(most_volatile)
-                    st.dataframe(styled_volatile, use_container_width=True)
-                else:
-                    st.info("Volatility data not available")
-
-            with tabs[3]:
-                if 'pct_from_52w_high' in valid_metrics.columns:
-                    near_highs = valid_metrics.nlargest(20, 'pct_from_52w_high')[['ticker', 'company_name', 'sector', 'pe_ratio', 'last_close', '52w_high', 'pct_from_52w_high']].copy()
-                    near_lows = valid_metrics.nsmallest(20, 'pct_from_52w_low')[['ticker', 'company_name', 'sector', 'pe_ratio', 'last_close', '52w_low', 'pct_from_52w_low']].copy()
-
+                fig = create_sentiment_chart(top_20, 20)
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Source breakdown
+                if NEWS_API_KEY:
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.markdown("### Near 52-Week Highs")
-                        # Format the data
-                        styled_highs = format_and_style_dataframe(near_highs)
-                        st.dataframe(styled_highs, use_container_width=True)
-                        
+                        newsapi_in_top = (top_20['source'] == 'NewsAPI').sum()
+                        st.metric("🎯 NewsAPI Coverage", newsapi_in_top)
                     with col2:
-                        st.markdown("### Near 52-Week Lows")
-                        # Format the data
-                        styled_lows = format_and_style_dataframe(near_lows)
-                        st.dataframe(styled_lows, use_container_width=True)
+                        google_news_in_top = (top_20['source'] == 'google_news').sum()
+                        st.metric("📰 Google News Coverage", google_news_in_top)
                 else:
-                    st.info("52-week high/low data not available")
-
-        # ---------- Technical Screener ----------
-        elif view_mode == "Technical Screener":
-            st.subheader(f"🔍 {index_selection} Technical Stock Screener")
-
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                min_return = st.number_input(
-                    f"Min {horizon_label} Return (%)",
-                    value=-100.0,
-                    max_value=100.0,
-                    step=1.0,
-                    key="ts_min_return"
+                    st.info("📰 All sentiment data from Google News RSS (free)")
+            
+            with tabs[1]:
+                sector_sentiment = get_sector_sentiment_summary(sentiment_df, valid_metrics)
+                
+                st.subheader("🏢 Sentiment by Sector")
+                
+                # Try to use background_gradient with fall back to simple display
+                try:
+                    styled_sector = sector_sentiment.style.background_gradient(
+                        subset=['Avg Sentiment'],
+                        cmap='RdYlGn',
+                        vmin=-1,
+                        vmax=1
+                    )
+                    st.dataframe(styled_sector, use_container_width=True)
+                except ImportError:
+                    # Fallback: Use custom color function instead
+                    def color_sentiment(val):
+                        """Color cells based on sentiment value"""
+                        if pd.isna(val):
+                            return ''
+                        color = get_sentiment_color(val)
+                        return f'background-color: {color}'
+                    
+                    styled_sector = sector_sentiment.style.applymap(
+                        color_sentiment, 
+                        subset=['Avg Sentiment']
+                    )
+                    st.dataframe(styled_sector, use_container_width=True)
+                
+                fig = go.Figure(data=[
+                    go.Bar(
+                        x=sector_sentiment.index,
+                        y=sector_sentiment['Avg Sentiment'],
+                        marker_color=[get_sentiment_color(s) for s in sector_sentiment['Avg Sentiment']],
+                        text=sector_sentiment['Avg Sentiment'].apply(lambda x: f"{x:.3f}"),
+                        textposition='outside'
+                    )
+                ])
+                fig.update_layout(
+                    title="Average Sentiment by Sector",
+                    xaxis_title="Sector",
+                    yaxis_title="Average Sentiment",
+                    xaxis_tickangle=-45,
+                    height=400,
+                    yaxis=dict(range=[-1, 1])
                 )
-                max_return = st.number_input(
-                    f"Max {horizon_label} Return (%)",
-                    value=100.0,
-                    min_value=-100.0,
-                    step=1.0,
-                    key="ts_max_return"
-                )
-
-            with col2:
-                min_volatility = st.number_input(
-                    "Min Volatility (%)",
-                    value=0.0,
-                    max_value=200.0,
-                    step=1.0,
-                    key="ts_min_vol"
-                )
-                max_volatility = st.number_input(
-                    "Max Volatility (%)",
-                    value=200.0,
-                    min_value=0.0,
-                    step=1.0,
-                    key="ts_max_vol"
-                )
-
-            with col3:
-                min_price = st.number_input(
-                    "Min Price ($)",
-                    value=0.0,
-                    max_value=10000.0,
-                    step=1.0,
-                    key="ts_min_price"
-                )
-                max_price = st.number_input(
-                    "Max Price ($)",
-                    value=10000.0,
-                    min_value=0.0,
-                    step=1.0,
-                    key="ts_max_price"
-                )
-
-            # RSI filters
-            col1, col2 = st.columns(2)
-            with col1:
-                if 'rsi' in valid_metrics.columns:
-                    min_rsi = st.number_input("Min RSI", value=0.0, max_value=100.0, step=1.0, key="ts_min_rsi")
-                else:
-                    min_rsi = 0
-            with col2:
-                if 'rsi' in valid_metrics.columns:
-                    max_rsi = st.number_input("Max RSI", value=100.0, min_value=0.0, step=1.0, key="ts_max_rsi")
-                else:
-                    max_rsi = 100
-        
-            # Add P/E ratio filters
-            col1, col2 = st.columns(2)
-            with col1:
-                if 'pe_ratio' in valid_metrics.columns:
-                    min_pe = st.number_input("Min P/E Ratio", value=0.0, max_value=200.0, step=1.0, key="ts_min_pe")
-                else:
-                    min_pe = 0
-            with col2:
-                if 'pe_ratio' in valid_metrics.columns:
-                    max_pe = st.number_input("Max P/E Ratio", value=200.0, min_value=0.0, step=1.0, key="ts_max_pe")
-                else:
-                    max_pe = 200
-
-            # Sector filter
-            all_sectors = sorted(valid_metrics['sector'].unique())
-            selected_sectors = st.multiselect(
-                "Filter by Sectors",
-                options=all_sectors,
-                default=all_sectors,
-                key="ts_sector_multiselect"
-            )
-
-            # Additional filters
-            col1, col2 = st.columns(2)
-            with col1:
-                only_rising = st.checkbox(f"Only Rising ({consecutive_days}-day)", False, key="ts_only_rising")
-            with col2:
-                only_declining = st.checkbox(f"Only Declining ({consecutive_days}-day)", False, key="ts_only_declining")
-
-            # Apply filters
-            screened_df = valid_metrics[
-                (valid_metrics[horizon_col] >= min_return) &
-                (valid_metrics[horizon_col] <= max_return) &
-                (valid_metrics.get('ann_vol_pct', 0) >= min_volatility) &
-                (valid_metrics.get('ann_vol_pct', 0) <= max_volatility) &
-                (valid_metrics['sector'].isin(selected_sectors)) &
-                (valid_metrics['last_close'] >= min_price) &
-                (valid_metrics['last_close'] <= max_price)
-            ].copy()
-        
-            if 'pe_ratio' in valid_metrics.columns:
-                screened_df = screened_df[
-                    (screened_df['pe_ratio'].isna()) | 
-                    ((screened_df['pe_ratio'] >= min_pe) & (screened_df['pe_ratio'] <= max_pe))
-                ]
-
-            if 'rsi' in valid_metrics.columns:
-                screened_df = screened_df[
-                    (screened_df['rsi'] >= min_rsi) &
-                    (screened_df['rsi'] <= max_rsi)
-                ]
-
-            # Apply consecutive filters
-            if only_rising and rising_col in screened_df.columns:
-                screened_df = screened_df[screened_df[rising_col] == True]
-            if only_declining and declining_col in screened_df.columns:
-                screened_df = screened_df[screened_df[declining_col] == True]
-
-            # Sort options
-            sort_columns = [horizon_col, 'ann_vol_pct', 'last_close']
-            if 'rsi' in screened_df.columns:
-                sort_columns.append('rsi')
-
-            sort_by = st.selectbox("Sort By", options=sort_columns, key="ts_sort_by")
-            sort_order = st.radio("Sort Order", ["Descending", "Ascending"], horizontal=True, key="ts_sort_order")
-
-            screened_df = screened_df.sort_values(sort_by, ascending=(sort_order == "Ascending"))
-
-            # Results
-            st.subheader(f"📋 Screener Results ({len(screened_df)} stocks)")
-
-            if not screened_df.empty:
-                display_cols = ['ticker', 'company_name', 'sector', 'last_close', 'pe_ratio', horizon_col, 'ann_vol_pct']
-                if 'rsi' in screened_df.columns:
-                    display_cols.append('rsi')
-
-                # Format the screener results
-                screener_results = screened_df[display_cols]
-                styled_screener = format_and_style_dataframe(screener_results)
-                st.dataframe(styled_screener, use_container_width=True, height=400)
-
-                # Enhanced Visualization with color coding
-                if len(screened_df) > 1 and 'ann_vol_pct' in screened_df.columns:
-                    # Build hover data
-                    hover_data_list = ['ticker', 'sector', 'last_close']
-                    if 'company_name' in screened_df.columns:
-                        hover_data_list.insert(0, 'company_name')
+                fig.add_hline(y=0, line_dash="dash", opacity=0.5)
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with tabs[2]:
+                if horizon_col in merged_data.columns:
+                    st.subheader(f"📊 Sentiment vs {horizon_label} Performance")
+                    
+                    plot_data = merged_data.dropna(subset=['sentiment_score', horizon_col])
                     
                     fig = px.scatter(
-                        screened_df,
-                        x='ann_vol_pct',
+                        plot_data,
+                        x='sentiment_score',
                         y=horizon_col,
-                        color=horizon_col,
-                        color_continuous_scale=create_gradient_colorscale(screened_df[horizon_col], 'return'),
-                        size='last_close',
-                        hover_data=hover_data_list,
-                        title=f"{horizon_label} Return vs Volatility",
+                        color='source',
+                        size='article_count',
+                        hover_data=['ticker', 'company_name', 'sector'],
+                        title=f"Sentiment vs Performance Correlation",
                         labels={
-                            'ann_vol_pct': 'Annual Volatility (%)',
+                            'sentiment_score': 'Sentiment Score',
                             horizon_col: f'{horizon_label} Return (%)',
-                            'last_close': 'Price ($)',
-                            'company_name': 'Company'
+                            'source': 'Data Source'
+                        },
+                        color_discrete_map={
+                            'NewsAPI': '#1f77b4', 
+                            'google_news': '#ff7f0e'
                         }
                     )
-                    fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+                    fig.add_hline(y=0, line_dash="dash", opacity=0.3)
+                    fig.add_vline(x=0, line_dash="dash", opacity=0.3)
+                    fig.update_layout(height=500)
                     st.plotly_chart(fig, use_container_width=True)
-
-                # Per-ticker plotting: choose one from screened results
-                tickers_list = screened_df['ticker'].tolist()
-                if tickers_list:
-                    # Create display options with company names
-                    if 'company_name' in screened_df.columns:
-                        ticker_options = {
-                            f"{row['company_name']} ({row['ticker']})": row['ticker'] 
-                            for _, row in screened_df[['ticker', 'company_name']].iterrows()
-                        }
-                        chosen_display = st.selectbox("Select company to chart", options=list(ticker_options.keys()), key="ts_ticker_chart")
-                        chosen_ticker = ticker_options[chosen_display]
-                    else:
-                        chosen_ticker = st.selectbox("Select ticker to chart", options=tickers_list, key="ts_ticker_chart")
                     
-                    # Load per-ticker CSV from data/<index>/history/<ticker>.csv and plot
-                    ticker_csv_path = os.path.join(index_data_dir, "history", f"{chosen_ticker}.csv")
-                    plot_ticker_price_rsi(ticker_csv_path, chosen_ticker)
-            else:
-                st.info("No stocks match the selected criteria")
-
-        # ---------- Sentiment Analysis ----------
-        elif view_mode == "Sentiment Analysis":
-            st.subheader("📰 Market Sentiment Analysis")
-            
-            # Strategy explanation
-            with st.expander("ℹ️ How Sentiment Analysis Works"):
-                if NEWS_API_KEY:
-                    st.markdown("""
-                    **🎯 Mixed Source Strategy** (NewsAPI key detected)
+                    # Correlation metrics
+                    col1, col2 = st.columns(2)
                     
-                    You have NewsAPI configured! This gives you the best of both worlds:
+                    with col1:
+                        corr_all = plot_data[['sentiment_score', horizon_col]].corr().iloc[0, 1]
+                        st.metric("📊 Overall Correlation", f"{corr_all:.3f}")
                     
-                    1. **NewsAPI (Premium)**: For top movers
-                    - Comprehensive article coverage (50+ articles per stock)
-                    - Better quality and more sources
-                    - Limited to 75-100 stocks/day (free tier)
-                    - Automatically targets the most volatile stocks
-                    
-                    2. **Google News RSS (Free)**: For remaining stocks
-                    - Free and unlimited
-                    - Good general sentiment coverage
-                    - 10-20 articles per stock
-                    
-                    **Result:** Premium coverage where it matters most, free coverage for everything else!
-                    """)
-                else:
-                    st.markdown("""
-                    **📰 Google News RSS Strategy** (No API key required)
-                    
-                    Using 100% free sentiment analysis:
-                    
-                    - **No API key needed** - works out of the box
-                    - **No rate limits** - analyze as many stocks as you want
-                    - **Reliable data** - Google News aggregates from major sources
-                    - **10-20 articles per stock** - sufficient for sentiment analysis
-                    
-                    ---
-                    
-                    **💡 Want premium coverage?**
-                    
-                    Get a free NewsAPI key for enhanced analysis of top movers:
-                    1. Sign up at [newsapi.org](https://newsapi.org) (free tier available)
-                    2. Add `NEWS_API_KEY=your_key_here` to your `.env` file
-                    3. Restart the app
-                    
-                    With NewsAPI, you'll get 50+ articles for the most important stocks!
-                    """)
-            
-            # Configuration section
-            st.markdown("### ⚙️ Configuration")
-            
-            if NEWS_API_KEY:
-                # Show NewsAPI controls
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    max_newsapi = st.slider(
-                        "NewsAPI stocks (top movers)", 
-                        10, 100, 75,
-                        help="How many top movers to analyze with NewsAPI"
-                    )
-                    if max_newsapi > 100:
-                        st.warning("⚠️ Free tier limit is 100 requests/day")
-                
-                with col2:
-                    min_articles = st.number_input(
-                        "Min articles (NewsAPI only)", 
-                        0, 20, 3,
-                        help="Filter out NewsAPI results with too few articles"
-                    )
-                
-                with col3:
-                    st.success("✅ NewsAPI Active")
-                    st.caption(f"Premium analysis enabled")
-                    if horizon_col:
-                        st.info(f"Top movers: **{horizon_label}** returns")
-            else:
-                # Show Google News only info
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    st.info("📰 **Free Mode:** Using Google News RSS for all stocks")
-                    st.caption("No API key required • No rate limits • Unlimited stocks")
-                
-                with col2:
-                    if st.button("🔑 Setup NewsAPI", key="setup_newsapi"):
-                        st.markdown("""
-                        **Quick Setup:**
-                        1. Get key: [newsapi.org](https://newsapi.org)
-                        2. Add to `.env`: `NEWS_API_KEY=your_key`
-                        3. Restart app
-                        """)
-                
-                # Set defaults for Google News only mode
-                max_newsapi = 0
-                min_articles = 0
-            
-            # Analyze button
-            st.markdown("### 🔍 Run Analysis")
-            
-            if st.button("📊 Analyze Market Sentiment", key="analyze_sentiment_btn", type="primary"):
-                with st.spinner("Analyzing market sentiment... This may take 5-10 minutes."):
-                    try:
-                        sentiment_df = analyze_sentiment_mixed(
-                            valid_metrics, 
-                            horizon_col,
-                            max_newsapi_requests=max_newsapi
-                        )
-                        
-                        # Filter quality only if using NewsAPI
+                    with col2:
                         if NEWS_API_KEY:
-                            sentiment_df_filtered = filter_high_quality_sentiment(
-                                sentiment_df, 
-                                min_articles=min_articles
+                            newsapi_data = plot_data[plot_data['source'] == 'NewsAPI']
+                            if len(newsapi_data) > 10:
+                                corr_newsapi = newsapi_data[['sentiment_score', horizon_col]].corr().iloc[0, 1]
+                                st.metric("🎯 NewsAPI Correlation", f"{corr_newsapi:.3f}")
+                            else:
+                                st.info("Not enough NewsAPI data")
+                        else:
+                            google_data = plot_data[plot_data['source'] == 'google_news']
+                            if len(google_data) > 10:
+                                corr_google = google_data[['sentiment_score', horizon_col]].corr().iloc[0, 1]
+                                st.metric("📰 Google News Correlation", f"{corr_google:.3f}")
+            
+            with tabs[3]:
+                st.subheader("📊 Data Source Analysis")
+                
+                if NEWS_API_KEY:
+                    fig = create_sentiment_comparison_chart(sentiment_df_raw)
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("**🎯 NewsAPI Stocks (Top Movers)**")
+                        newsapi_stocks = sentiment_df_raw[sentiment_df_raw['source'] == 'NewsAPI']
+                        if not newsapi_stocks.empty:
+                            st.dataframe(
+                                newsapi_stocks[['ticker', 'sentiment_score', 'article_count']].head(10),
+                                use_container_width=True
                             )
                         else:
-                            # Keep all Google News results
-                            sentiment_df_filtered = sentiment_df
-                        
-                        st.session_state.sentiment_df = sentiment_df_filtered
-                        st.session_state.sentiment_df_raw = sentiment_df
-                        
-                        # Success message based on mode
-                        strategy = get_sentiment_strategy_summary(sentiment_df)
-                        if strategy:
-                            if NEWS_API_KEY:
-                                st.success(f"""
-                                ✅ **Sentiment analysis complete!**
-                                
-                                - 🎯 NewsAPI: {strategy['newsapi_count']} stocks (premium)
-                                - 📰 Google News: {strategy['google_news_count']} stocks (free)
-                                - 📊 Total: {strategy['total']} stocks analyzed
-                                - ⭐ High quality: {len(sentiment_df_filtered)} stocks
-                                """)
-                            else:
-                                st.success(f"""
-                                ✅ **Sentiment analysis complete!**
-                                
-                                - 📰 Google News: {strategy['google_news_count']} stocks
-                                - 📊 Total: {strategy['total']} stocks analyzed
-                                - 💯 100% free coverage (no API key required)
-                                """)
-                        
-                    except Exception as e:
-                        st.error(f"❌ Error during sentiment analysis: {e}")
-                        with st.expander("🐛 Debug Information"):
-                            import traceback
-                            st.code(traceback.format_exc())
-            
-            # Display results
-            if 'sentiment_df' in st.session_state and not st.session_state.sentiment_df.empty:
-                sentiment_df = st.session_state.sentiment_df
-                sentiment_df_raw = st.session_state.get('sentiment_df_raw', sentiment_df)
-                
-                merged_data = merge_sentiment_with_metrics(valid_metrics, sentiment_df)
-                
-                # Summary metrics
-                col1, col2, col3, col4 = st.columns(4)
-                
-                with col1:
-                    avg_sentiment = sentiment_df['sentiment_score'].mean()
-                    color = get_sentiment_color(avg_sentiment)
-                    st.markdown(f"""
-                        <div style="background-color: {color}; padding: 15px; border-radius: 10px; text-align: center;">
-                            <h4>Market Sentiment</h4>
-                            <h2>{avg_sentiment:.3f}</h2>
-                        </div>
-                    """, unsafe_allow_html=True)
-                
-                with col2:
-                    positive_pct = (sentiment_df['sentiment_label'] == 'Positive').sum() / len(sentiment_df) * 100
-                    st.metric("📈 Positive Stocks", f"{positive_pct:.1f}%")
-                
-                with col3:
-                    negative_pct = (sentiment_df['sentiment_label'] == 'Negative').sum() / len(sentiment_df) * 100
-                    st.metric("📉 Negative Stocks", f"{negative_pct:.1f}%")
-                
-                with col4:
-                    total_articles = sentiment_df['article_count'].sum()
-                    st.metric("📰 Total Articles", f"{total_articles:,}")
-                
-                # Tabs for results
-                tabs = st.tabs([
-                    "Top Sentiment", 
-                    "Sector Sentiment", 
-                    "Sentiment vs Performance", 
-                    "Data Sources",
-                    "Detailed Table"
-                ])
-                
-                with tabs[0]:
-                    st.subheader("🏆 Top 20 Stocks by Sentiment")
+                            st.info("No NewsAPI data")
                     
-                    top_20 = sentiment_df.nlargest(20, 'sentiment_score')
+                    with col2:
+                        st.markdown("**📰 Google News Stocks**")
+                        google_stocks = sentiment_df_raw[sentiment_df_raw['source'] == 'google_news']
+                        if not google_stocks.empty:
+                            st.dataframe(
+                                google_stocks[['ticker', 'sentiment_score', 'article_count']].head(10),
+                                use_container_width=True
+                            )
+                        else:
+                            st.info("No Google News data")
                     
-                    fig = create_sentiment_chart(top_20, 20)
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-                    # Source breakdown
-                    if NEWS_API_KEY:
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            newsapi_in_top = (top_20['source'] == 'NewsAPI').sum()
-                            st.metric("🎯 NewsAPI Coverage", newsapi_in_top)
-                        with col2:
-                            google_news_in_top = (top_20['source'] == 'google_news').sum()
-                            st.metric("📰 Google News Coverage", google_news_in_top)
-                    else:
-                        st.info("📰 All sentiment data from Google News RSS (free)")
-                
-                with tabs[1]:
-                    sector_sentiment = get_sector_sentiment_summary(sentiment_df, valid_metrics)
-                    
-                    st.subheader("🏢 Sentiment by Sector")
-                    
-                    # Try to use background_gradient with fall back to simple display
-                    try:
-                        styled_sector = sector_sentiment.style.background_gradient(
-                            subset=['Avg Sentiment'],
-                            cmap='RdYlGn',
-                            vmin=-1,
-                            vmax=1
-                        )
-                        st.dataframe(styled_sector, use_container_width=True)
-                    except ImportError:
-                        # Fallback: Use custom color function instead
-                        def color_sentiment(val):
-                            """Color cells based on sentiment value"""
-                            if pd.isna(val):
-                                return ''
-                            color = get_sentiment_color(val)
-                            return f'background-color: {color}'
-                        
-                        styled_sector = sector_sentiment.style.applymap(
-                            color_sentiment, 
-                            subset=['Avg Sentiment']
-                        )
-                        st.dataframe(styled_sector, use_container_width=True)
-                    
-                    fig = go.Figure(data=[
-                        go.Bar(
-                            x=sector_sentiment.index,
-                            y=sector_sentiment['Avg Sentiment'],
-                            marker_color=[get_sentiment_color(s) for s in sector_sentiment['Avg Sentiment']],
-                            text=sector_sentiment['Avg Sentiment'].apply(lambda x: f"{x:.3f}"),
-                            textposition='outside'
-                        )
-                    ])
-                    fig.update_layout(
-                        title="Average Sentiment by Sector",
-                        xaxis_title="Sector",
-                        yaxis_title="Average Sentiment",
-                        xaxis_tickangle=-45,
-                        height=400,
-                        yaxis=dict(range=[-1, 1])
-                    )
-                    fig.add_hline(y=0, line_dash="dash", opacity=0.5)
-                    st.plotly_chart(fig, use_container_width=True)
-                
-                with tabs[2]:
-                    if horizon_col in merged_data.columns:
-                        st.subheader(f"📊 Sentiment vs {horizon_label} Performance")
-                        
-                        plot_data = merged_data.dropna(subset=['sentiment_score', horizon_col])
-                        
-                        fig = px.scatter(
-                            plot_data,
-                            x='sentiment_score',
-                            y=horizon_col,
-                            color='source',
-                            size='article_count',
-                            hover_data=['ticker', 'company_name', 'sector'],
-                            title=f"Sentiment vs Performance Correlation",
-                            labels={
-                                'sentiment_score': 'Sentiment Score',
-                                horizon_col: f'{horizon_label} Return (%)',
-                                'source': 'Data Source'
-                            },
-                            color_discrete_map={
-                                'NewsAPI': '#1f77b4', 
-                                'google_news': '#ff7f0e'
-                            }
-                        )
-                        fig.add_hline(y=0, line_dash="dash", opacity=0.3)
-                        fig.add_vline(x=0, line_dash="dash", opacity=0.3)
-                        fig.update_layout(height=500)
-                        st.plotly_chart(fig, use_container_width=True)
-                        
-                        # Correlation metrics
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            corr_all = plot_data[['sentiment_score', horizon_col]].corr().iloc[0, 1]
-                            st.metric("📊 Overall Correlation", f"{corr_all:.3f}")
-                        
-                        with col2:
-                            if NEWS_API_KEY:
-                                newsapi_data = plot_data[plot_data['source'] == 'NewsAPI']
-                                if len(newsapi_data) > 10:
-                                    corr_newsapi = newsapi_data[['sentiment_score', horizon_col]].corr().iloc[0, 1]
-                                    st.metric("🎯 NewsAPI Correlation", f"{corr_newsapi:.3f}")
-                                else:
-                                    st.info("Not enough NewsAPI data")
-                            else:
-                                google_data = plot_data[plot_data['source'] == 'google_news']
-                                if len(google_data) > 10:
-                                    corr_google = google_data[['sentiment_score', horizon_col]].corr().iloc[0, 1]
-                                    st.metric("📰 Google News Correlation", f"{corr_google:.3f}")
-                
-                with tabs[3]:
-                    st.subheader("📊 Data Source Analysis")
-                    
-                    if NEWS_API_KEY:
-                        fig = create_sentiment_comparison_chart(sentiment_df_raw)
-                        if fig:
-                            st.plotly_chart(fig, use_container_width=True)
-                        
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            st.markdown("**🎯 NewsAPI Stocks (Top Movers)**")
-                            newsapi_stocks = sentiment_df_raw[sentiment_df_raw['source'] == 'NewsAPI']
-                            if not newsapi_stocks.empty:
-                                st.dataframe(
-                                    newsapi_stocks[['ticker', 'sentiment_score', 'article_count']].head(10),
-                                    use_container_width=True
-                                )
-                            else:
-                                st.info("No NewsAPI data")
-                        
-                        with col2:
-                            st.markdown("**📰 Google News Stocks**")
-                            google_stocks = sentiment_df_raw[sentiment_df_raw['source'] == 'google_news']
-                            if not google_stocks.empty:
-                                st.dataframe(
-                                    google_stocks[['ticker', 'sentiment_score', 'article_count']].head(10),
-                                    use_container_width=True
-                                )
-                            else:
-                                st.info("No Google News data")
-                        
-                        st.markdown("**📈 Quality Metrics by Source**")
-                        quality_comparison = sentiment_df_raw.groupby('source').agg({
-                            'article_count': ['mean', 'median', 'max'],
-                            'sentiment_score': ['mean', 'std'],
-                            'ticker': 'count'
-                        }).round(3)
-                        st.dataframe(quality_comparison, use_container_width=True)
-                    else:
-                        st.info("📰 **All sentiment data from Google News RSS**")
-                        
-                        col1, col2, col3 = st.columns(3)
-                        
-                        with col1:
-                            avg_articles = sentiment_df_raw['article_count'].mean()
-                            st.metric("Avg Articles/Stock", f"{avg_articles:.1f}")
-                        
-                        with col2:
-                            total_stocks = len(sentiment_df_raw)
-                            st.metric("Total Stocks", total_stocks)
-                        
-                        with col3:
-                            with_articles = (sentiment_df_raw['article_count'] > 0).sum()
-                            coverage = with_articles / total_stocks * 100
-                            st.metric("Coverage", f"{coverage:.1f}%")
-                        
-                        st.markdown("**📊 Article Distribution**")
-                        fig = px.histogram(
-                            sentiment_df_raw,
-                            x='article_count',
-                            nbins=20,
-                            title="Distribution of Articles per Stock",
-                            labels={'article_count': 'Articles per Stock'}
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
-                
-                with tabs[4]:
-                    st.subheader("📋 All Sentiment Data")
-                    
-                    display_cols = ['ticker', 'company_name', 'sentiment_score', 'sentiment_label', 
-                                'article_count', 'source']
-                    
-                    if horizon_col in merged_data.columns:
-                        display_cols.insert(4, horizon_col)
-                    
-                    if 'sector' in merged_data.columns:
-                        display_cols.insert(3, 'sector')
-                    
-                    if 'pe_ratio' in merged_data.columns:
-                        display_cols.insert(3, 'pe_ratio')
-                    
-                    display_data = merged_data[display_cols].sort_values('sentiment_score', ascending=False)
-                    
-                    st.dataframe(
-                        display_data.style.background_gradient(
-                            subset=['sentiment_score'],
-                            cmap='RdYlGn',
-                            vmin=-1,
-                            vmax=1
-                        ),
-                        use_container_width=True,
-                        height=400
-                    )
-                    
-                    csv = display_data.to_csv(index=False)
-                    st.download_button(
-                        label="📥 Download Sentiment Data",
-                        data=csv,
-                        file_name=f"sentiment_analysis_{datetime.now().strftime('%Y%m%d')}.csv",
-                        mime="text/csv"
-                    )
-            
-            else:
-                st.info("👆 Click 'Analyze Market Sentiment' to start analysis")
-                
-                if NEWS_API_KEY:
-                    st.markdown("""
-                    **📊 What you'll get:**
-                    - Comprehensive sentiment for top movers (NewsAPI)
-                    - Free sentiment for remaining stocks (Google News)
-                    - Sector sentiment breakdown
-                    - Sentiment vs performance correlation
-                    - Exportable data
-                    """)
+                    st.markdown("**📈 Quality Metrics by Source**")
+                    quality_comparison = sentiment_df_raw.groupby('source').agg({
+                        'article_count': ['mean', 'median', 'max'],
+                        'sentiment_score': ['mean', 'std'],
+                        'ticker': 'count'
+                    }).round(3)
+                    st.dataframe(quality_comparison, use_container_width=True)
                 else:
-                    st.markdown("""
-                    **📊 What you'll get:**
-                    - Free sentiment analysis for all stocks
-                    - Google News RSS coverage (10-20 articles/stock)
-                    - Sector sentiment breakdown
-                    - Sentiment vs performance correlation
-                    - Exportable data
+                    st.info("📰 **All sentiment data from Google News RSS**")
                     
-                    **✨ 100% free - no API key required!**
-                    """)
-            
-        # ---------- Data Export ----------
-        elif view_mode == "Data Export":
-            st.subheader("📥 Data Export")
-
-            st.markdown("### Available Data Files")
-
-            files = {
-                f"{index_selection} Metrics": "latest_metrics.csv",
-                f"{index_selection} Constituents": f"{current_index}_constituents_snapshot.csv",
-                f"Rising Stocks ({consecutive_days}-day)": f"rising_{consecutive_days}day.csv",
-                f"Declining Stocks ({consecutive_days}-day)": f"declining_{consecutive_days}day.csv"
-            }
-
-            for name, filename in files.items():
-                filepath = os.path.join(index_data_dir, filename)
-                if os.path.exists(filepath):
-                    with open(filepath, 'rb') as f:
-                        data = f.read()
-                    st.download_button(
-                        label=f"📄 Download {name}",
-                        data=data,
-                        file_name=filename,
-                        mime="text/csv",
-                        key=f"download_{filename}"
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        avg_articles = sentiment_df_raw['article_count'].mean()
+                        st.metric("Avg Articles/Stock", f"{avg_articles:.1f}")
+                    
+                    with col2:
+                        total_stocks = len(sentiment_df_raw)
+                        st.metric("Total Stocks", total_stocks)
+                    
+                    with col3:
+                        with_articles = (sentiment_df_raw['article_count'] > 0).sum()
+                        coverage = with_articles / total_stocks * 100
+                        st.metric("Coverage", f"{coverage:.1f}%")
+                    
+                    st.markdown("**📊 Article Distribution**")
+                    fig = px.histogram(
+                        sentiment_df_raw,
+                        x='article_count',
+                        nbins=20,
+                        title="Distribution of Articles per Stock",
+                        labels={'article_count': 'Articles per Stock'}
                     )
-
-            st.markdown("### Custom Export")
-
-            # Custom filtering for export
-            export_sectors = st.multiselect(
-                "Select Sectors for Export",
-                options=sorted(valid_metrics['sector'].unique()),
-                default=sorted(valid_metrics['sector'].unique()),
-                key="export_sectors"
-            )
-
-            # Set default columns including company_name if available
-            default_export_cols = ['ticker']
-            if 'company_name' in valid_metrics.columns:
-                default_export_cols.append('company_name')
-            default_export_cols.extend(['sector', 'last_close', 'pe_ratio', 'pct_1d', 'pct_5d', 'ann_vol_pct'])
+                    st.plotly_chart(fig, use_container_width=True)
             
-            export_cols = st.multiselect(
-                "Select Columns for Export",
-                options=list(valid_metrics.columns),
-                default=default_export_cols,
-                key="export_cols"
-            )
-
-            if export_sectors and export_cols:
-                export_df = valid_metrics[valid_metrics['sector'].isin(export_sectors)][export_cols]
-
-                csv = export_df.to_csv(index=False)
+            with tabs[4]:
+                st.subheader("📋 All Sentiment Data")
+                
+                display_cols = ['ticker', 'company_name', 'sentiment_score', 'sentiment_label', 
+                            'article_count', 'source']
+                
+                if horizon_col in merged_data.columns:
+                    display_cols.insert(4, horizon_col)
+                
+                if 'sector' in merged_data.columns:
+                    display_cols.insert(3, 'sector')
+                
+                if 'pe_ratio' in merged_data.columns:
+                    display_cols.insert(3, 'pe_ratio')
+                
+                display_data = merged_data[display_cols].sort_values('sentiment_score', ascending=False)
+                
+                st.dataframe(
+                    display_data.style.background_gradient(
+                        subset=['sentiment_score'],
+                        cmap='RdYlGn',
+                        vmin=-1,
+                        vmax=1
+                    ),
+                    use_container_width=True,
+                    height=400
+                )
+                
+                csv = display_data.to_csv(index=False)
                 st.download_button(
-                    label="📥 Download Custom Export",
+                    label="📥 Download Sentiment Data",
                     data=csv,
-                    file_name=f"sp500_custom_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    file_name=f"sentiment_analysis_{datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv"
+                )
+        
+        else:
+            st.info("👆 Click 'Analyze Market Sentiment' to start analysis")
+            
+            if NEWS_API_KEY:
+                st.markdown("""
+                **📊 What you'll get:**
+                - Comprehensive sentiment for top movers (NewsAPI)
+                - Free sentiment for remaining stocks (Google News)
+                - Sector sentiment breakdown
+                - Sentiment vs performance correlation
+                - Exportable data
+                """)
+            else:
+                st.markdown("""
+                **📊 What you'll get:**
+                - Free sentiment analysis for all stocks
+                - Google News RSS coverage (10-20 articles/stock)
+                - Sector sentiment breakdown
+                - Sentiment vs performance correlation
+                - Exportable data
+                
+                **✨ 100% free - no API key required!**
+                """)
+
+    # ---------- Opportunity Ranking Recommendation ----------
+    elif view_mode == "Opportunity Ranking":
+        st.subheader("🎯 Opportunity Ranking (Enhanced)")
+        
+        # Option to fetch enhanced data
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            st.info("""
+            **Enhanced Mode includes:**
+            - 📊 Forward-looking fundamentals (earnings, growth, margins)
+            - 🏢 Institutional & insider activity
+            - 📈 Sector-relative performance
+            - ⚡ Catalyst detection
+            - 💰 Risk management (position sizing, stop loss)
+            - ⏰ Time horizon optimization
+            """)
+        
+        with col2:
+            use_enhanced = st.checkbox(
+                "Use Enhanced Data",
+                value=True,
+                help="Fetch comprehensive data (takes 3-5 min first time)"
+            )
+        
+        if use_enhanced:
+            # Fetch enhanced data
+            if st.button("🔄 Fetch/Refresh Enhanced Data"):
+                enhanced_metrics = fetch_and_enhance_metrics(valid_metrics, force_refresh=True)
+                st.session_state.enhanced_metrics = enhanced_metrics
+            
+            # Check if enhanced data is available
+            if 'enhanced_metrics' not in st.session_state:
+                st.warning("⚠️ Enhanced data not loaded. Click 'Fetch Enhanced Data' button above.")
+                enhanced_metrics = valid_metrics  # Fallback to base
+            else:
+                enhanced_metrics = st.session_state.enhanced_metrics
+        else:
+            enhanced_metrics = valid_metrics
+        
+        # rendering function
+        render_opportunity_recommendations_mode(enhanced_metrics, hist)
+    
+    # ---------- Data Export ----------
+    elif view_mode == "Data Export":
+        st.subheader("📥 Data Export")
+
+        st.markdown("### Available Data Files")
+
+        files = {
+            f"{index_selection} Metrics": "latest_metrics.csv",
+            f"{index_selection} Constituents": f"{current_index}_constituents_snapshot.csv",
+            f"Rising Stocks ({consecutive_days}-day)": f"rising_{consecutive_days}day.csv",
+            f"Declining Stocks ({consecutive_days}-day)": f"declining_{consecutive_days}day.csv"
+        }
+
+        for name, filename in files.items():
+            filepath = os.path.join(index_data_dir, filename)
+            if os.path.exists(filepath):
+                with open(filepath, 'rb') as f:
+                    data = f.read()
+                st.download_button(
+                    label=f"📄 Download {name}",
+                    data=data,
+                    file_name=filename,
                     mime="text/csv",
-                    key="download_custom_export"
+                    key=f"download_{filename}"
                 )
 
-                styled_preview = format_and_style_dataframe(export_df.head(10))
-                st.dataframe(styled_preview, use_container_width=True)
-        # ---------- Comparison Mode ----------
-        elif view_mode == "Comparison Mode":
-            render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label)
+        st.markdown("### Custom Export")
 
-        # ---------- Historical Analysis ---------- 
-        elif view_mode == "Historical Analysis":
-            render_historical_analysis_mode(valid_metrics, hist)
+        # Custom filtering for export
+        export_sectors = st.multiselect(
+            "Select Sectors for Export",
+            options=sorted(valid_metrics['sector'].unique()),
+            default=sorted(valid_metrics['sector'].unique()),
+            key="export_sectors"
+        )
 
-        # ---------- Risk Management ----------
-        elif view_mode == "Risk Management":
-            render_risk_management_mode(valid_metrics, hist)
+        # Set default columns including company_name if available
+        default_export_cols = ['ticker']
+        if 'company_name' in valid_metrics.columns:
+            default_export_cols.append('company_name')
+        default_export_cols.extend(['sector', 'last_close', 'pe_ratio', 'pct_1d', 'pct_5d', 'ann_vol_pct'])
+        
+        export_cols = st.multiselect(
+            "Select Columns for Export",
+            options=list(valid_metrics.columns),
+            default=default_export_cols,
+            key="export_cols"
+        )
+
+        if export_sectors and export_cols:
+            export_df = valid_metrics[valid_metrics['sector'].isin(export_sectors)][export_cols]
+
+            csv = export_df.to_csv(index=False)
+            st.download_button(
+                label="📥 Download Custom Export",
+                data=csv,
+                file_name=f"sp500_custom_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                key="download_custom_export"
+            )
+
+            styled_preview = format_and_style_dataframe(export_df.head(10))
+            st.dataframe(styled_preview, use_container_width=True)
+    # ---------- Comparison Mode ----------
+    elif view_mode == "Comparison Mode":
+        render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label)
+
+    # ---------- Historical Analysis ---------- 
+    elif view_mode == "Historical Analysis":
+        render_historical_analysis_mode(valid_metrics, hist)
+
+    # ---------- Risk Management ----------
+    elif view_mode == "Risk Management":
+        render_risk_management_mode(valid_metrics, hist)
 
     # Footer
     st.divider()
