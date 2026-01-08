@@ -28,28 +28,18 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Large old database
-data/market_data.db
-*.db-journal
-*.db-wal
-*.db-shm
-
 # History folders (too large - regenerate locally)
 data/*/history/
 
-# Allow CSV files in data directories
-!data/**/*.csv
-
-# Allow all split databases
-!data/SP500/sp500_data.db
-!data/SP400/sp400_data.db
-!data/SP600/sp600_data.db
-!data/NASDAQ100/nasdaq100_data.db
-!data/DOW30/dow30_data.db
-!data/COMBINED/combined_data.db
+# Data files - stored in PostgreSQL, not Git
+data/**/*.csv
+data/**/*.db
+data/**/*.sqlite
+data/**/*.sqlite3
+!data/**/.gitkeep
 
 # Secrets
-secrets.toml
+.streamlit/secrets.toml
 
 # testing
 test.py
