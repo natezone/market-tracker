@@ -4260,9 +4260,9 @@ def run_streamlit():
                    - [Supabase](https://supabase.com) or
                    - [Neon](https://neon.tech)
                 2. Add to Streamlit secrets:
-```
+                ```
                    DATABASE_URL = "postgresql://..."
-```
+                ```
                 3. Restart app
                 """)
 
