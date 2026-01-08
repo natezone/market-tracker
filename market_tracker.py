@@ -109,7 +109,7 @@ def ensure_dir(d):
     os.makedirs(d, exist_ok=True)
 
 # PostgreSQL Database configuration
-POSTGRES_URL = os.environ.get('DATABASE_URL')  # From Streamlit secrets
+POSTGRES_URL = os.environ.get('DATABASE_URL') 
 
 if POSTGRES_URL:
     if POSTGRES_URL.startswith('postgres://'):
@@ -118,19 +118,24 @@ if POSTGRES_URL:
     try:
         engine = create_engine(
             POSTGRES_URL,
-            poolclass=NullPool,
             connect_args={
-                'connect_timeout': 10,
-                'options': '-c statement_timeout=30000'
-            }
+                "sslmode": "require",  # Supabase requires SSL
+            },
+            pool_pre_ping=True,  # Verify connections before using
+            pool_recycle=300,  # Recycle connections after 5 minutes
+            pool_size=5,  # Connection pool size
+            max_overflow=10  # Allow up to 15 total connections
         )
+        
         # Test connection
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        print("✅ PostgreSQL connection successful")
+        
+        print("✅ PostgreSQL engine created successfully")
+        
     except Exception as e:
-        print(f"⚠️ PostgreSQL connection failed: {e}")
-        print("📁 App will use CSV fallback mode")
+        print(f"⚠️ PostgreSQL connection failed: {str(e)[:200]}")
+        print("📁 Will use CSV fallback mode")
         engine = None
 else:
     print("ℹ️ No DATABASE_URL found. Using CSV mode.")
@@ -142,11 +147,7 @@ class PostgreSQLManager:
     def __init__(self, engine):
         self.engine = engine
         self.metadata = MetaData()
-        try:
-            self._create_tables()
-        except Exception as e:
-            print(f"⚠️ Could not create tables: {e}")
-            pass
+        self._tables_created = False
     
     def _create_tables(self):
         """Create tables if they don't exist"""
@@ -350,18 +351,20 @@ class PostgreSQLManager:
             return {}
 
 # Initialize PostgreSQL manager
+pg_manager = None
+
 if engine:
     try:
         pg_manager = PostgreSQLManager(engine)
-        print("✅ PostgreSQL connection successful")
+        print("✅ PostgreSQL manager initialized")
     except Exception as e:
-        print(f"⚠️ PostgreSQL connection failed: {e}")
+        print(f"⚠️ PostgreSQL init failed: {str(e)[:200]}")
         print("📁 Falling back to CSV mode")
         engine = None
         pg_manager = None
-else:
-    pg_manager = None
-    print("ℹ️ No DATABASE_URL configured - using CSV mode")
+
+if not pg_manager:
+    print("ℹ️ Running in CSV-only mode")
 
 def sanitize_filename_windows(filename):
     """
