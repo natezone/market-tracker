@@ -121,10 +121,10 @@ if POSTGRES_URL:
             connect_args={
                 "sslmode": "require",  # Supabase requires SSL
             },
-            pool_pre_ping=True,  # Verify connections before using
-            pool_recycle=300,  # Recycle connections after 5 minutes
-            pool_size=5,  # Connection pool size
-            max_overflow=10  # Allow up to 15 total connections
+            pool_pre_ping=True,  
+            pool_recycle=300, 
+            pool_size=5, 
+            max_overflow=10
         )
         
         # Test connection
