@@ -194,10 +194,22 @@ class PostgreSQLManager:
                     UNIQUE(ticker, index_name)
                 );
                 
+                -- Existing indexes
                 CREATE INDEX IF NOT EXISTS idx_ticker ON stocks(ticker);
                 CREATE INDEX IF NOT EXISTS idx_index ON stocks(index_name);
                 CREATE INDEX IF NOT EXISTS idx_sector ON stocks(sector);
                 CREATE INDEX IF NOT EXISTS idx_pct_21d ON stocks(pct_21d);
+
+                -- Performance optimization indexes
+                CREATE INDEX IF NOT EXISTS idx_composite_score ON stocks(composite_score DESC NULLS LAST);
+                CREATE INDEX IF NOT EXISTS idx_sector_score ON stocks(sector, pct_21d DESC);
+                CREATE INDEX IF NOT EXISTS idx_updated_at ON stocks(updated_at DESC);
+                CREATE INDEX IF NOT EXISTS idx_status ON stocks(status) WHERE status = 'ok';
+                CREATE INDEX IF NOT EXISTS idx_rising_declining ON stocks(rising_7day, declining_7day) WHERE status = 'ok';
+
+                -- Composite index for common dashboard query
+                CREATE INDEX IF NOT EXISTS idx_dashboard_query ON stocks(index_name, status, pct_21d DESC) 
+                    WHERE status = 'ok';
             """))
     
     def save_metrics(self, metrics_df, index_name):
@@ -297,13 +309,6 @@ class PostgreSQLManager:
                     print(f"   Available indices:")
                     for row in check:
                         print(f"     - {row[0]}: {row[1]} stocks")
-            
-            # Rename columns back
-            if 'high_52w' in df.columns:
-                df = df.rename(columns={
-                    'high_52w': '52w_high',
-                    'low_52w': '52w_low'
-                })
             
             # Drop PostgreSQL-specific columns
             df = df.drop(columns=['id', 'updated_at'], errors='ignore')
@@ -759,13 +764,21 @@ def batch(iterable, n=1):
         yield iterable[i:i+n]
 
 def download_history(tickers, period="max", interval="1d", threads=True, progress=True):
-    """Download historical data for multiple tickers"""
+    """Download historical data for multiple tickers with optimized batching"""
     if len(tickers) == 0:
         return {}
 
     out = {}
+    
+    # Optimize batch size based on number of tickers
+    if len(tickers) < 100:
+        batch_size = 25  # Smaller batches for better error handling
+    else:
+        batch_size = BATCH_SIZE
 
-    for chunk in batch(tickers, BATCH_SIZE):
+    for chunk in batch(tickers, batch_size):
+        chunk_start_time = time.time()
+        
         for attempt in range(3):
             try:
                 data = yf.download(
@@ -781,10 +794,13 @@ def download_history(tickers, period="max", interval="1d", threads=True, progres
             except Exception as e:
                 wait = (attempt + 1) * 2
                 if VERBOSE:
-                    print(f"Download error, retrying in {wait}s: {e}")
+                    print(f"Download error (attempt {attempt + 1}/3), retrying in {wait}s: {e}")
                 time.sleep(wait)
         else:
-            print("Failed to download chunk:", chunk)
+            print(f"❌ Failed to download chunk after 3 attempts: {chunk}")
+            # Add empty DataFrames for failed tickers
+            for t in chunk:
+                out[t] = pd.DataFrame()
             continue
 
         # Process downloaded data
@@ -803,6 +819,15 @@ def download_history(tickers, period="max", interval="1d", threads=True, progres
                     out[t] = df
                 except Exception:
                     out[t] = pd.DataFrame()
+        
+        # Rate limiting between chunks
+        chunk_duration = time.time() - chunk_start_time
+        if chunk_duration < 1.0:  # If chunk was too fast, slow down
+            time.sleep(1.0 - chunk_duration)
+
+    if VERBOSE:
+        successful = sum(1 for df in out.values() if not df.empty)
+        print(f"✓ Downloaded data for {successful}/{len(tickers)} tickers")
 
     return out
 
@@ -2095,10 +2120,10 @@ def compute_metrics_for_ticker(df, consecutive_days=7):
 
     # 52-week high/low
     if len(closes) >= 252:
-        metrics['52w_high'] = float(closes.iloc[-252:].max())
-        metrics['52w_low'] = float(closes.iloc[-252:].min())
-        metrics['pct_from_52w_high'] = ((last - metrics['52w_high']) / metrics['52w_high']) * 100
-        metrics['pct_from_52w_low'] = ((last - metrics['52w_low']) / metrics['52w_low']) * 100
+        metrics['high_52w'] = float(closes.iloc[-252:].max())
+        metrics['low_52w'] = float(closes.iloc[-252:].min())
+        metrics['pct_from_52w_high'] = ((last - metrics['high_52w']) / metrics['high_52w']) * 100
+        metrics['pct_from_52w_low'] = ((last - metrics['low_52w']) / metrics['low_52w']) * 100
 
     # Volume metrics if available
     if 'Volume' in df.columns:
@@ -2306,11 +2331,27 @@ def calculate_correlation_matrix(data_dict):
     
     for ticker, df in data_dict.items():
         if df is not None and not df.empty and 'Close' in df.columns:
-            returns = df['Close'].pct_change().dropna()
+            # Remove duplicate indices before processing
+            df_clean = df[~df.index.duplicated(keep='first')]
+            
+            # Calculate returns
+            returns = df_clean['Close'].pct_change().dropna()
+            
             if len(returns) > 50:  # Minimum data requirement
+                # Ensure the returns series has a unique index
+                if returns.index.duplicated().any():
+                    returns = returns[~returns.index.duplicated(keep='first')]
+                
                 returns_df[ticker] = returns
     
     if returns_df.empty or len(returns_df.columns) < 2:
+        return pd.DataFrame()
+    
+    # Align all series to common dates
+    returns_df = returns_df.dropna(how='all')  # Remove rows with all NaN
+    
+    # Check if we have enough data after alignment
+    if len(returns_df) < 50:
         return pd.DataFrame()
     
     return returns_df.corr()
@@ -2343,60 +2384,92 @@ def get_sector_comparison_data(valid_metrics, selected_tickers):
 # Advanced Mode UI Functions
 # ---------------------------
 
-def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label):
+def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, current_index):
     """Render the Comparison Mode interface"""
     st.subheader("🔄 Stock Comparison Analysis")
     
-    # Stock selection
+    # Stock selection with index-specific state management
     available_tickers = sorted(valid_metrics['ticker'].unique())
+
+    # Use index-specific state keys to avoid conflicts
+    state_key = f'comparison_selected_{current_index}'
+    selection_history_key = f'selection_history_{current_index}'
+
+    # Initialize session state for this specific index
+    if state_key not in st.session_state:
+        st.session_state[state_key] = []
+        st.session_state[selection_history_key] = []
+
+    # Validate stored tickers against current data
+    valid_stored_tickers = [t for t in st.session_state[state_key] if t in available_tickers]
+
+    # Track if we had to clear invalid selections
+    selections_cleared = len(valid_stored_tickers) != len(st.session_state[state_key])
+
+    # Update session state
+    st.session_state[state_key] = valid_stored_tickers
+
+    # Show informative message if selections were cleared
+    if selections_cleared and len(st.session_state[state_key]) == 0:
+        st.info(f"ℹ️ Previous selections cleared due to index change to {index_selection}")
+    elif selections_cleared:
+        removed_count = len(st.session_state[selection_history_key]) - len(valid_stored_tickers)
+        st.warning(f"⚠️ {removed_count} previously selected ticker(s) not found in {index_selection}")
+
+    # Update selection history
+    st.session_state[selection_history_key] = valid_stored_tickers.copy()
     
-    # Initialize session state once at the top
-    if 'comparison_selected' not in st.session_state:
-        st.session_state.comparison_selected = []
-    
-    # prevents the "default value not in options" error when switching indices
-    valid_stored_tickers = [t for t in st.session_state.comparison_selected if t in available_tickers]
-    
-    # Update session state if we filtered out any invalid tickers
-    if len(valid_stored_tickers) != len(st.session_state.comparison_selected):
-        st.session_state.comparison_selected = valid_stored_tickers
-        if len(st.session_state.comparison_selected) == 0:
-            st.info("ℹ️ Previous selections cleared due to index change")
-    
-    col1, col2 = st.columns([2, 1])
-    
+    col1, col2, col3 = st.columns([2, 1, 1])
+
+    with col1:
+        # Map current_index to display name
+        index_display_names = {
+            "SP500": "S&P 500",
+            "SP400": "S&P MidCap 400",
+            "SP600": "S&P SmallCap 600",
+            "NASDAQ100": "Nasdaq-100",
+            "DOW30": "Dow Jones 30",
+            "COMBINED": "Combined Indices"
+        }
+        index_display = index_display_names.get(current_index, current_index)
+        
+        selected_tickers = st.multiselect(
+            "Select stocks to compare (2-20 stocks)",
+            options=available_tickers,
+            default=st.session_state[state_key],
+            max_selections=20,
+            key=f"stock_selector_{current_index}",
+            help=f"Select 2-20 stocks from {index_display} to compare"
+        )
+        
+        # Update session state when user manually changes selection
+        st.session_state[state_key] = selected_tickers
+
     with col2:
-        # Button must come before the multiselect
-        if st.button("⭐ Add Top Performers", key="add_top_performers", use_container_width=True):
-            # Get top performers
+        # Add top performers button
+        if st.button("⭐ Top Performers", key=f"add_top_performers_{current_index}", use_container_width=True):
             available_return_cols = [col for col in ['pct_21d', 'pct_5d', 'pct_1d'] 
                                     if col in valid_metrics.columns]
             
             if available_return_cols:
                 top_10 = valid_metrics.nlargest(10, available_return_cols[0])['ticker'].tolist()
                 
-                # Merge with existing selections (remove duplicates, limit to 20)
-                current = st.session_state.comparison_selected
-                updated = list(dict.fromkeys(current + top_10))[:20]  # Preserve order, remove dupes
+                # Merge with existing selections
+                current = st.session_state[state_key]
+                updated = list(dict.fromkeys(current + top_10))[:20]
                 
                 # Update state
-                st.session_state.comparison_selected = updated
+                st.session_state[state_key] = updated
                 
-                st.success(f"✅ Added top performers! Total selected: {len(updated)}")
+                st.success(f"✅ Added {len(updated) - len(current)} top performers!")
                 st.rerun()
-    
-    with col1:
-        # Multiselect reads from session state (now guaranteed to only have valid tickers)
-        selected_tickers = st.multiselect(
-            "Select stocks to compare (2-20 stocks)",
-            options=available_tickers,
-            default=st.session_state.comparison_selected,
-            max_selections=20,
-            key="stock_selector_widget"
-        )
-        
-        # Update session state when user manually changes selection
-        st.session_state.comparison_selected = selected_tickers
+
+    with col3:
+        # Clear selections button
+        if st.button("🗑️ Clear All", key=f"clear_selections_{current_index}", use_container_width=True):
+            st.session_state[state_key] = []
+            st.info("Selections cleared")
+            st.rerun()
     
     if len(selected_tickers) < 2:
         st.info("👆 Please select at least 2 stocks to compare")
@@ -3611,36 +3684,63 @@ def run_cli(consecutive_days=7, index_key="SP500"):
 
     print(f"\nProcessing ticker data with {consecutive_days}-day consecutive analysis...")
 
-    for t in tqdm(tickers, desc="Computing metrics"):
-        df = hist.get(t, pd.DataFrame())
-
+    def process_single_ticker(ticker_data):
+        """Process a single ticker for parallel execution"""
+        t, df, consecutive_days, company_names, sectors, industries, per_ticker_dir = ticker_data
+        
         if df is None or df.empty:
-            metrics = None
+            return {
+                "ticker": t,
+                "company_name": company_names.get(t, "Unknown"),  
+                "status": "no_data",
+                "sector": sectors.get(t, "Unknown"),
+                "industry": industries.get(t, "Unknown")
+            }
+        
+        # Save per-ticker CSV
+        try:
+            safe_filename = sanitize_filename_windows(f"{t}.csv")
+            df.to_csv(os.path.join(per_ticker_dir, safe_filename))
+        except Exception:
+            pass
+
+        metrics = compute_metrics_for_ticker(df, consecutive_days)
+
+        if metrics is None:
+            return {
+                "ticker": t,
+                "company_name": company_names.get(t, "Unknown"),  
+                "status": "no_data",
+                "sector": sectors.get(t, "Unknown"),
+                "industry": industries.get(t, "Unknown")
+            }
         else:
-            # Save per-ticker CSV
-            try:
-                safe_filename = sanitize_filename_windows(f"{t}.csv")
-                df.to_csv(os.path.join(per_ticker_dir, safe_filename))
-            except Exception:
-                pass
+            metrics['ticker'] = t
+            metrics['company_name'] = company_names.get(t, "Unknown") 
+            metrics['status'] = 'ok'
+            metrics['sector'] = sectors.get(t, "Unknown")
+            metrics['industry'] = industries.get(t, "Unknown")
+            return metrics
 
-            metrics = compute_metrics_for_ticker(df, consecutive_days)
+    # Prepare data for parallel processing
+    ticker_data_list = [
+        (t, hist.get(t, pd.DataFrame()), consecutive_days, company_names, sectors, industries, per_ticker_dir)
+        for t in tickers
+    ]
 
-            if metrics is None:
-                metrics_rows.append({
-                    "ticker": t,
-                    "company_name": company_names.get(t, "Unknown"),  
-                    "status": "no_data",
-                    "sector": sectors.get(t, "Unknown"),
-                    "industry": industries.get(t, "Unknown")
-                })
-            else:
-                metrics['ticker'] = t
-                metrics['company_name'] = company_names.get(t, "Unknown") 
-                metrics['status'] = 'ok'
-                metrics['sector'] = sectors.get(t, "Unknown")
-                metrics['industry'] = industries.get(t, "Unknown")
-                metrics_rows.append(metrics)
+    # Use parallel processing (use fewer workers to avoid overwhelming CPU)
+    max_workers = min(4, os.cpu_count() or 1)  # Max 4 workers
+    print(f"Using {max_workers} parallel workers for metrics calculation...")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Process in parallel with progress bar
+        results = list(tqdm(
+            executor.map(process_single_ticker, ticker_data_list),
+            total=len(ticker_data_list),
+            desc="Computing metrics"
+        ))
+
+    metrics_rows = results
 
     df_metrics = pd.DataFrame(metrics_rows)
     print("\nFetching P/E ratios...")
@@ -3650,19 +3750,39 @@ def run_cli(consecutive_days=7, index_key="SP500"):
     print("\n" + "=" * 60)
     print("SAVING TO DATABASE")
     print("=" * 60)
-    
+
+    save_successful = False
+
     if pg_manager:
         print(f"📊 Saving {len(df_metrics)} stocks to PostgreSQL...")
         try:
             pg_manager.save_metrics(df_metrics, index_key)
             print(f"✅ Successfully saved to PostgreSQL!")
+            save_successful = True
         except Exception as e:
             print(f"❌ PostgreSQL save failed: {e}")
             import traceback
             traceback.print_exc()
+            print(f"⚠️ Falling back to CSV-only mode for this run")
     else:
-        print("⚠️ No PostgreSQL connection. Skipping database save.")
-    
+        print("⚠️ No PostgreSQL connection. Using CSV-only mode.")
+
+    # Always save CSV backup regardless of database status
+    try:
+        master_csv = os.path.join(index_data_dir, "latest_metrics.csv")
+        ensure_dir(index_data_dir)
+        df_metrics.to_csv(master_csv, index=False)
+        print(f"✓ Saved CSV backup to {master_csv}")
+    except Exception as csv_error:
+        print(f"❌ CRITICAL: CSV backup also failed: {csv_error}")
+        # try to save to a temp location
+        try:
+            temp_csv = os.path.join(DATA_DIR, f"emergency_backup_{index_key}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+            df_metrics.to_csv(temp_csv, index=False)
+            print(f"⚠️ Saved emergency backup to {temp_csv}")
+        except:
+            print(f"❌ FATAL: All save methods failed!")
+
     print("=" * 60 + "\n")
 
     # Dynamic column ordering based on consecutive_days
@@ -3793,35 +3913,130 @@ def run_cli(consecutive_days=7, index_key="SP500"):
 # Streamlit Web Interface
 # ---------------------------
 def plot_ticker_price_rsi(ticker_csv_path, ticker):
-    """Helper: load per-ticker data and produce a 2-row plot: price and RSI"""
+    """
+    Helper: load per-ticker data and produce a 2-row plot: price and RSI
     
-    # Fallback to CSV if not in database
-    if df.empty and os.path.exists(ticker_csv_path):
-        df = pd.read_csv(ticker_csv_path, parse_dates=True, index_col=0)
+    Args:
+        ticker_csv_path: Path to CSV file with historical data
+        ticker: Stock ticker symbol
+    """
+    # Initialize empty DataFrame
+    df = pd.DataFrame()
     
-    if df.empty or 'Close' not in df.columns:
-        st.info("No historical data available for plotting.")
+    # Try to load historical data from CSV
+    if os.path.exists(ticker_csv_path):
+        try:
+            df = pd.read_csv(ticker_csv_path, parse_dates=True, index_col=0)
+        except Exception as e:
+            st.error(f"❌ Error loading data for {ticker}: {e}")
+            st.info("💡 Try updating the data using the 'Update Data' button in the sidebar.")
+            return
+    else:
+        st.warning(f"⚠️ Data file not found for {ticker}")
+        st.info(f"Expected location: `{ticker_csv_path}`")
         return
-
-    # Add RSI and Momentum
-    df = add_technical_indicators(df)
-    # build subplot
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08,
-                        row_heights=[0.7, 0.3], specs=[[{"secondary_y": False}], [{"secondary_y": False}]])
-    fig.add_trace(go.Scatter(x=df.index, y=df['Close'], name=f"{ticker} Close"), row=1, col=1)
-    # add MA20/50 if present
-    if 'MA20' in df.columns:
-        fig.add_trace(go.Line(x=df.index, y=df['MA20'], name='MA20', line=dict(dash='dash')), row=1, col=1)
-    if 'MA50' in df.columns:
-        fig.add_trace(go.Line(x=df.index, y=df['MA50'], name='MA50', line=dict(dash='dot')), row=1, col=1)
-
-    # RSI
-    if 'RSI' in df.columns:
-        fig.add_trace(go.Scatter(x=df.index, y=df['RSI'], name='RSI'), row=2, col=1)
-        fig.update_yaxes(title_text="RSI", row=2, col=1)
-    fig.update_yaxes(title_text="Price", row=1, col=1)
-    fig.update_layout(height=600, title_text=f"{ticker} Price + RSI")
-    st.plotly_chart(fig, width='stretch')
+    
+    # Validate data
+    if df.empty:
+        st.info(f"ℹ️ No historical data available for {ticker}.")
+        return
+    
+    if 'Close' not in df.columns:
+        st.error(f"❌ Invalid data format for {ticker}: missing 'Close' column")
+        st.caption(f"Available columns: {', '.join(df.columns)}")
+        return
+    
+    # Add technical indicators
+    try:
+        df = add_technical_indicators(df)
+    except Exception as e:
+        st.error(f"❌ Error calculating technical indicators: {e}")
+        # Continue with basic plot even if indicators fail
+    
+    # Build subplot with price and RSI
+    fig = make_subplots(
+        rows=2, cols=1, 
+        shared_xaxes=True, 
+        vertical_spacing=0.08,
+        row_heights=[0.7, 0.3], 
+        specs=[[{"secondary_y": False}], [{"secondary_y": False}]]
+    )
+    
+    # Add close price
+    fig.add_trace(
+        go.Scatter(x=df.index, y=df['Close'], name=f"{ticker} Close", line=dict(color='#1f77b4', width=2)),
+        row=1, col=1
+    )
+    
+    # Add moving averages if available
+    if 'MA20' in df.columns and df['MA20'].notna().any():
+        fig.add_trace(
+            go.Scatter(x=df.index, y=df['MA20'], name='MA20', line=dict(dash='dash', color='orange')),
+            row=1, col=1
+        )
+    
+    if 'MA50' in df.columns and df['MA50'].notna().any():
+        fig.add_trace(
+            go.Scatter(x=df.index, y=df['MA50'], name='MA50', line=dict(dash='dot', color='red')),
+            row=1, col=1
+        )
+    
+    # Add RSI if available
+    if 'RSI' in df.columns and df['RSI'].notna().any():
+        fig.add_trace(
+            go.Scatter(x=df.index, y=df['RSI'], name='RSI', line=dict(color='purple')),
+            row=2, col=1
+        )
+        
+        # Add RSI reference lines
+        fig.add_hline(y=70, line_dash="dash", line_color="red", opacity=0.5, row=2, col=1)
+        fig.add_hline(y=30, line_dash="dash", line_color="green", opacity=0.5, row=2, col=1)
+        
+        fig.update_yaxes(title_text="RSI", row=2, col=1, range=[0, 100])
+    else:
+        st.caption("⚠️ RSI indicator not available")
+    
+    # Update layout
+    fig.update_yaxes(title_text="Price ($)", row=1, col=1)
+    fig.update_xaxes(title_text="Date", row=2, col=1)
+    
+    fig.update_layout(
+        height=600, 
+        title_text=f"{ticker} - Price & Technical Indicators",
+        hovermode='x unified',
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+    
+    # Display the chart
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Show data summary
+    with st.expander("📊 Data Summary"):
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Data Points", len(df))
+        
+        with col2:
+            date_range = (df.index.max() - df.index.min()).days
+            st.metric("Date Range", f"{date_range} days")
+        
+        with col3:
+            current_price = df['Close'].iloc[-1]
+            st.metric("Latest Price", f"${current_price:.2f}")
+        
+        with col4:
+            if 'RSI' in df.columns:
+                current_rsi = df['RSI'].iloc[-1]
+                if pd.notna(current_rsi):
+                    st.metric("Current RSI", f"{current_rsi:.1f}")
 
 # ENHANCED DATA FETCHING AND CACHING
 def fetch_and_enhance_metrics(valid_metrics: pd.DataFrame, 
@@ -3987,22 +4202,56 @@ def fetch_and_enhance_metrics(valid_metrics: pd.DataFrame,
         
         return valid_metrics
 
-# PostgreSQL data loading with cache
+# PostgreSQL data loading with caching
 @cache_data(ttl=3600, show_spinner=False)
 def load_data_from_postgres(index_name):
-    """Load data from PostgreSQL with caching"""
+    """Load data from PostgreSQL with intelligent caching"""
     if pg_manager:
-        df = pg_manager.load_metrics(index_name)
-        
-        if df is not None and not df.empty:
-            return df
+        try:
+            df = pg_manager.load_metrics(index_name)
+            
+            if df is not None and not df.empty:
+                # Cache metadata for faster subsequent checks
+                cache_metadata = {
+                    'row_count': len(df),
+                    'last_updated': df['updated_at'].max() if 'updated_at' in df.columns else None,
+                    'cached_at': pd.Timestamp.now()
+                }
+                st.session_state[f'cache_meta_{index_name}'] = cache_metadata
+                return df
+        except Exception as e:
+            print(f"PostgreSQL load failed: {e}")
     
     # Fallback to CSV if PostgreSQL unavailable or empty
     csv_path = os.path.join(DATA_DIR, index_name, "latest_metrics.csv")
     if os.path.exists(csv_path):
-        return pd.read_csv(csv_path)
+        try:
+            df = pd.read_csv(csv_path)
+            # Parse date columns if present
+            if 'last_date' in df.columns:
+                df['last_date'] = pd.to_datetime(df['last_date'], errors='coerce')
+            return df
+        except Exception as e:
+            print(f"CSV load failed: {e}")
     
     return None
+
+# Add cache invalidation function
+def invalidate_cache(index_name=None):
+    """Manually invalidate cached data"""
+    if index_name:
+        # Clear specific index cache
+        cache_key = f'cache_meta_{index_name}'
+        if cache_key in st.session_state:
+            del st.session_state[cache_key]
+    else:
+        # Clear all caches
+        keys_to_delete = [k for k in st.session_state.keys() if k.startswith('cache_meta_')]
+        for key in keys_to_delete:
+            del st.session_state[key]
+    
+    # Clear Streamlit's cache_data
+    load_data_from_postgres.clear()
 
 # STREAMLIT WEB INTERFACE
 def run_streamlit():
@@ -4050,7 +4299,7 @@ def run_streamlit():
     # Auto-fetch data if not present
     if not os.path.exists(os.path.join(index_data_dir, "latest_metrics.csv")):
         if 'data_fetched' not in st.session_state:
-            with st.spinner(f"First time setup: Fetching {index_selection} data... This will take about5-10 minutes."):
+            with st.spinner(f"First time setup: Fetching {index_selection} data... This will take about 5-10 minutes."):
                 try:
                     run_cli(consecutive_days=7, index_key=current_index)
                     st.session_state.data_fetched = True
@@ -4200,16 +4449,84 @@ def run_streamlit():
     if not data_exists:
         st.sidebar.warning("No data found. Run initial data fetch first.")
         if st.sidebar.button("📥 Fetch All Data", key="fetch_all_data_btn"):
-            with st.spinner(f"Fetching {index_selection} data... This may take several minutes."):
-                run_cli(consecutive_days, current_index)
-            st.success("Data fetched successfully!")
-            st.rerun()
+            # Create progress container
+            progress_container = st.container()
+            
+            with progress_container:
+                st.info("Starting data fetch...")
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                # Stage 1: Fetch tickers
+                status_text.text("📋 Fetching ticker list...")
+                progress_bar.progress(10)
+                time.sleep(0.5)
+                
+                # Stage 2: Download historical data
+                status_text.text("📊 Downloading historical data (this may take 3-5 minutes)...")
+                progress_bar.progress(30)
+                
+                # Run the actual fetch
+                try:
+                    run_cli(consecutive_days, current_index)
+                    
+                    # Stage 3: Processing
+                    status_text.text("⚙️ Processing metrics...")
+                    progress_bar.progress(80)
+                    time.sleep(0.5)
+                    
+                    # Stage 4: Complete
+                    progress_bar.progress(100)
+                    status_text.text("✅ Complete!")
+                    
+                    st.success("Data fetched successfully!")
+                    time.sleep(1)
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"❌ Fetch failed: {e}")
+                    status_text.text("Failed - check logs")
+                    
     else:
+        # Show last update time
+        if os.path.exists(os.path.join(index_data_dir, "latest_metrics.csv")):
+            last_modified = os.path.getmtime(os.path.join(index_data_dir, "latest_metrics.csv"))
+            last_update = datetime.fromtimestamp(last_modified)
+            hours_since = (datetime.now() - last_update).total_seconds() / 3600
+            
+            if hours_since < 1:
+                st.sidebar.info(f"✅ Data current ({int(hours_since * 60)} min ago)")
+            elif hours_since < 6:
+                st.sidebar.info(f"📊 Data updated {hours_since:.1f}h ago")
+            else:
+                st.sidebar.warning(f"⚠️ Data is {hours_since:.1f}h old - consider updating")
+        
         if st.sidebar.button("🔄 Update Data", key="update_data_btn"):
-            with st.spinner(f"Updating {index_selection} data with {consecutive_days}-day analysis..."):
-                run_cli(consecutive_days, current_index)
-            st.success("Data updated!")
-            st.rerun()
+            progress_container = st.container()
+            
+            with progress_container:
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                status_text.text(f"🔄 Updating {index_selection} data...")
+                progress_bar.progress(20)
+                
+                try:
+                    run_cli(consecutive_days, current_index)
+                    
+                    progress_bar.progress(100)
+                    status_text.text("✅ Update complete!")
+                    
+                    # Invalidate cache
+                    invalidate_cache(current_index)
+                    
+                    st.success("Data updated!")
+                    time.sleep(1)
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"❌ Update failed: {e}")
+                    status_text.text("Failed - check logs")
 
     if data_exists:
         # Dynamic column names based on consecutive_days
@@ -4481,8 +4798,8 @@ def run_streamlit():
 
         with tabs[3]:
             if 'pct_from_52w_high' in valid_metrics.columns:
-                near_highs = valid_metrics.nlargest(20, 'pct_from_52w_high')[['ticker', 'company_name', 'sector', 'pe_ratio', 'last_close', '52w_high', 'pct_from_52w_high']].copy()
-                near_lows = valid_metrics.nsmallest(20, 'pct_from_52w_low')[['ticker', 'company_name', 'sector', 'pe_ratio', 'last_close', '52w_low', 'pct_from_52w_low']].copy()
+                near_highs = valid_metrics.nlargest(20, 'pct_from_52w_high')[['ticker', 'company_name', 'sector', 'pe_ratio', 'last_close', 'high_52w', 'pct_from_52w_high']].copy()
+                near_lows = valid_metrics.nsmallest(20, 'pct_from_52w_low')[['ticker', 'company_name', 'sector', 'pe_ratio', 'last_close', 'low_52w', 'pct_from_52w_low']].copy()
 
                 col1, col2 = st.columns(2)
                 with col1:
@@ -5237,7 +5554,7 @@ def run_streamlit():
             st.dataframe(styled_preview, use_container_width=True)
     # ---------- Comparison Mode ----------
     elif view_mode == "Comparison Mode":
-        render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label)
+        render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, current_index)
 
     # ---------- Historical Analysis ---------- 
     elif view_mode == "Historical Analysis":

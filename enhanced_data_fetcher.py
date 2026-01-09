@@ -354,13 +354,14 @@ def fetch_analyst_data(ticker: str) -> Dict:
         return {}
 
 # COMPREHENSIVE FETCH FUNCTION
-def fetch_all_enhanced_data(ticker: str, verbose: bool = False) -> Dict:
+def fetch_all_enhanced_data(ticker: str, verbose: bool = False, max_retries: int = 3) -> Dict:
     """
-    Fetch all enhanced data for a single ticker
+    Fetch all enhanced data for a single ticker with retry logic
     
     Args:
         ticker: Stock ticker symbol
         verbose: Print progress
+        max_retries: Maximum retry attempts for failed requests
     
     Returns:
         Dictionary with all enhanced metrics
@@ -370,60 +371,88 @@ def fetch_all_enhanced_data(ticker: str, verbose: bool = False) -> Dict:
     
     all_data = {'ticker': ticker}
     
-    # Fetch each category
-    try:
-        fundamentals = fetch_forward_fundamentals(ticker)
-        all_data.update(fundamentals)
-        if verbose:
-            print(f"  ✓ Fundamentals fetched")
-    except Exception as e:
-        if verbose:
-            print(f"  ✗ Fundamentals failed: {e}")
+    def fetch_with_retry(fetch_func, category_name):
+        """Helper function to fetch with exponential backoff"""
+        for attempt in range(max_retries):
+            try:
+                data = fetch_func(ticker)
+                if verbose:
+                    print(f"  ✓ {category_name} fetched")
+                return data
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt) * 0.5  # 0.5s, 1s, 2s
+                    if verbose:
+                        print(f"  ⚠️ {category_name} failed (attempt {attempt + 1}/{max_retries}), retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    if verbose:
+                        print(f"  ✗ {category_name} failed after {max_retries} attempts: {e}")
+                    return {}
     
-    time.sleep(0.2)  # Rate limiting
+    # Fetch each category with retry logic
+    fundamentals = fetch_with_retry(fetch_forward_fundamentals, "Fundamentals")
+    all_data.update(fundamentals)
+    time.sleep(0.3)  # Increased base rate limit
     
-    try:
-        institutional = fetch_institutional_data(ticker)
-        all_data.update(institutional)
-        if verbose:
-            print(f"  ✓ Institutional data fetched")
-    except Exception as e:
-        if verbose:
-            print(f"  ✗ Institutional failed: {e}")
+    institutional = fetch_with_retry(fetch_institutional_data, "Institutional")
+    all_data.update(institutional)
+    time.sleep(0.3)
     
-    time.sleep(0.2)
-    
-    try:
-        analyst = fetch_analyst_data(ticker)
-        all_data.update(analyst)
-        if verbose:
-            print(f"  ✓ Analyst data fetched")
-    except Exception as e:
-        if verbose:
-            print(f"  ✗ Analyst failed: {e}")
+    analyst = fetch_with_retry(fetch_analyst_data, "Analyst")
+    all_data.update(analyst)
     
     return all_data
 
 def fetch_enhanced_data_batch(tickers: List[str], 
-                              verbose: bool = True) -> pd.DataFrame:
+                              verbose: bool = True,
+                              fail_threshold: float = 0.3) -> pd.DataFrame:
     """
-    Fetch enhanced data for multiple tickers
+    Fetch enhanced data for multiple tickers with failure tracking
     
     Args:
         tickers: List of ticker symbols
         verbose: Show progress bar
+        fail_threshold: Stop if this % of requests fail (0.3 = 30%)
     
     Returns:
         DataFrame with enhanced metrics
     """
     all_data = []
+    failed_count = 0
+    total_processed = 0
     
     iterator = tqdm(tickers, desc="Fetching enhanced data") if verbose else tickers
     
     for ticker in iterator:
-        data = fetch_all_enhanced_data(ticker, verbose=False)
+        total_processed += 1
+        data = fetch_all_enhanced_data(ticker, verbose=False, max_retries=3)
+        
+        # Track failures
+        if not data or len(data) <= 1:  # Only has 'ticker' key = failed
+            failed_count += 1
+        
         all_data.append(data)
-        time.sleep(0.3)  # Rate limiting to avoid blocking
+        
+        # Check if we're hitting rate limits (too many failures)
+        if total_processed >= 10:  # After 10 requests, check failure rate
+            failure_rate = failed_count / total_processed
+            if failure_rate > fail_threshold:
+                print(f"\n⚠️ WARNING: {failure_rate:.0%} failure rate detected!")
+                print(f"   This may indicate rate limiting or network issues.")
+                print(f"   Increasing delay between requests...")
+                time.sleep(2)  # Longer delay when rate limited
+            else:
+                time.sleep(0.5)  # Normal rate limiting
+        else:
+            time.sleep(0.5)
+    
+    # Summary
+    if verbose:
+        success_count = total_processed - failed_count
+        print(f"\n✅ Successfully fetched: {success_count}/{total_processed} ({success_count/total_processed:.0%})")
+        if failed_count > 0:
+            print(f"⚠️ Failed: {failed_count}/{total_processed} ({failed_count/total_processed:.0%})")
     
     return pd.DataFrame(all_data)
 

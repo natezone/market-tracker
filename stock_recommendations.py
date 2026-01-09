@@ -48,8 +48,29 @@ INVESTMENT STRATEGIES:
 - Balanced: Best overall risk-adjusted scores
 """
 
-import pandas as pd
-import numpy as np
+def safe_score_add(base, additions):
+    """
+    Safely add scores, treating None as 0
+    
+    Args:
+        base: Base score value
+        additions: List of (score, weight) tuples
+    
+    Returns:
+        Weighted sum, treating None as 0
+    """
+    total = base if base is not None else 0
+    
+    for score, weight in additions:
+        if score is not None and not pd.isna(score):
+            total += score * weight
+    
+    return total
+
+def safe_mean(values):
+    """Calculate mean of values, ignoring None and NaN"""
+    valid = [v for v in values if v is not None and not pd.isna(v)]
+    return np.mean(valid) if valid else 50.0
 
 def safe_get(row, column, default=0):
     """Safely get a value from a row, return default if None or missing"""
@@ -77,7 +98,7 @@ def safe_get(row, column, default=0):
         
     except Exception as e:
         return default
-    
+ 
 # CONFIGURATION AND ENUMS
 class RecommendationLevel(Enum):
     """Recommendation levels"""
@@ -794,17 +815,30 @@ def calculate_stock_score(stock_data: pd.Series,
     catalyst_score = score_catalysts(catalysts)
     
     # COMPOSITE SCORE (9 DIMENSIONS)
-    # Updated weights to include new dimensions
-    base_composite_score = (
-        technical_score * 0.15 +           
-        fundamental_score * 0.20 +         
-        sentiment_score_val * 0.10 +       
-        risk_score * 0.08 +                
-        forward_looking_score * 0.20 +     
-        institutional_score * 0.10 +       
-        relative_strength_score * 0.10 +   
-        catalyst_score * 0.07              
-    )
+    # Collect all scores with their weights
+    score_components_list = [
+        (technical_score, 0.15),
+        (fundamental_score, 0.20),
+        (sentiment_score_val, 0.10),
+        (risk_score, 0.08),
+        (forward_looking_score, 0.20),
+        (institutional_score, 0.10),
+        (relative_strength_score, 0.10),
+        (catalyst_score, 0.07)
+    ]
+    
+    # Calculate weighted sum, treating None as 0
+    base_composite_score = 0
+    valid_weight_sum = 0
+    
+    for score, weight in score_components_list:
+        if score is not None and not pd.isna(score):
+            base_composite_score += score * weight
+            valid_weight_sum += weight
+    
+    # Normalize by actual weights used (if some scores were missing)
+    if valid_weight_sum > 0 and valid_weight_sum < 1.0:
+        base_composite_score = base_composite_score / valid_weight_sum
     
     # Risk adjustment
     ann_vol = stock_data.get('ann_vol_pct', 25.0)
@@ -976,116 +1010,138 @@ def score_earnings_catalyst(days_to_earnings: Optional[int],
                            beat_rate: float = 0.5,
                            last_surprise_pct: Optional[float] = None) -> float:
     """
-    Score upcoming earnings as a catalyst
+    Score upcoming earnings as a catalyst (BULLETPROOF version)
     
-    High score if:
-    - Earnings coming soon (7-14 days)
-    - History of beating estimates
-    - Last earnings was a beat
-    
-    Returns: Score 0-100
+    Returns: Score 0-100 (guaranteed valid)
     """
-    if days_to_earnings is None:
-        return 50.0  # Neutral if unknown
+    # Start with neutral
+    score = 50.0
     
-    base_score = 50.0
+    if days_to_earnings is None or pd.isna(days_to_earnings):
+        return 50.0
     
-    # 1. Proximity to earnings (sweet spot: 7-14 days before)
-    if 7 <= days_to_earnings <= 14:
-        proximity_bonus = 20.0
-    elif 3 <= days_to_earnings < 7:
-        proximity_bonus = 15.0  # Very close (some risk)
-    elif 14 < days_to_earnings <= 21:
-        proximity_bonus = 10.0
-    elif days_to_earnings < 3:
-        proximity_bonus = 5.0  # Too close (risky)
-    else:
-        proximity_bonus = 0.0  # Too far away
+    try:
+        # 1. Proximity to earnings (sweet spot: 7-14 days before)
+        proximity_bonus = 0.0
+        if 7 <= days_to_earnings <= 14:
+            proximity_bonus = 20.0
+        elif 3 <= days_to_earnings < 7:
+            proximity_bonus = 15.0
+        elif 14 < days_to_earnings <= 21:
+            proximity_bonus = 10.0
+        elif days_to_earnings < 3:
+            proximity_bonus = 5.0
+        
+        score = min(100.0, score + proximity_bonus)
+        
+        # 2. Historical beat rate
+        beat_bonus = 0.0
+        if beat_rate is not None and not pd.isna(beat_rate):
+            if beat_rate >= 0.75:
+                beat_bonus = 20.0
+            elif beat_rate >= 0.60:
+                beat_bonus = 15.0
+            elif beat_rate >= 0.50:
+                beat_bonus = 5.0
+            else:
+                beat_bonus = -10.0
+        
+        if beat_bonus >= 0:
+            score = min(100.0, score + beat_bonus)
+        else:
+            score = max(0.0, score + beat_bonus)
+        
+        # 3. Last earnings surprise
+        if last_surprise_pct is not None and not pd.isna(last_surprise_pct):
+            surprise_bonus = 0.0
+            if last_surprise_pct > 10:
+                surprise_bonus = 15.0
+            elif last_surprise_pct > 5:
+                surprise_bonus = 10.0
+            elif last_surprise_pct > 0:
+                surprise_bonus = 5.0
+            elif last_surprise_pct < -10:
+                surprise_bonus = -15.0
+            
+            if surprise_bonus >= 0:
+                score = min(100.0, score + surprise_bonus)
+            else:
+                score = max(0.0, score + surprise_bonus)
     
-    # 2. Historical beat rate
-    if beat_rate >= 0.75:  # Beats 75%+ of time
-        beat_bonus = 20.0
-    elif beat_rate >= 0.60:
-        beat_bonus = 15.0
-    elif beat_rate >= 0.50:
-        beat_bonus = 5.0
-    else:
-        beat_bonus = -10.0  # History of missing
+    except Exception as e:
+        # If anything fails, return neutral
+        return 50.0
     
-    # 3. Last earnings surprise
-    surprise_bonus = 0.0
-    if last_surprise_pct is not None:
-        if last_surprise_pct > 10:  # Beat by >10%
-            surprise_bonus = 15.0
-        elif last_surprise_pct > 5:
-            surprise_bonus = 10.0
-        elif last_surprise_pct > 0:
-            surprise_bonus = 5.0
-        elif last_surprise_pct < -10:  # Missed by >10%
-            surprise_bonus = -15.0
-    
-    total_score = base_score + proximity_bonus + beat_bonus + surprise_bonus
-    
-    return np.clip(total_score, 0, 100)
+    # Guarantee valid return
+    return float(np.clip(score, 0, 100))
 
 def score_growth_quality(revenue_growth: Optional[float],
                         earnings_growth: Optional[float],
                         revenue_growth_qoq: Optional[float] = None) -> float:
     """
-    Score quality and sustainability of growth
+    Score quality and sustainability of growth (BULLETPROOF version)
     
     High score if:
     - Strong revenue AND earnings growth
     - Accelerating growth (QoQ improving)
     - Positive free cash flow
     
-    Returns: Score 0-100
+    Returns: Score 0-100 (guaranteed valid)
     """
-    if revenue_growth is None and earnings_growth is None:
-        return 50.0
-    
-    base_score = 50.0
+    # Start with neutral score
+    score = 50.0
     
     # 1. Revenue growth (YoY)
-    if revenue_growth is not None:
-        revenue_growth_pct = revenue_growth * 100  # Convert to percentage
-        
-        if revenue_growth_pct > 20:
-            revenue_score = 90.0
-        elif revenue_growth_pct > 15:
-            revenue_score = 80.0
-        elif revenue_growth_pct > 10:
-            revenue_score = 70.0
-        elif revenue_growth_pct > 5:
-            revenue_score = 60.0
-        elif revenue_growth_pct > 0:
-            revenue_score = 50.0
-        else:
-            revenue_score = 30.0  # Declining revenue
-        
-        base_score = revenue_score
+    if revenue_growth is not None and not pd.isna(revenue_growth):
+        try:
+            revenue_growth_pct = revenue_growth * 100  # Convert to percentage
+            
+            if revenue_growth_pct > 20:
+                score = 90.0
+            elif revenue_growth_pct > 15:
+                score = 80.0
+            elif revenue_growth_pct > 10:
+                score = 70.0
+            elif revenue_growth_pct > 5:
+                score = 60.0
+            elif revenue_growth_pct > 0:
+                score = 50.0
+            else:
+                score = 30.0  # Declining revenue
+        except:
+            score = 50.0
     
-    # 2. Earnings growth alignment
+    # 2. Earnings growth alignment (safe arithmetic)
     if earnings_growth is not None and revenue_growth is not None:
-        earnings_growth_pct = earnings_growth * 100
-        
-        # Check if earnings growing faster than revenue (margin expansion)
-        if earnings_growth_pct > revenue_growth * 100:
-            base_score += 10.0  # Bonus for margin expansion
-        elif earnings_growth_pct < 0 < revenue_growth * 100:
-            base_score -= 15.0  # Penalty: revenue up but earnings down
+        try:
+            if not pd.isna(earnings_growth) and not pd.isna(revenue_growth):
+                earnings_growth_pct = earnings_growth * 100
+                revenue_growth_pct = revenue_growth * 100
+                
+                # Check if earnings growing faster than revenue (margin expansion)
+                if earnings_growth_pct > revenue_growth_pct:
+                    score = min(100.0, score + 10.0)  # Bonus for margin expansion
+                elif earnings_growth_pct < 0 < revenue_growth_pct:
+                    score = max(0.0, score - 15.0)  # Penalty: revenue up but earnings down
+        except:
+            pass  # Keep current score if error
     
-    # 3. Growth acceleration (QoQ)
+    # 3. Growth acceleration (QoQ) - safe arithmetic
     if revenue_growth_qoq is not None and revenue_growth is not None:
-        yoy_pct = revenue_growth * 100
-        
-        # If QoQ growth is accelerating
-        if revenue_growth_qoq > yoy_pct:
-            base_score += 10.0  # Accelerating growth
-        elif revenue_growth_qoq < yoy_pct * 0.5:
-            base_score -= 10.0  # Decelerating growth
+        try:
+            if not pd.isna(revenue_growth_qoq) and not pd.isna(revenue_growth):
+                yoy_pct = revenue_growth * 100
+                
+                # If QoQ growth is accelerating
+                if revenue_growth_qoq > yoy_pct:
+                    score = min(100.0, score + 10.0)  # Accelerating growth
+                elif revenue_growth_qoq < yoy_pct * 0.5:
+                    score = max(0.0, score - 10.0)  # Decelerating growth
+        except:
+            pass  # Keep current score if error
     
-    return np.clip(base_score, 0, 100)
+    # Guarantee valid return
+    return float(np.clip(score, 0, 100))
 
 def score_profitability(profit_margins: Optional[float],
                        gross_margins: Optional[float],
@@ -1219,6 +1275,7 @@ def score_institutional_activity(institutional_ownership_pct: Optional[float],
     
     Returns: Score 0-100
     """
+    # Initialize with default score
     base_score = 50.0
     
     # 1. Institutional ownership (sweet spot: 40-80%)
@@ -1226,53 +1283,53 @@ def score_institutional_activity(institutional_ownership_pct: Optional[float],
         inst_pct = institutional_ownership_pct * 100 if institutional_ownership_pct < 1 else institutional_ownership_pct
         
         if 40 <= inst_pct <= 80:
-            inst_score = 75.0  # Optimal range
+            base_score = 75.0  # Optimal range
         elif 30 <= inst_pct < 40 or 80 < inst_pct <= 90:
-            inst_score = 65.0  # Good
+            base_score = 65.0  # Good
         elif 20 <= inst_pct < 30:
-            inst_score = 55.0  # Moderate
+            base_score = 55.0  # Moderate
         elif inst_pct > 90:
-            inst_score = 50.0  # Too much institutional (less room for growth)
+            base_score = 50.0  # Too much institutional
         else:
-            inst_score = 45.0  # Low institutional interest
-        
-        base_score = inst_score
+            base_score = 45.0  # Low institutional interest
     
-    # 2. Insider activity
-    if insider_buy_sell_ratio > 2.0:  # 2x more buying than selling
-        base_score += 20.0
-    elif insider_buy_sell_ratio > 1.5:
-        base_score += 12.0
-    elif insider_buy_sell_ratio > 1.0:
-        base_score += 5.0
-    elif insider_buy_sell_ratio < 0.5:  # Heavy selling
-        base_score -= 15.0
-    elif insider_buy_sell_ratio < 0.8:
-        base_score -= 8.0
+    # 2. Insider activity - SAFE arithmetic
+    if insider_buy_sell_ratio is not None:
+        if insider_buy_sell_ratio > 2.0:
+            base_score = base_score + 20.0  # Explicit addition
+        elif insider_buy_sell_ratio > 1.5:
+            base_score = base_score + 12.0
+        elif insider_buy_sell_ratio > 1.0:
+            base_score = base_score + 5.0
+        elif insider_buy_sell_ratio < 0.5:
+            base_score = base_score - 15.0
+        elif insider_buy_sell_ratio < 0.8:
+            base_score = base_score - 8.0
     
-    # 3. Short interest
+    # 3. Short interest - SAFE arithmetic
     if short_interest_pct is not None:
         short_pct = short_interest_pct * 100 if short_interest_pct < 1 else short_interest_pct
         
         if short_pct < 3:
-            base_score += 10.0  # Low short interest
+            base_score = base_score + 10.0
         elif short_pct < 5:
-            base_score += 5.0
+            base_score = base_score + 5.0
         elif short_pct > 15:
-            base_score -= 15.0  # High short interest (risky)
+            base_score = base_score - 15.0
         elif short_pct > 10:
-            base_score -= 10.0
+            base_score = base_score - 10.0
     
-    # 4. Short interest trend
+    # 4. Short interest trend - SAFE arithmetic
     if short_interest_change_pct is not None:
-        if short_interest_change_pct < -20:  # Shorts covering significantly
-            base_score += 15.0  # Potential short squeeze
+        if short_interest_change_pct < -20:
+            base_score = base_score + 15.0
         elif short_interest_change_pct < -10:
-            base_score += 8.0
-        elif short_interest_change_pct > 20:  # Shorts increasing
-            base_score -= 10.0  # Bearish signal
+            base_score = base_score + 8.0
+        elif short_interest_change_pct > 20:
+            base_score = base_score - 10.0
     
-    return np.clip(base_score, 0, 100)
+    # Ensure valid range
+    return float(np.clip(base_score, 0, 100))
 
 # RELATIVE STRENGTH
 def calculate_sector_percentile(stock_data: pd.Series, 
