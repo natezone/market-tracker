@@ -4202,22 +4202,30 @@ def fetch_and_enhance_metrics(valid_metrics: pd.DataFrame,
         
         return valid_metrics
 
-# PostgreSQL data loading with caching
-@cache_data(ttl=3600, show_spinner=False)
+# PostgreSQL data loading with memory-efficient caching
+@cache_data(ttl=3600, show_spinner=False, max_entries=2)  # Limit to 2 cached indices
 def load_data_from_postgres(index_name):
-    """Load data from PostgreSQL with intelligent caching"""
+    """Load data from PostgreSQL with intelligent caching and memory optimization"""
     if pg_manager:
         try:
             df = pg_manager.load_metrics(index_name)
             
             if df is not None and not df.empty:
+                # Memory optimization: Convert data types
+                df = optimize_dataframe_memory(df)
+                
                 # Cache metadata for faster subsequent checks
                 cache_metadata = {
                     'row_count': len(df),
                     'last_updated': df['updated_at'].max() if 'updated_at' in df.columns else None,
-                    'cached_at': pd.Timestamp.now()
+                    'cached_at': pd.Timestamp.now(),
+                    'memory_mb': df.memory_usage(deep=True).sum() / 1024 / 1024
                 }
                 st.session_state[f'cache_meta_{index_name}'] = cache_metadata
+                
+                # Log memory usage
+                print(f"✓ Loaded {index_name}: {len(df)} stocks, {cache_metadata['memory_mb']:.1f} MB")
+                
                 return df
         except Exception as e:
             print(f"PostgreSQL load failed: {e}")
@@ -4227,14 +4235,299 @@ def load_data_from_postgres(index_name):
     if os.path.exists(csv_path):
         try:
             df = pd.read_csv(csv_path)
+            
             # Parse date columns if present
             if 'last_date' in df.columns:
                 df['last_date'] = pd.to_datetime(df['last_date'], errors='coerce')
+            
+            # Memory optimization on CSV data too
+            df = optimize_dataframe_memory(df)
+            
+            print(f"✓ Loaded {index_name} from CSV: {len(df)} stocks")
             return df
         except Exception as e:
             print(f"CSV load failed: {e}")
     
     return None
+
+
+def optimize_dataframe_memory(df):
+    """
+    Reduce DataFrame memory usage by optimizing data types
+    
+    Typical savings: 50-70% memory reduction
+    """
+    if df is None or df.empty:
+        return df
+    
+    # Store original memory usage
+    start_mem = df.memory_usage(deep=True).sum() / 1024 / 1024
+    
+    # 1. Convert float64 to float32 (50% memory savings on numeric data)
+    float_cols = df.select_dtypes(include=['float64']).columns
+    if len(float_cols) > 0:
+        df[float_cols] = df[float_cols].astype('float32')
+    
+    # 2. Convert int64 to int32 where safe
+    int_cols = df.select_dtypes(include=['int64']).columns
+    for col in int_cols:
+        col_max = df[col].max()
+        col_min = df[col].min()
+        
+        # Check if values fit in int32 range
+        if col_max < 2147483647 and col_min > -2147483648:
+            df[col] = df[col].astype('int32')
+        # Check if values fit in int16 range
+        elif col_max < 32767 and col_min > -32768:
+            df[col] = df[col].astype('int16')
+    
+    # 3. Convert object/string columns to category if few unique values
+    object_cols = df.select_dtypes(include=['object']).columns
+    for col in object_cols:
+        # Skip if mostly unique values 
+        num_unique = df[col].nunique()
+        num_total = len(df[col])
+        
+        # Convert to category if less than 50% unique values
+        if num_unique / num_total < 0.5:
+            df[col] = df[col].astype('category')
+    
+    # 4. Convert boolean stored as int to actual bool
+    for col in df.columns:
+        if df[col].dtype in ['int32', 'int64']:
+            unique_vals = df[col].dropna().unique()
+            if len(unique_vals) <= 2 and set(unique_vals).issubset({0, 1}):
+                df[col] = df[col].astype('bool')
+    
+    # Calculate memory savings
+    end_mem = df.memory_usage(deep=True).sum() / 1024 / 1024
+    reduction = (start_mem - end_mem) / start_mem * 100
+    
+    if reduction > 0:
+        print(f"  Memory optimized: {start_mem:.1f}MB → {end_mem:.1f}MB ({reduction:.0f}% reduction)")
+    
+    return df
+
+
+# Add cache invalidation function
+def invalidate_cache(index_name=None):
+    """
+    AGGRESSIVE cache clearing and memory cleanup
+    """
+    import gc
+    import sys
+    
+    print("\n" + "="*70)
+    print("EMERGENCY MEMORY CLEANUP")
+    print("="*70)
+    
+    # Get initial memory
+    try:
+        import psutil
+        import os
+        process = psutil.Process(os.getpid())
+        mem_before = process.memory_info().rss / 1024 / 1024
+        print(f"Memory before: {mem_before:.0f} MB")
+    except:
+        mem_before = 0
+    
+    # 1. Clear ALL session state data (except essentials)
+    essential_keys = ['current_index', 'last_loaded_index', 'index_selector']
+    keys_to_delete = [k for k in st.session_state.keys() if k not in essential_keys]
+    
+    for key in keys_to_delete:
+        try:
+            del st.session_state[key]
+        except:
+            pass
+    
+    print(f"✓ Cleared {len(keys_to_delete)} session state keys")
+    
+    # 2. Clear ALL Streamlit caches
+    try:
+        st.cache_data.clear()
+        print("✓ Cleared st.cache_data")
+    except:
+        pass
+    
+    try:
+        st.cache_resource.clear()
+        print("✓ Cleared st.cache_resource")
+    except:
+        pass
+    
+    # 3. Force garbage collection (multiple passes)
+    collected_total = 0
+    for i in range(5):  # 5 passes for deep cleanup
+        collected = gc.collect()
+        collected_total += collected
+        if collected == 0:
+            break
+    
+    print(f"✓ Garbage collected {collected_total} objects")
+    
+    # 4. Clear module-level caches if they exist
+    try:
+        # Clear any global DataFrames or large objects
+        for var_name in list(globals().keys()):
+            if var_name.startswith('_cached_') or var_name.startswith('df_'):
+                try:
+                    del globals()[var_name]
+                except:
+                    pass
+    except:
+        pass
+    
+    # Get final memory
+    try:
+        mem_after = process.memory_info().rss / 1024 / 1024
+        mem_freed = mem_before - mem_after
+        print(f"Memory after: {mem_after:.0f} MB")
+        print(f"Memory freed: {mem_freed:.0f} MB")
+    except:
+        mem_freed = 0
+    
+    print("="*70 + "\n")
+    
+    return max(0, mem_freed)
+    
+    print("✓ Memory freed via garbage collection")
+
+# Historical data loading with memory optimization
+@cache_data(ttl=3600, max_entries=1)  # Only cache 1 historical dataset at a time
+def load_historical_data(index_key, tickers_subset=None, max_days=252):
+    """
+    Load historical data with memory efficiency
+    
+    Args:
+        index_key: Index name
+        tickers_subset: Load only these tickers (None = all)
+        max_days: Maximum days of history to load (default: 252 = 1 year)
+    
+    Returns:
+        Dict of {ticker: DataFrame}
+    """
+    hist_dir = os.path.join(DATA_DIR, index_key, "history")
+    hist = {}
+    
+    if not os.path.exists(hist_dir):
+        return hist
+    
+    files = os.listdir(hist_dir)
+    
+    # Filter to specific tickers if requested
+    if tickers_subset:
+        files = [f"{ticker}.csv" for ticker in tickers_subset if f"{ticker}.csv" in files]
+    
+    loaded_count = 0
+    for file in files:
+        if file.endswith('.csv'):
+            ticker = file.replace('.csv', '')
+            try:
+                # Only load last N days to save memory
+                df = pd.read_csv(
+                    os.path.join(hist_dir, file),
+                    parse_dates=True,
+                    index_col=0
+                )
+                
+                if not df.empty:
+                    # Limit to recent data
+                    if len(df) > max_days:
+                        df = df.iloc[-max_days:]
+                    
+                    # Convert to float32 for memory savings
+                    numeric_cols = df.select_dtypes(include=['float64']).columns
+                    df[numeric_cols] = df[numeric_cols].astype('float32')
+                    
+                    hist[ticker] = df
+                    loaded_count += 1
+            except Exception as e:
+                print(f"Warning: Could not load {ticker}: {e}")
+                continue
+    
+    if loaded_count > 0:
+        total_mem = sum(df.memory_usage(deep=True).sum() for df in hist.values()) / 1024 / 1024
+        print(f"✓ Loaded {loaded_count} historical datasets ({total_mem:.1f} MB total)")
+    
+    return hist
+
+
+# Memory monitoring function
+def check_and_display_memory():
+    """
+    Check memory usage and display in sidebar with clear cache button
+    
+    Returns:
+        Dict with memory stats
+    """
+    try:
+        import psutil
+        import os
+        
+        process = psutil.Process(os.getpid())
+        memory_mb = process.memory_info().rss / 1024 / 1024
+        memory_limit_mb = 1024  # Streamlit Community Cloud limit
+        usage_pct = (memory_mb / memory_limit_mb) * 100
+        
+        # Determine status
+        if usage_pct > 95:
+            status = 'critical'
+            emoji = '🔴'
+            color = 'error'
+        elif usage_pct > 80:
+            status = 'warning'
+            emoji = '🟡'
+            color = 'warning'
+        else:
+            status = 'ok'
+            emoji = '🟢'
+            color = 'success'
+        
+        memory_info = {
+            'used_mb': memory_mb,
+            'limit_mb': memory_limit_mb,
+            'usage_pct': usage_pct,
+            'status': status,
+            'emoji': emoji
+        }
+        
+        # Display in sidebar with appropriate styling
+        with st.sidebar:
+            if status == 'critical':
+                st.error(f"{emoji} **Memory:**\n{memory_mb:.0f}/{memory_limit_mb}MB ({usage_pct:.0f}%)")
+                st.warning("⚠️ High memory usage detected!")
+                
+                if st.button("🗑️ Clear Cache & Free Memory", use_container_width=True, key="clear_cache_btn"):
+                    with st.spinner("Clearing cache..."):
+                        mem_freed = invalidate_cache()
+                        # Force immediate rerun to update display
+                        time.sleep(0.5)  # Brief pause for GC to complete
+                    st.success(f"✓ Cache cleared! Freed ~{mem_freed:.0f} MB")
+                    st.rerun()
+                    
+            elif status == 'warning':
+                st.warning(f"{emoji} **Memory:**\n{memory_mb:.0f}/{memory_limit_mb}MB ({usage_pct:.0f}%)")
+                
+                if st.button("🗑️ Clear Cache & Free Memory", use_container_width=True, key="clear_cache_btn"):
+                    with st.spinner("Clearing cache..."):
+                        mem_freed = invalidate_cache()
+                        time.sleep(0.5)
+                    st.success(f"✓ Cache cleared!")
+                    st.rerun()
+            else:
+                # Compact display when memory is OK
+                st.caption(f"{emoji} Memory: {memory_mb:.0f}/{memory_limit_mb}MB ({usage_pct:.0f}%)")
+        
+        return memory_info
+        
+    except ImportError:
+        # psutil not available
+        st.sidebar.caption("⚪ Memory monitoring unavailable")
+        return {'status': 'unknown', 'used_mb': 0, 'usage_pct': 0}
+    except Exception as e:
+        print(f"Memory check failed: {e}")
+        return {'status': 'error', 'used_mb': 0, 'usage_pct': 0}
 
 # Add cache invalidation function
 def invalidate_cache(index_name=None):
@@ -4268,6 +4561,10 @@ def run_streamlit():
         layout="wide",
         initial_sidebar_state="expanded"
     )
+   
+    # Check memory usage
+    memory_info = check_and_display_memory()
+   
     # Add custom CSS
     add_custom_css()
 
@@ -4292,7 +4589,32 @@ def run_streamlit():
         "Combined Stock Indices": "COMBINED"
     }
     current_index = index_map[index_selection]
+
+    # Store in session state for access by all functions
+    st.session_state.current_index = current_index
     
+    # Memory optimization: Clear cache when switching indices
+    if 'last_loaded_index' not in st.session_state:
+        st.session_state['last_loaded_index'] = current_index
+    
+    if st.session_state['last_loaded_index'] != current_index:
+        # User switched indices - clear old cache to free memory
+        old_index = st.session_state['last_loaded_index']
+        
+        print(f"\n{'='*70}")
+        print(f"INDEX SWITCH: {old_index} → {current_index}")
+        print(f"{'='*70}")
+        
+        # Clear the old index's cache
+        invalidate_cache(old_index)
+        
+        # Force garbage collection
+        import gc
+        gc.collect()
+        
+        # Update tracking
+        st.session_state['last_loaded_index'] = current_index
+   
     # Get current index-specific data directory
     index_data_dir = os.path.join(DATA_DIR, current_index)
 
