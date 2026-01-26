@@ -2585,107 +2585,63 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
         # Top Performers
         st.subheader("🏆 Top 20 Performers")
         
-        # Robust horizon column detection
-        if not horizon_col or horizon_col not in valid_metrics.columns:
-            st.error("❌ No valid performance data available for top performers analysis")
+        if horizon_col and horizon_col in valid_metrics.columns:
+            top_20 = valid_metrics.nlargest(20, horizon_col)
             
-            # Debug info
-            with st.expander("🐛 Debug Information"):
-                st.write(f"horizon_col: {horizon_col}")
-                st.write(f"Available columns: {list(valid_metrics.columns)}")
-                st.write(f"Suggested: Use 'Update Data' to regenerate metrics")
+            st.info(f"Showing top 20 performers over {horizon_label}")
+            
+            top_20_tickers = top_20['ticker'].tolist()
+            top_20_comparison = get_sector_comparison_data(valid_metrics, top_20_tickers)
+            
+            if not top_20_comparison.empty:
+                display_df = top_20_comparison.copy()
+                display_df['rank'] = range(1, len(display_df) + 1)
+                
+                cols = ['rank', 'ticker']
+                if 'company_name' in display_df.columns:
+                    cols.append('company_name')
+                cols += [col for col in display_df.columns if col not in cols]
+                display_df = display_df[cols]
+                
+                styled_top20 = format_and_style_dataframe(
+                    display_df,
+                    format_dict={'rank': '{:.0f}'}
+                )
+                st.dataframe(styled_top20, use_container_width=True)
+                
+                if horizon_col in top_20.columns:
+                    fig = create_enhanced_bar_chart(
+                        top_20.head(20), 'ticker', horizon_col,
+                        f"Top 20 Performers ({horizon_label})", 'return'
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                sector_counts = top_20['sector'].value_counts()
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.subheader("Sector Breakdown")
+                    fig = px.pie(
+                        values=sector_counts.values,
+                        names=sector_counts.index,
+                        title="Top Performers by Sector"
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                with col2:
+                    st.subheader("Performance Stats")
+                    avg_return = top_20[horizon_col].mean()
+                    median_return = top_20[horizon_col].median()
+                    min_return = top_20[horizon_col].min()
+                    max_return = top_20[horizon_col].max()
+                    
+                    st.metric("Average Return", f"{avg_return:.2f}%")
+                    st.metric("Median Return", f"{median_return:.2f}%")
+                    st.metric("Range", f"{min_return:.2f}% to {max_return:.2f}%")
             
         else:
-            try:
-                # Get top 20 performers
-                top_20 = valid_metrics.nlargest(20, horizon_col).copy()
-                
-                if top_20.empty:
-                    st.warning("⚠️ No data available for top performers")
-                else:
-                    st.info(f"Showing top 20 performers over {horizon_label}")
-                    
-                    # Get comparison data
-                    top_20_tickers = top_20['ticker'].tolist()
-                    top_20_comparison = get_sector_comparison_data(valid_metrics, top_20_tickers)
-                    
-                    if not top_20_comparison.empty:
-                        display_df = top_20_comparison.copy()
-                        display_df['rank'] = range(1, len(display_df) + 1)
-                        
-                        # Build column list
-                        cols = ['rank', 'ticker']
-                        if 'company_name' in display_df.columns:
-                            cols.append('company_name')
-                        
-                        # Add remaining columns
-                        for col in ['sector', 'last_close', 'pe_ratio', horizon_col, 'ann_vol_pct', 'rsi']:
-                            if col in display_df.columns:
-                                cols.append(col)
-                        
-                        display_df = display_df[cols]
-                        
-                        # Apply styling
-                        styled_top20 = format_and_style_dataframe(
-                            display_df,
-                            format_dict={'rank': '{:.0f}'}
-                        )
-                        st.dataframe(styled_top20, use_container_width=True)
-                        
-                        # Chart - verify column exists before plotting
-                        if horizon_col in top_20.columns:
-                            fig = create_enhanced_bar_chart(
-                                top_20.head(20), 'ticker', horizon_col,
-                                f"Top 20 Performers ({horizon_label})", 'return'
-                            )
-                            st.plotly_chart(fig, use_container_width=True)
-                        
-                        # Sector breakdown
-                        if 'sector' in top_20.columns:
-                            sector_counts = top_20['sector'].value_counts()
-                            
-                            col1, col2 = st.columns(2)
-                            
-                            with col1:
-                                st.subheader("Sector Breakdown")
-                                fig = px.pie(
-                                    values=sector_counts.values,
-                                    names=sector_counts.index,
-                                    title="Top Performers by Sector"
-                                )
-                                st.plotly_chart(fig, use_container_width=True)
-                            
-                            with col2:
-                                st.subheader("Performance Stats")
-                                
-                                # Safely calculate stats
-                                if horizon_col in top_20.columns:
-                                    avg_return = top_20[horizon_col].mean()
-                                    median_return = top_20[horizon_col].median()
-                                    min_return = top_20[horizon_col].min()
-                                    max_return = top_20[horizon_col].max()
-                                    
-                                    st.metric("Average Return", f"{avg_return:.2f}%")
-                                    st.metric("Median Return", f"{median_return:.2f}%")
-                                    st.metric("Range", f"{min_return:.2f}% to {max_return:.2f}%")
-                                else:
-                                    st.warning("Performance stats unavailable")
-                        else:
-                            st.info("Sector data not available")
-                    else:
-                        st.error("Unable to retrieve comparison data for top performers")
-                        
-            except Exception as e:
-                st.error(f"❌ Error displaying top performers: {e}")
-                
-                with st.expander("🐛 Error Details"):
-                    import traceback
-                    st.code(traceback.format_exc())
-                    
-                    st.markdown("**Troubleshooting:**")
-                    st.markdown("1. Click 'Update Data' in the sidebar")
-                    st.markdown("2. Ensure data was successfully downloaded")
-                    st.markdown("3. Check that return columns (pct_1d, pct_5d, etc.) exist in data")
+            st.error("No performance data available for top performers analysis")
 
 def render_historical_analysis_mode(valid_metrics, hist):
     """Render the Historical Analysis Mode interface"""
