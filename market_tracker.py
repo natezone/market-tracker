@@ -2876,11 +2876,19 @@ def render_historical_analysis_mode(valid_metrics, hist):
             key="historical_ticker"
         )
     
-    if not selected_ticker or selected_ticker not in hist:
+    if not selected_ticker:
         st.info("Please select a valid stock")
         return
-    
-    df = hist[selected_ticker]
+
+    # Try to load from hist first, then from database
+    if selected_ticker in hist:
+        df = hist[selected_ticker]
+    else:
+        try:
+            df = load_price_history_from_db(selected_ticker)
+        except Exception:
+            df = pd.DataFrame()
+
     if df.empty or 'Close' not in df.columns:
         st.error("No historical data available for selected stock")
         return
@@ -3093,14 +3101,24 @@ def render_risk_management_mode(valid_metrics, hist):
     # Get historical data for portfolio stocks
     portfolio_data = {}
     portfolio_returns = pd.DataFrame()
-    
+
     for stock in portfolio_stocks:
+        df = None
         if stock in hist and not hist[stock].empty:
-            portfolio_data[stock] = hist[stock]
-            returns = hist[stock]['Close'].pct_change().dropna()
-            if len(returns) > 100:  # Minimum data requirement
-                portfolio_returns[stock] = returns
-    
+            df = hist[stock]
+        else:
+            try:
+                df = load_price_history_from_db(stock)
+            except Exception:
+                pass
+
+        if df is not None and not df.empty:
+            portfolio_data[stock] = df
+            if 'Close' in df.columns:
+                returns = df['Close'].pct_change().dropna()
+                if len(returns) > 100:  # Minimum data requirement
+                    portfolio_returns[stock] = returns
+
     if portfolio_returns.empty:
         st.error("Insufficient historical data for risk analysis")
         return
@@ -4960,18 +4978,30 @@ def run_streamlit():
         def load_historical_data(index_key):
             hist_dir = os.path.join(DATA_DIR, index_key, "history")
             hist = {}
-            
+
+            # Try to load from CSV first
             if os.path.exists(hist_dir):
                 for file in os.listdir(hist_dir):
                     if file.endswith('.csv'):
                         ticker = file.replace('.csv', '')
                         try:
-                            df = pd.read_csv(os.path.join(hist_dir, file), 
+                            df = pd.read_csv(os.path.join(hist_dir, file),
                                         parse_dates=True, index_col=0)
                             if not df.empty:
                                 hist[ticker] = df
                         except Exception:
                             continue
+
+            # If no CSV data found, try PostgreSQL for all available tickers
+            if not hist and valid_metrics is not None:
+                for ticker in valid_metrics['ticker'].unique():
+                    try:
+                        df = load_price_history_from_db(ticker)
+                        if not df.empty:
+                            hist[ticker] = df
+                    except Exception:
+                        continue
+
             return hist
         
         # Load historical data
