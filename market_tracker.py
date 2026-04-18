@@ -4829,24 +4829,7 @@ def run_streamlit():
     # 2. Load data and set up time horizon
     if data_exists:
         # Load from PostgreSQL (fast) or fallback to CSV
-        # TEMPORARILY: Skip PostgreSQL, use CSV directly
-        df_metrics = None
-        if df_metrics is None:
-            # Force CSV load
-            csv_path = os.path.join(DATA_DIR, current_index, "latest_metrics.csv")
-            if os.path.exists(csv_path):
-                try:
-                    df_metrics = pd.read_csv(csv_path)
-                    if 'last_date' in df_metrics.columns:
-                        df_metrics['last_date'] = pd.to_datetime(df_metrics['last_date'], errors='coerce')
-                    df_metrics = optimize_dataframe_memory(df_metrics)
-                    print(f"✓ Loaded {current_index} from CSV: {len(df_metrics)} stocks")
-                except Exception as e:
-                    print(f"CSV load failed: {e}")
-                    df_metrics = None
-
-        # Original PostgreSQL load (commented out for now)
-        # df_metrics = load_data_from_postgres(current_index)
+        df_metrics = load_data_from_postgres(current_index)
         
         if df_metrics is not None:
             valid_metrics = df_metrics[df_metrics['status'] == 'ok'].copy()         
