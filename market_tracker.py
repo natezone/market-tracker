@@ -431,8 +431,25 @@ class PostgreSQLManager:
                 CREATE INDEX IF NOT EXISTS idx_rising_declining ON stocks(rising_7day, declining_7day) WHERE status = 'ok';
 
                 -- Composite index for common dashboard query
-                CREATE INDEX IF NOT EXISTS idx_dashboard_query ON stocks(index_name, status, pct_21d DESC) 
+                CREATE INDEX IF NOT EXISTS idx_dashboard_query ON stocks(index_name, status, pct_21d DESC)
                     WHERE status = 'ok';
+
+                -- Price history table for technical analysis
+                CREATE TABLE IF NOT EXISTS price_history (
+                    id SERIAL PRIMARY KEY,
+                    ticker VARCHAR(20) NOT NULL,
+                    date DATE NOT NULL,
+                    open FLOAT,
+                    high FLOAT,
+                    low FLOAT,
+                    close FLOAT NOT NULL,
+                    volume BIGINT,
+                    UNIQUE(ticker, date),
+                    FOREIGN KEY(ticker) REFERENCES stocks(ticker) ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_price_ticker_date ON price_history(ticker, date);
+                CREATE INDEX IF NOT EXISTS idx_price_date ON price_history(date);
             """))
     
     def save_metrics(self, metrics_df, index_name):
@@ -544,31 +561,59 @@ class PostgreSQLManager:
             traceback.print_exc()
             return pd.DataFrame()
     
+    def save_price_history(self, ticker, price_df):
+        """Save price history to PostgreSQL"""
+        if not self.engine or price_df.empty:
+            return
+
+        try:
+            with self.engine.begin() as conn:
+                # Delete existing data for this ticker
+                conn.execute(text("DELETE FROM price_history WHERE ticker = :ticker"), {"ticker": ticker})
+
+                # Insert new data
+                for date, row in price_df.iterrows():
+                    date_str = date.strftime('%Y-%m-%d') if hasattr(date, 'strftime') else str(date)
+                    conn.execute(text("""
+                        INSERT INTO price_history (ticker, date, open, high, low, close, volume)
+                        VALUES (:ticker, :date, :open, :high, :low, :close, :volume)
+                    """), {
+                        'ticker': ticker,
+                        'date': date_str,
+                        'open': float(row.get('Open', 0)),
+                        'high': float(row.get('High', 0)),
+                        'low': float(row.get('Low', 0)),
+                        'close': float(row.get('Close', 0)),
+                        'volume': int(row.get('Volume', 0))
+                    })
+        except Exception as e:
+            print(f"Error saving price history for {ticker}: {e}")
+
     def get_stats(self):
         """Get database statistics"""
         if not self.engine:
             return {}
-        
+
         try:
             with self.engine.connect() as conn:
                 # Total stocks
                 result = conn.execute(text("SELECT COUNT(*) FROM stocks"))
                 total = result.scalar()
-                
+
                 # Stocks by index
                 result = conn.execute(text("""
-                    SELECT index_name, COUNT(*) as count 
-                    FROM stocks 
+                    SELECT index_name, COUNT(*) as count
+                    FROM stocks
                     GROUP BY index_name
                 """))
                 by_index = [{"index_name": row[0], "count": row[1]} for row in result]
-                
+
                 # Last update
                 result = conn.execute(text("""
                     SELECT MAX(updated_at) FROM stocks
                 """))
                 last_update = result.scalar()
-                
+
                 return {
                     'total_stocks': total,
                     'stocks_by_index': by_index,
@@ -3921,10 +3966,13 @@ def run_cli(consecutive_days=7, index_key="SP500"):
                 "industry": industries.get(t, "Unknown")
             }
         
-        # Save per-ticker CSV
+        # Save per-ticker CSV and PostgreSQL
         try:
             safe_filename = sanitize_filename_windows(f"{t}.csv")
             df.to_csv(os.path.join(per_ticker_dir, safe_filename))
+            # Also save to PostgreSQL
+            if pg_manager:
+                pg_manager.save_price_history(t, df)
         except Exception:
             pass
 
