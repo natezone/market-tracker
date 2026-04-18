@@ -1203,12 +1203,16 @@ def create_enhanced_bar_chart(df, x_col, y_col, title, metric_type='return'):
 
 def create_sector_heatmap(sector_data, value_col, title):
     """Create a heatmap for sector performance"""
+    sector_data = pd.to_numeric(sector_data, errors='coerce')
+    z_values = sector_data.values.astype(float).reshape(1, -1)
+    text_values = sector_data.apply(lambda x: f"{x:.1f}%").values.astype(object).reshape(1, -1)
+
     fig = go.Figure(data=go.Heatmap(
-        z=sector_data.values.reshape(1, -1),
+        z=z_values,
         x=sector_data.index,
         y=['Performance'],
         colorscale=create_gradient_colorscale(sector_data, 'return'),
-        text=sector_data.apply(lambda x: f"{x:.1f}%").values.reshape(1, -1),
+        text=text_values,
         texttemplate="%{text}",
         textfont={"size": 10},
         hoverongaps=False,
