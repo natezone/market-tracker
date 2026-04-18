@@ -4814,13 +4814,23 @@ def run_streamlit():
     # Header
     st.title(f"📈 {index_selection} Market Tracker")
 
-    # Check for existing data
+    # Check for existing data (local CSV or PostgreSQL)
     data_exists = os.path.exists(os.path.join(index_data_dir, "latest_metrics.csv"))
+
+    # Try to load from PostgreSQL regardless of local CSV existence (for Cloud compatibility)
+    df_metrics_postgres = None
+    if pg_manager:
+        try:
+            df_metrics_postgres = load_data_from_postgres(current_index)
+            if df_metrics_postgres is not None and not df_metrics_postgres.empty:
+                data_exists = True
+        except Exception as e:
+            print(f"PostgreSQL load attempt: {e}")
 
     # 1. View mode
     view_mode = st.sidebar.radio(
         "View Mode",
-        ["Dashboard", "Sector Analysis", "Top Movers", "Technical Screener", 
+        ["Dashboard", "Sector Analysis", "Top Movers", "Technical Screener",
         "Sentiment Analysis", "Opportunity Ranking",
         "Comparison Mode", "Historical Analysis", "Risk Management", "Data Export"],
         key="view_mode_radio"
@@ -4828,8 +4838,11 @@ def run_streamlit():
 
     # 2. Load data and set up time horizon
     if data_exists:
-        # Load from PostgreSQL (fast) or fallback to CSV
-        df_metrics = load_data_from_postgres(current_index)
+        # Use pre-loaded PostgreSQL data if available, otherwise load again
+        if df_metrics_postgres is not None:
+            df_metrics = df_metrics_postgres
+        else:
+            df_metrics = load_data_from_postgres(current_index)
         
         if df_metrics is not None:
             valid_metrics = df_metrics[df_metrics['status'] == 'ok'].copy()         
