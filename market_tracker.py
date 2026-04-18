@@ -630,6 +630,9 @@ if engine:
     try:
         pg_manager = PostgreSQLManager(engine)
         print("✅ PostgreSQL manager initialized")
+        # Create tables if they don't exist
+        pg_manager._create_tables()
+        print("✅ Database tables created/verified")
     except Exception as e:
         print(f"⚠️ PostgreSQL init failed: {str(e)[:200]}")
         print("📁 Falling back to CSV mode")
