@@ -1,11 +1,10 @@
-from email import parser
 import os
 import sys
 import time
 import math
 import argparse
-from datetime import datetime, timedelta
-from venv import logger
+import sqlite3
+from datetime import datetime, timedelta, timezone
 from dateutil.relativedelta import relativedelta
 import pandas as pd
 import numpy as np
@@ -15,7 +14,6 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import warnings
 warnings.filterwarnings('ignore')
-from datetime import timezone, timedelta
 import scipy.stats as stats
 from scipy.optimize import minimize
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -25,7 +23,6 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, text, Table, Column, Integer, String, Float, MetaData, DateTime
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
-import os
 from stock_recommendations import (
     generate_recommendations,
     calculate_stock_score,
@@ -107,6 +104,210 @@ sentiment_analyzer = SentimentIntensityAnalyzer()
 def ensure_dir(d):
     """Create directory if it doesn't exist"""
     os.makedirs(d, exist_ok=True)
+
+# SQLite Database configuration
+DATABASE_PATH = os.path.join(DATA_DIR, 'market_tracker.db')
+
+def sanitize_filename_windows(filename):
+    """Sanitize Windows reserved filenames"""
+    reserved = {'CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5',
+                'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4',
+                'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'}
+    name, ext = os.path.splitext(filename)
+    if name.upper() in reserved:
+        return f"{name}_stock{ext}"
+    return filename
+
+def init_database():
+    """Initialize SQLite database with required tables"""
+    ensure_dir(DATA_DIR)
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS stocks (
+            id INTEGER PRIMARY KEY,
+            ticker TEXT NOT NULL,
+            index_name TEXT NOT NULL,
+            company_name TEXT,
+            sector TEXT,
+            industry TEXT,
+            status TEXT,
+            last_date TEXT,
+            last_close REAL,
+            pe_ratio REAL,
+            data_points INTEGER,
+            rising_3day BOOLEAN,
+            declining_3day BOOLEAN,
+            rising_7day BOOLEAN,
+            declining_7day BOOLEAN,
+            rising_14day BOOLEAN,
+            declining_14day BOOLEAN,
+            rising_21day BOOLEAN,
+            declining_21day BOOLEAN,
+            pct_1d REAL,
+            pct_3d REAL,
+            pct_5d REAL,
+            pct_21d REAL,
+            pct_63d REAL,
+            pct_252d REAL,
+            ann_vol_pct REAL,
+            rsi REAL,
+            high_52w REAL,
+            low_52w REAL,
+            pct_from_52w_high REAL,
+            pct_from_52w_low REAL,
+            avg_volume_20d REAL,
+            volume_vs_avg REAL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(ticker, index_name)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS price_history (
+            id INTEGER PRIMARY KEY,
+            ticker TEXT NOT NULL,
+            date TEXT NOT NULL,
+            open REAL,
+            high REAL,
+            low REAL,
+            close REAL,
+            volume INTEGER,
+            UNIQUE(ticker, date)
+        )
+    ''')
+
+    conn.commit()
+    conn.close()
+
+def save_metrics_to_db(metrics_df, index_name):
+    """Save metrics to SQLite database with upsert logic"""
+    if metrics_df.empty:
+        return
+
+    init_database()
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+
+    col_mapping = {
+        '52w_high': 'high_52w',
+        '52w_low': 'low_52w'
+    }
+
+    for _, row in metrics_df.iterrows():
+        ticker = row.get('ticker', '')
+        if not ticker:
+            continue
+
+        cursor.execute('''
+            DELETE FROM stocks WHERE ticker = ? AND index_name = ?
+        ''', (ticker, index_name))
+
+        cols = []
+        vals = []
+        for col, val in row.items():
+            mapped_col = col_mapping.get(col, col)
+            cols.append(mapped_col)
+            vals.append(val)
+
+        cols.append('index_name')
+        vals.append(index_name)
+
+        placeholders = ','.join(['?'] * len(vals))
+        col_names = ','.join(cols)
+
+        cursor.execute(f'''
+            INSERT INTO stocks ({col_names})
+            VALUES ({placeholders})
+        ''', vals)
+
+    conn.commit()
+    conn.close()
+
+def load_metrics_from_db(index_name):
+    """Load metrics from SQLite database for given index"""
+    if not os.path.exists(DATABASE_PATH):
+        return pd.DataFrame()
+
+    conn = sqlite3.connect(DATABASE_PATH)
+    query = 'SELECT * FROM stocks WHERE index_name = ?'
+    df = pd.read_sql_query(query, conn, params=(index_name,))
+    conn.close()
+
+    col_mapping = {
+        'high_52w': '52w_high',
+        'low_52w': '52w_low'
+    }
+
+    df.rename(columns=col_mapping, inplace=True)
+    return df
+
+def save_price_history_to_db(ticker, price_df):
+    """Save price history to SQLite database"""
+    if price_df.empty:
+        return
+
+    init_database()
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+
+    for idx, row in price_df.iterrows():
+        date_str = idx.strftime('%Y-%m-%d') if hasattr(idx, 'strftime') else str(idx)
+        cursor.execute('''
+            DELETE FROM price_history WHERE ticker = ? AND date = ?
+        ''', (ticker, date_str))
+
+        cursor.execute('''
+            INSERT INTO price_history (ticker, date, open, high, low, close, volume)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (ticker, date_str, row['Open'], row['High'], row['Low'],
+              row['Close'], int(row['Volume'])))
+
+    conn.commit()
+    conn.close()
+
+def load_price_history_from_db(ticker):
+    """Load price history from SQLite database"""
+    if not os.path.exists(DATABASE_PATH):
+        return pd.DataFrame()
+
+    conn = sqlite3.connect(DATABASE_PATH)
+    query = '''
+        SELECT date, open, high, low, close, volume
+        FROM price_history WHERE ticker = ?
+        ORDER BY date
+    '''
+    df = pd.read_sql_query(query, conn, params=(ticker,))
+    conn.close()
+
+    if not df.empty:
+        df['date'] = pd.to_datetime(df['date'])
+        df.set_index('date', inplace=True)
+        df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+
+    return df
+
+def get_database_stats():
+    """Get database statistics"""
+    if not os.path.exists(DATABASE_PATH):
+        return {'total_stocks': 0, 'stocks_by_index': {}}
+
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute('SELECT COUNT(*) FROM stocks')
+    total_stocks = cursor.fetchone()[0]
+
+    cursor.execute('SELECT index_name, COUNT(*) FROM stocks GROUP BY index_name')
+    stocks_by_index = dict(cursor.fetchall())
+
+    conn.close()
+
+    return {
+        'total_stocks': total_stocks,
+        'stocks_by_index': stocks_by_index
+    }
 
 # PostgreSQL Database configuration
 POSTGRES_URL = os.environ.get('DATABASE_URL') 
@@ -370,26 +571,6 @@ if engine:
 
 if not pg_manager:
     print("ℹ️ Running in CSV-only mode")
-
-def sanitize_filename_windows(filename):
-    """
-    Sanitize filename for Windows compatibility.
-    Renames reserved names like CON, PRN, AUX, NUL, COM1-9, LPT1-9
-    """
-    # Windows reserved names
-    reserved_names = {
-        'CON', 'PRN', 'AUX', 'NUL',
-        'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
-        'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'
-    }
-    
-    # Get the base name without extension
-    base_name = os.path.splitext(filename)[0]
-    extension = os.path.splitext(filename)[1]
-    
-    if base_name.upper() in reserved_names:
-        return f"{base_name}_stock{extension}"
-    return filename
 
 def fetch_sp500_tickers():
     """Scrape S&P500 tickers from Wikipedia"""
@@ -2240,21 +2421,21 @@ def format_currency(val):
     """Format value as currency"""
     try:
         return f'${float(val):.2f}'
-    except:
+    except Exception:
         return str(val)
 
 def format_percentage(val):
     """Format value as percentage"""
     try:
         return f'{float(val):.2f}%'
-    except:
+    except Exception:
         return str(val)
 
 def format_number(val, decimals=1):
     """Format value as number with specified decimals"""
     try:
         return f'{float(val):.{decimals}f}'
-    except:
+    except Exception:
         return str(val)
     
 # ---------------------------
@@ -3212,7 +3393,7 @@ def get_yfinance_news_sentiment(ticker):
         if not news:
             try:
                 news = stock.get_news()
-            except:
+            except Exception:
                 pass
         
         # Method 3: Check the info dict for news
@@ -3221,7 +3402,7 @@ def get_yfinance_news_sentiment(ticker):
                 info = stock.info
                 if 'news' in info:
                     news = info['news']
-            except:
+            except Exception:
                 pass
         
         # If still no news, return neutral with debug info
@@ -3780,7 +3961,7 @@ def run_cli(consecutive_days=7, index_key="SP500"):
             temp_csv = os.path.join(DATA_DIR, f"emergency_backup_{index_key}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
             df_metrics.to_csv(temp_csv, index=False)
             print(f"⚠️ Saved emergency backup to {temp_csv}")
-        except:
+        except Exception:
             print(f"❌ FATAL: All save methods failed!")
 
     print("=" * 60 + "\n")
@@ -4328,7 +4509,7 @@ def invalidate_cache(index_name=None):
         process = psutil.Process(os.getpid())
         mem_before = process.memory_info().rss / 1024 / 1024
         print(f"Memory before: {mem_before:.0f} MB")
-    except:
+    except Exception:
         mem_before = 0
     
     # 1. Clear ALL session state data (except essentials)
@@ -4338,7 +4519,7 @@ def invalidate_cache(index_name=None):
     for key in keys_to_delete:
         try:
             del st.session_state[key]
-        except:
+        except Exception:
             pass
     
     print(f"✓ Cleared {len(keys_to_delete)} session state keys")
@@ -4347,13 +4528,13 @@ def invalidate_cache(index_name=None):
     try:
         st.cache_data.clear()
         print("✓ Cleared st.cache_data")
-    except:
+    except Exception:
         pass
     
     try:
         st.cache_resource.clear()
         print("✓ Cleared st.cache_resource")
-    except:
+    except Exception:
         pass
     
     # 3. Force garbage collection (multiple passes)
@@ -4373,9 +4554,9 @@ def invalidate_cache(index_name=None):
             if var_name.startswith('_cached_') or var_name.startswith('df_'):
                 try:
                     del globals()[var_name]
-                except:
+                except Exception:
                     pass
-    except:
+    except Exception:
         pass
     
     # Get final memory
@@ -4384,7 +4565,7 @@ def invalidate_cache(index_name=None):
         mem_freed = mem_before - mem_after
         print(f"Memory after: {mem_after:.0f} MB")
         print(f"Memory freed: {mem_freed:.0f} MB")
-    except:
+    except Exception:
         mem_freed = 0
     
     print("="*70 + "\n")
@@ -4648,7 +4829,24 @@ def run_streamlit():
     # 2. Load data and set up time horizon
     if data_exists:
         # Load from PostgreSQL (fast) or fallback to CSV
-        df_metrics = load_data_from_postgres(current_index)
+        # TEMPORARILY: Skip PostgreSQL, use CSV directly
+        df_metrics = None
+        if df_metrics is None:
+            # Force CSV load
+            csv_path = os.path.join(DATA_DIR, current_index, "latest_metrics.csv")
+            if os.path.exists(csv_path):
+                try:
+                    df_metrics = pd.read_csv(csv_path)
+                    if 'last_date' in df_metrics.columns:
+                        df_metrics['last_date'] = pd.to_datetime(df_metrics['last_date'], errors='coerce')
+                    df_metrics = optimize_dataframe_memory(df_metrics)
+                    print(f"✓ Loaded {current_index} from CSV: {len(df_metrics)} stocks")
+                except Exception as e:
+                    print(f"CSV load failed: {e}")
+                    df_metrics = None
+
+        # Original PostgreSQL load (commented out for now)
+        # df_metrics = load_data_from_postgres(current_index)
         
         if df_metrics is not None:
             valid_metrics = df_metrics[df_metrics['status'] == 'ok'].copy()         
