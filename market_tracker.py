@@ -291,24 +291,22 @@ def load_price_history_from_db(ticker):
         except Exception:
             pass
 
-    # Try PostgreSQL if SQLite is empty
-    try:
-        pg_conn = get_postgres_connection()
-        if pg_conn:
+    # Try PostgreSQL if SQLite is empty or not available
+    if pg_manager and pg_manager.engine:
+        try:
             query = '''
                 SELECT date, open, high, low, close, volume
                 FROM price_history WHERE ticker = %s
                 ORDER BY date
             '''
-            df = pd.read_sql_query(query, pg_conn, params=(ticker,))
-            pg_conn.close()
+            df = pd.read_sql_query(query, pg_manager.engine, params=(ticker,))
 
             if not df.empty:
                 df['date'] = pd.to_datetime(df['date'])
                 df.set_index('date', inplace=True)
                 df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
-    except Exception:
-        pass
+        except Exception:
+            pass
 
     return df
 
@@ -5501,6 +5499,8 @@ def run_streamlit():
         sort_columns = [horizon_col, 'ann_vol_pct', 'last_close']
         if 'rsi' in screened_df.columns:
             sort_columns.append('rsi')
+        if 'pe_ratio' in screened_df.columns:
+            sort_columns.append('pe_ratio')
 
         sort_by = st.selectbox("Sort By", options=sort_columns, key="ts_sort_by")
         sort_order = st.radio("Sort Order", ["Descending", "Ascending"], horizontal=True, key="ts_sort_order")
