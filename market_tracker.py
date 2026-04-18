@@ -4100,15 +4100,14 @@ def run_cli(consecutive_days=7, index_key="SP500"):
 def plot_ticker_price_rsi(ticker_csv_path, ticker):
     """
     Helper: load per-ticker data and produce a 2-row plot: price and RSI
-    
+
     Args:
         ticker_csv_path: Path to CSV file with historical data
         ticker: Stock ticker symbol
     """
-    # Initialize empty DataFrame
     df = pd.DataFrame()
-    
-    # Try to load historical data from CSV
+
+    # Try to load historical data from CSV first
     if os.path.exists(ticker_csv_path):
         try:
             df = pd.read_csv(ticker_csv_path, parse_dates=True, index_col=0)
@@ -4117,6 +4116,14 @@ def plot_ticker_price_rsi(ticker_csv_path, ticker):
             st.info("💡 Try updating the data using the 'Update Data' button in the sidebar.")
             return
     else:
+        # Try to load from PostgreSQL if CSV not found
+        try:
+            df = load_price_history_from_db(ticker)
+        except Exception:
+            pass
+
+    # If still no data, show warning
+    if df.empty:
         st.warning(f"⚠️ Data file not found for {ticker}")
         st.info(f"Expected location: `{ticker_csv_path}`")
         return
