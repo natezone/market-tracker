@@ -268,23 +268,47 @@ def save_price_history_to_db(ticker, price_df):
     conn.close()
 
 def load_price_history_from_db(ticker):
-    """Load price history from SQLite database"""
-    if not os.path.exists(DATABASE_PATH):
-        return pd.DataFrame()
+    """Load price history from SQLite or PostgreSQL database"""
+    df = pd.DataFrame()
 
-    conn = sqlite3.connect(DATABASE_PATH)
-    query = '''
-        SELECT date, open, high, low, close, volume
-        FROM price_history WHERE ticker = ?
-        ORDER BY date
-    '''
-    df = pd.read_sql_query(query, conn, params=(ticker,))
-    conn.close()
+    # Try SQLite first
+    if os.path.exists(DATABASE_PATH):
+        try:
+            conn = sqlite3.connect(DATABASE_PATH)
+            query = '''
+                SELECT date, open, high, low, close, volume
+                FROM price_history WHERE ticker = ?
+                ORDER BY date
+            '''
+            df = pd.read_sql_query(query, conn, params=(ticker,))
+            conn.close()
 
-    if not df.empty:
-        df['date'] = pd.to_datetime(df['date'])
-        df.set_index('date', inplace=True)
-        df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+            if not df.empty:
+                df['date'] = pd.to_datetime(df['date'])
+                df.set_index('date', inplace=True)
+                df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+                return df
+        except Exception:
+            pass
+
+    # Try PostgreSQL if SQLite is empty
+    try:
+        pg_conn = get_postgres_connection()
+        if pg_conn:
+            query = '''
+                SELECT date, open, high, low, close, volume
+                FROM price_history WHERE ticker = %s
+                ORDER BY date
+            '''
+            df = pd.read_sql_query(query, pg_conn, params=(ticker,))
+            pg_conn.close()
+
+            if not df.empty:
+                df['date'] = pd.to_datetime(df['date'])
+                df.set_index('date', inplace=True)
+                df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+    except Exception:
+        pass
 
     return df
 
@@ -2619,12 +2643,12 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
         index_display = index_display_names.get(current_index, current_index)
         
         selected_tickers = st.multiselect(
-            "Select stocks to compare (2-20 stocks)",
+            "Select stocks to compare (2-30 stocks)",
             options=available_tickers,
             default=st.session_state[state_key],
-            max_selections=20,
+            max_selections=30,
             key=f"stock_selector_{current_index}",
-            help=f"Select 2-20 stocks from {index_display} to compare"
+            help=f"Select 2-30 stocks from {index_display} to compare"
         )
         
         # Update session state when user manually changes selection
@@ -2638,15 +2662,10 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
                                         if col in valid_metrics.columns]
 
                 if available_return_cols and not valid_metrics.empty:
-                    top_10 = valid_metrics.nlargest(10, available_return_cols[0])['ticker'].tolist()
+                    top_30 = valid_metrics.nlargest(30, available_return_cols[0])['ticker'].tolist()
 
-                    # Merge with existing selections
-                    current = st.session_state.get(state_key, [])
-                    updated = list(dict.fromkeys(current + top_10))[:20]
-
-                    # Update state
-                    st.session_state[state_key] = updated
-                    st.success(f"✅ Added {len(top_10)} top performers!")
+                    # Update state to show top 30
+                    st.session_state[state_key] = top_30[:30]
                     st.rerun()
                 else:
                     st.warning("⚠️ No performance data available")
