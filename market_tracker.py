@@ -5048,11 +5048,11 @@ def run_streamlit():
                     st.error(f"❌ Update failed: {e}")
                     status_text.text("Failed - check logs")
 
+    # Define column names with safe defaults (for use in all code paths)
+    rising_col = f'rising_{consecutive_days}day'
+    declining_col = f'declining_{consecutive_days}day'
+
     if data_exists:
-        # Dynamic column names based on consecutive_days
-        rising_col = f'rising_{consecutive_days}day'
-        declining_col = f'declining_{consecutive_days}day'
-        
         # Check if columns exist, if not use 3-day as fallback
         if rising_col not in df_metrics.columns:
             rising_col = 'rising_3day'
@@ -5105,10 +5105,14 @@ def run_streamlit():
 
     # ---------- Dashboard ----------
     if view_mode == "Dashboard":
+        if valid_metrics is None or valid_metrics.empty:
+            st.error("No data available. Please fetch data first.")
+            return
+
         st.subheader("📊 Market Overview")
-        
+
         col1, col2, col3, col4 = st.columns(4)
-        
+
         # Safe column access with fallback
         if rising_col not in valid_metrics.columns:
             available_rising_cols = [col for col in valid_metrics.columns if col.startswith('rising_') and col.endswith('day')]
