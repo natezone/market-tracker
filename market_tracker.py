@@ -424,7 +424,6 @@ class PostgreSQLManager:
                 CREATE INDEX IF NOT EXISTS idx_pct_21d ON stocks(pct_21d);
 
                 -- Performance optimization indexes
-                CREATE INDEX IF NOT EXISTS idx_composite_score ON stocks(composite_score DESC NULLS LAST);
                 CREATE INDEX IF NOT EXISTS idx_sector_score ON stocks(sector, pct_21d DESC);
                 CREATE INDEX IF NOT EXISTS idx_updated_at ON stocks(updated_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_status ON stocks(status) WHERE status = 'ok';
