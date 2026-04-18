@@ -2633,21 +2633,25 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
     with col2:
         # Add top performers button
         if st.button("⭐ Top Performers", key=f"add_top_performers_{current_index}", use_container_width=True):
-            available_return_cols = [col for col in ['pct_21d', 'pct_5d', 'pct_1d'] 
-                                    if col in valid_metrics.columns]
-            
-            if available_return_cols:
-                top_10 = valid_metrics.nlargest(10, available_return_cols[0])['ticker'].tolist()
-                
-                # Merge with existing selections
-                current = st.session_state[state_key]
-                updated = list(dict.fromkeys(current + top_10))[:20]
-                
-                # Update state
-                st.session_state[state_key] = updated
-                
-                st.success(f"✅ Added {len(updated) - len(current)} top performers!")
-                st.rerun()
+            try:
+                available_return_cols = [col for col in ['pct_21d', 'pct_5d', 'pct_1d']
+                                        if col in valid_metrics.columns]
+
+                if available_return_cols and not valid_metrics.empty:
+                    top_10 = valid_metrics.nlargest(10, available_return_cols[0])['ticker'].tolist()
+
+                    # Merge with existing selections
+                    current = st.session_state.get(state_key, [])
+                    updated = list(dict.fromkeys(current + top_10))[:20]
+
+                    # Update state
+                    st.session_state[state_key] = updated
+                    st.success(f"✅ Added {len(top_10)} top performers!")
+                    st.rerun()
+                else:
+                    st.warning("⚠️ No performance data available")
+            except Exception as e:
+                st.error(f"Error loading top performers: {e}")
 
     with col3:
         # Clear selections button
