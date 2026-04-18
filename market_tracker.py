@@ -4482,7 +4482,7 @@ def fetch_and_enhance_metrics(valid_metrics: pd.DataFrame,
         return valid_metrics
 
 # PostgreSQL data loading with memory-efficient caching
-@cache_data(ttl=3600, show_spinner=False, max_entries=2)  # Limit to 2 cached indices
+@cache_data(ttl=3600, show_spinner=False)
 def load_data_from_postgres(index_name):
     """Load data from PostgreSQL with intelligent caching and memory optimization"""
     if pg_manager:
@@ -4673,8 +4673,8 @@ def invalidate_cache(index_name=None):
     print("✓ Memory freed via garbage collection")
 
 # Historical data loading with memory optimization
-@cache_data(ttl=3600, max_entries=1)  # Only cache 1 historical dataset at a time
-def load_historical_data(index_key, tickers_subset=None, max_days=252):
+@cache_data(ttl=3600)
+def load_historical_data_global(index_key, tickers_subset=None, max_days=252):
     """
     Load historical data with memory efficiency
     
