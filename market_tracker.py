@@ -633,7 +633,7 @@ if engine:
         pg_manager._create_tables()
         print("✅ Database tables created/verified")
     except Exception as e:
-        print(f"⚠️ PostgreSQL init failed: {str(e)[:200]}")
+        print(f"⚠️ PostgreSQL init failed: {type(e).__name__}: {str(e)}")
         print("📁 Falling back to CSV mode")
         engine = None
         pg_manager = None
