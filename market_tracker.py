@@ -5069,17 +5069,35 @@ def run_streamlit():
         hist = load_historical_data(current_index)
 
         # Show data freshness info
-        latest_metrics_path = os.path.join(index_data_dir, "latest_metrics.csv")
-        if os.path.exists(latest_metrics_path):
-            last_modified = os.path.getmtime(latest_metrics_path)
-            last_update = datetime.fromtimestamp(last_modified)
-            last_update_est = last_update - timedelta(hours=5)
+        try:
+            # Try to get latest date from PostgreSQL
+            if pg_manager and pg_manager.engine:
+                result = pg_manager.engine.execute(
+                    "SELECT MAX(date) FROM price_history"
+                )
+                latest_date = result.fetchone()[0]
+                if latest_date:
+                    last_update_est = pd.Timestamp(latest_date).tz_localize(None) - timedelta(hours=5)
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.caption(f"Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
+                    with col2:
+                        st.caption("Updates: 9AM & 5PM EST daily")
+            else:
+                # Fallback to CSV file if PostgreSQL unavailable
+                latest_metrics_path = os.path.join(index_data_dir, "latest_metrics.csv")
+                if os.path.exists(latest_metrics_path):
+                    last_modified = os.path.getmtime(latest_metrics_path)
+                    last_update = datetime.fromtimestamp(last_modified)
+                    last_update_est = last_update - timedelta(hours=5)
 
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.caption(f"Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
-            with col2:
-                st.caption("Updates: 9AM & 5PM EST daily")
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.caption(f"Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
+                    with col2:
+                        st.caption("Updates: 9AM & 5PM EST daily")
+        except Exception:
+            pass
     else:
         hist = {}
         st.error(f"No data available for {index_selection}. Click 'Fetch All Data' below.")
