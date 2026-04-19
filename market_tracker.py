@@ -443,8 +443,7 @@ class PostgreSQLManager:
                     low FLOAT,
                     close FLOAT NOT NULL,
                     volume BIGINT,
-                    UNIQUE(ticker, date),
-                    FOREIGN KEY(ticker) REFERENCES stocks(ticker) ON DELETE CASCADE
+                    UNIQUE(ticker, date)
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_price_ticker_date ON price_history(ticker, date);
