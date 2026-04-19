@@ -565,45 +565,37 @@ class PostgreSQLManager:
             return
 
         try:
-            # Use pandas to_sql for efficient bulk insert
+            # Prepare data for insertion
             price_df_copy = price_df.copy()
+
+            # Reset index to get date as a column
+            price_df_copy = price_df_copy.reset_index()
+
+            # Rename columns to lowercase and match schema
+            price_df_copy.columns = [col.lower() for col in price_df_copy.columns]
+
+            # Add ticker column
             price_df_copy['ticker'] = ticker
 
-            # Reset index to make date a column
-            if price_df_copy.index.name in ['Date', 'date']:
-                price_df_copy = price_df_copy.reset_index()
-                if 'Date' in price_df_copy.columns:
-                    price_df_copy = price_df_copy.rename(columns={'Date': 'date'})
-                elif 'date' not in price_df_copy.columns:
-                    price_df_copy['date'] = price_df_copy.index
-
-            # Rename columns to match database schema
-            column_mapping = {
-                'Open': 'open',
-                'High': 'high',
-                'Low': 'low',
-                'Close': 'close',
-                'Volume': 'volume'
-            }
-            price_df_copy = price_df_copy.rename(columns=column_mapping)
-
-            # Keep only needed columns
+            # Keep only needed columns (in order)
             cols_needed = ['ticker', 'date', 'open', 'high', 'low', 'close', 'volume']
-            price_df_copy = price_df_copy[[col for col in cols_needed if col in price_df_copy.columns]]
+            # Filter to only columns that exist
+            cols_to_keep = [col for col in cols_needed if col in price_df_copy.columns]
+            price_df_copy = price_df_copy[cols_to_keep]
 
-            # Use pandas to_sql for bulk insert (much faster than individual inserts)
+            # Use pandas to_sql for bulk insert
             price_df_copy.to_sql(
                 'price_history',
                 self.engine,
                 if_exists='append',
                 index=False,
                 method='multi',
-                chunksize=1000
+                chunksize=500
             )
         except Exception as e:
-            # Silently ignore duplicate key errors, fail on other errors
-            if 'duplicate key' not in str(e).lower() and 'unique' not in str(e).lower():
-                print(f"Note: Price history for {ticker}: {e}")
+            # Silently ignore duplicate key errors
+            if 'duplicate' not in str(e).lower() and 'unique' not in str(e).lower():
+                pass  # Silently ignore
 
     def get_stats(self):
         """Get database statistics"""
