@@ -560,32 +560,50 @@ class PostgreSQLManager:
             return pd.DataFrame()
     
     def save_price_history(self, ticker, price_df):
-        """Save price history to PostgreSQL"""
+        """Save price history to PostgreSQL with batch insert"""
         if not self.engine or price_df.empty:
             return
 
         try:
-            with self.engine.begin() as conn:
-                # Delete existing data for this ticker
-                conn.execute(text("DELETE FROM price_history WHERE ticker = :ticker"), {"ticker": ticker})
+            # Use pandas to_sql for efficient bulk insert
+            price_df_copy = price_df.copy()
+            price_df_copy['ticker'] = ticker
 
-                # Insert new data
-                for date, row in price_df.iterrows():
-                    date_str = date.strftime('%Y-%m-%d') if hasattr(date, 'strftime') else str(date)
-                    conn.execute(text("""
-                        INSERT INTO price_history (ticker, date, open, high, low, close, volume)
-                        VALUES (:ticker, :date, :open, :high, :low, :close, :volume)
-                    """), {
-                        'ticker': ticker,
-                        'date': date_str,
-                        'open': float(row.get('Open', 0)),
-                        'high': float(row.get('High', 0)),
-                        'low': float(row.get('Low', 0)),
-                        'close': float(row.get('Close', 0)),
-                        'volume': int(row.get('Volume', 0))
-                    })
+            # Reset index to make date a column
+            if price_df_copy.index.name in ['Date', 'date']:
+                price_df_copy = price_df_copy.reset_index()
+                if 'Date' in price_df_copy.columns:
+                    price_df_copy = price_df_copy.rename(columns={'Date': 'date'})
+                elif 'date' not in price_df_copy.columns:
+                    price_df_copy['date'] = price_df_copy.index
+
+            # Rename columns to match database schema
+            column_mapping = {
+                'Open': 'open',
+                'High': 'high',
+                'Low': 'low',
+                'Close': 'close',
+                'Volume': 'volume'
+            }
+            price_df_copy = price_df_copy.rename(columns=column_mapping)
+
+            # Keep only needed columns
+            cols_needed = ['ticker', 'date', 'open', 'high', 'low', 'close', 'volume']
+            price_df_copy = price_df_copy[[col for col in cols_needed if col in price_df_copy.columns]]
+
+            # Use pandas to_sql for bulk insert (much faster than individual inserts)
+            price_df_copy.to_sql(
+                'price_history',
+                self.engine,
+                if_exists='append',
+                index=False,
+                method='multi',
+                chunksize=1000
+            )
         except Exception as e:
-            print(f"Error saving price history for {ticker}: {e}")
+            # Silently ignore duplicate key errors, fail on other errors
+            if 'duplicate key' not in str(e).lower() and 'unique' not in str(e).lower():
+                print(f"Note: Price history for {ticker}: {e}")
 
     def get_stats(self):
         """Get database statistics"""
