@@ -2313,11 +2313,12 @@ def compute_metrics_for_ticker(df, consecutive_days=7):
     metrics['last_close'] = float(closes.iloc[-1])
     metrics['pe_ratio'] = np.nan  # Default value
 
-    # Configurable consecutive rising/decline check
+    # Configurable consecutive rising/decline check (vectorized for speed)
     if len(closes) >= consecutive_days:
-        last_n = closes.iloc[-consecutive_days:]
-        increasing = all(last_n.values[i] > last_n.values[i-1] for i in range(1, len(last_n)))
-        decreasing = all(last_n.values[i] < last_n.values[i-1] for i in range(1, len(last_n)))
+        last_n = closes.iloc[-consecutive_days:].values
+        diffs = np.diff(last_n)
+        increasing = np.all(diffs > 0)
+        decreasing = np.all(diffs < 0)
     else:
         increasing = False
         decreasing = False
@@ -2328,9 +2329,10 @@ def compute_metrics_for_ticker(df, consecutive_days=7):
     # Keep original 7-day metrics for backward compatibility
     if consecutive_days != 7:
         if len(closes) >= 7:
-            last_7 = closes.iloc[-7:]
-            increasing_7 = all(last_7.values[i] > last_7.values[i-1] for i in range(1, len(last_7)))
-            decreasing_7 = all(last_7.values[i] < last_7.values[i-1] for i in range(1, len(last_7)))
+            last_7 = closes.iloc[-7:].values
+            diffs_7 = np.diff(last_7)
+            increasing_7 = np.all(diffs_7 > 0)
+            decreasing_7 = np.all(diffs_7 < 0)
         else:
             increasing_7 = False
             decreasing_7 = False
