@@ -4864,7 +4864,8 @@ def run_streamlit():
     try:
         if pg_manager and pg_manager.engine:
             result = pg_manager.engine.execute("SELECT MAX(date) FROM price_history")
-            latest_date = result.fetchone()[0]
+            row = result.fetchone()
+            latest_date = row[0] if row else None
             if latest_date:
                 last_update_est = pd.Timestamp(latest_date).tz_localize(None) - timedelta(hours=5)
                 col1, col2 = st.columns([3, 1])
@@ -4872,8 +4873,24 @@ def run_streamlit():
                     st.caption(f"📊 Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
                 with col2:
                     st.caption("⏰ Updates: 9AM & 5PM EST daily")
-    except Exception:
-        pass
+            else:
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.caption("📊 Data last updated: Loading...")
+                with col2:
+                    st.caption("⏰ Updates: 9AM & 5PM EST daily")
+        else:
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.caption("📊 Data last updated: Connecting to database...")
+            with col2:
+                st.caption("⏰ Updates: 9AM & 5PM EST daily")
+    except Exception as e:
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.caption("📊 Data last updated: Unable to load")
+        with col2:
+            st.caption("⏰ Updates: 9AM & 5PM EST daily")
 
     # Sidebar - Controls
     st.sidebar.header("⚙️ Settings")
