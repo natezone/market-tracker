@@ -4860,6 +4860,21 @@ def run_streamlit():
     # Add custom CSS
     add_custom_css()
 
+    # Display update info at top
+    try:
+        if pg_manager and pg_manager.engine:
+            result = pg_manager.engine.execute("SELECT MAX(date) FROM price_history")
+            latest_date = result.fetchone()[0]
+            if latest_date:
+                last_update_est = pd.Timestamp(latest_date).tz_localize(None) - timedelta(hours=5)
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.caption(f"📊 Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
+                with col2:
+                    st.caption("⏰ Updates: 9AM & 5PM EST daily")
+    except Exception:
+        pass
+
     # Sidebar - Controls
     st.sidebar.header("⚙️ Settings")
 

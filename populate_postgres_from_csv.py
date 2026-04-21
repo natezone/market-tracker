@@ -3,13 +3,22 @@
 
 import os
 import pandas as pd
-from pathlib import Path
+from sqlalchemy import create_engine
+from dotenv import load_dotenv
 from market_tracker import PostgreSQLManager
 
+load_dotenv()
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 indices = ['SP500', 'NASDAQ100', 'COMBINED', 'DOW30', 'SP400', 'SP600']
 
-pg_manager = PostgreSQLManager()
+# Create SQLAlchemy engine
+database_url = os.getenv('DATABASE_URL')
+if not database_url:
+    print("❌ DATABASE_URL not found in .env")
+    exit(1)
+
+engine = create_engine(database_url)
+pg_manager = PostgreSQLManager(engine)
 print("🔄 Loading CSV data into PostgreSQL...\n")
 
 for index in indices:
@@ -45,7 +54,7 @@ for index in indices:
                 history_path = os.path.join(history_dir, history_file)
 
                 try:
-                    price_df = pd.read_csv(history_path, index_col='date', parse_dates=True)
+                    price_df = pd.read_csv(history_path, index_col='Date', parse_dates=True)
                     pg_manager.save_price_history(ticker, price_df)
                 except Exception as e:
                     # Skip duplicate key errors and continue
