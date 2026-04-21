@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Refresh PostgreSQL with latest data from CSV files"""
+"""Refresh PostgreSQL with latest data from yfinance"""
 
 from market_tracker import run_cli
 
@@ -16,6 +16,8 @@ for index in indices:
         print(f"✅ {index} complete")
     except Exception as e:
         print(f"❌ {index} failed: {e}")
+        import traceback
+        traceback.print_exc()
 
 print("\n" + "="*60)
 print("✅ PostgreSQL refresh complete!")

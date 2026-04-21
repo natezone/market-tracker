@@ -651,41 +651,50 @@ if not pg_manager:
     print("ℹ️ Running in CSV-only mode")
 
 def fetch_sp500_tickers():
-    """Scrape S&P500 tickers from Wikipedia"""
+    """Scrape S&P500 tickers from Wikipedia with retry logic"""
     url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
-    try:
-        r = requests.get(url, headers=headers, timeout=20)
-        r.raise_for_status()
+    for attempt in range(3):
+        try:
+            r = requests.get(url, headers=headers, timeout=30)
+            r.raise_for_status()
 
-        tables = pd.read_html(r.text)
-        if not tables:
-            raise RuntimeError("No tables found on S&P500 Wikipedia page")
+            if r.status_code != 200:
+                raise RuntimeError(f"HTTP {r.status_code} from Wikipedia")
 
-        df = tables[0]
+            tables = pd.read_html(r.text)
+            if not tables:
+                raise RuntimeError("No tables found on S&P500 Wikipedia page")
 
-        # Standardize ticker symbols
-        df['Symbol'] = df['Symbol'].str.replace('.', '-', regex=False)
-        tickers = df['Symbol'].tolist()
+            df = tables[0]
 
-        # Extract sector, industry, and company name info
-        sectors = dict(zip(df['Symbol'], df.get('GICS Sector', df['Symbol'])))
-        industries = dict(zip(df['Symbol'], df.get('GICS Sub-Industry', df['Symbol'])))
-        
-        # Try different column names for company
-        if 'Security' in df.columns:
-            company_names = dict(zip(df['Symbol'], df['Security']))
-        elif 'Company' in df.columns:
-            company_names = dict(zip(df['Symbol'], df['Company']))
-        else:
-            company_names = dict(zip(df['Symbol'], df['Symbol']))
+            # Standardize ticker symbols
+            df['Symbol'] = df['Symbol'].str.replace('.', '-', regex=False)
+            tickers = df['Symbol'].tolist()
 
-        return tickers, df, sectors, industries, company_names  
+            # Extract sector, industry, and company name info
+            sectors = dict(zip(df['Symbol'], df.get('GICS Sector', df['Symbol'])))
+            industries = dict(zip(df['Symbol'], df.get('GICS Sub-Industry', df['Symbol'])))
 
-    except Exception as e:
-        print(f"Error fetching S&P 500 tickers: {e}")
-        return [], pd.DataFrame(), {}, {}, {}  
+            # Try different column names for company
+            if 'Security' in df.columns:
+                company_names = dict(zip(df['Symbol'], df['Security']))
+            elif 'Company' in df.columns:
+                company_names = dict(zip(df['Symbol'], df['Company']))
+            else:
+                company_names = dict(zip(df['Symbol'], df['Symbol']))
+
+            return tickers, df, sectors, industries, company_names
+
+        except Exception as e:
+            if attempt < 2:
+                print(f"Attempt {attempt + 1}/3 failed for S&P 500 tickers: {e}. Retrying...")
+                time.sleep(2)
+            else:
+                print(f"Failed to fetch S&P 500 tickers after 3 attempts: {e}")
+
+    return [], pd.DataFrame(), {}, {}, {}  
 
 def fetch_sp400_tickers():
     """Scrape S&P MidCap 400 tickers from Wikipedia"""
