@@ -651,7 +651,7 @@ if not pg_manager:
     print("ℹ️ Running in CSV-only mode")
 
 def fetch_sp500_tickers():
-    """Scrape S&P500 tickers from Wikipedia with retry logic"""
+    """Scrape S&P500 tickers from Wikipedia with robust parsing"""
     url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
@@ -663,7 +663,18 @@ def fetch_sp500_tickers():
             if r.status_code != 200:
                 raise RuntimeError(f"HTTP {r.status_code} from Wikipedia")
 
-            tables = pd.read_html(r.text)
+            html_text = r.text
+            if not html_text or len(html_text) < 1000:
+                raise RuntimeError("Response too short or empty")
+
+            try:
+                tables = pd.read_html(html_text, flavor='lxml')
+            except Exception:
+                try:
+                    tables = pd.read_html(html_text, flavor='html5lib')
+                except Exception:
+                    tables = pd.read_html(html_text)
+
             if not tables:
                 raise RuntimeError("No tables found on S&P500 Wikipedia page")
 
@@ -689,265 +700,322 @@ def fetch_sp500_tickers():
 
         except Exception as e:
             if attempt < 2:
-                print(f"Attempt {attempt + 1}/3 failed for S&P 500 tickers: {e}. Retrying...")
+                print(f"Attempt {attempt + 1}/3 failed for S&P 500 tickers: {str(e)[:100]}. Retrying...")
                 time.sleep(2)
             else:
-                print(f"Failed to fetch S&P 500 tickers after 3 attempts: {e}")
+                print(f"Failed to fetch S&P 500 tickers after 3 attempts")
 
     return [], pd.DataFrame(), {}, {}, {}  
 
 def fetch_sp400_tickers():
-    """Scrape S&P MidCap 400 tickers from Wikipedia"""
+    """Scrape S&P MidCap 400 tickers from Wikipedia with retry logic"""
     url = "https://en.wikipedia.org/wiki/List_of_S%26P_400_companies"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
-    try:
-        r = requests.get(url, headers=headers, timeout=20)
-        r.raise_for_status()
+    for attempt in range(3):
+        try:
+            r = requests.get(url, headers=headers, timeout=30)
+            r.raise_for_status()
 
-        tables = pd.read_html(r.text)
-        if not tables:
-            raise RuntimeError("No tables found on S&P 400 Wikipedia page")
+            html_text = r.text
+            if not html_text or len(html_text) < 1000:
+                raise RuntimeError("Response too short or empty")
 
-        df = tables[0]
+            try:
+                tables = pd.read_html(html_text, flavor='lxml')
+            except Exception:
+                try:
+                    tables = pd.read_html(html_text, flavor='html5lib')
+                except Exception:
+                    tables = pd.read_html(html_text)
 
-        # Standardize ticker symbols
-        df['Symbol'] = df['Symbol'].str.replace('.', '-', regex=False)
-        tickers = df['Symbol'].tolist()
+            if not tables:
+                raise RuntimeError("No tables found on S&P 400 Wikipedia page")
 
-        # Extract sector, industry, and company name info with fallbacks
-        sectors = dict(zip(df['Symbol'], df.get('GICS Sector', ['Unknown'] * len(df))))
-        industries = dict(zip(df['Symbol'], df.get('GICS Sub-Industry', ['Unknown'] * len(df))))
-        
-        # Try different column names for company
-        if 'Security' in df.columns:
-            company_names = dict(zip(df['Symbol'], df['Security']))
-        elif 'Company' in df.columns:
-            company_names = dict(zip(df['Symbol'], df['Company']))
-        else:
-            company_names = dict(zip(df['Symbol'], df['Symbol']))
+            df = tables[0]
 
-        return tickers, df, sectors, industries, company_names
+            # Standardize ticker symbols
+            df['Symbol'] = df['Symbol'].str.replace('.', '-', regex=False)
+            tickers = df['Symbol'].tolist()
 
-    except Exception as e:
-        print(f"Error fetching S&P 400 tickers: {e}")
-        return [], pd.DataFrame(), {}, {}, {}
+            # Extract sector, industry, and company name info
+            sectors = dict(zip(df['Symbol'], df.get('GICS Sector', ['Unknown'] * len(df))))
+            industries = dict(zip(df['Symbol'], df.get('GICS Sub-Industry', ['Unknown'] * len(df))))
+
+            # Try different column names for company
+            if 'Security' in df.columns:
+                company_names = dict(zip(df['Symbol'], df['Security']))
+            elif 'Company' in df.columns:
+                company_names = dict(zip(df['Symbol'], df['Company']))
+            else:
+                company_names = dict(zip(df['Symbol'], df['Symbol']))
+
+            return tickers, df, sectors, industries, company_names
+
+        except Exception as e:
+            if attempt < 2:
+                print(f"Attempt {attempt + 1}/3 failed for S&P 400 tickers: {str(e)[:100]}. Retrying...")
+                time.sleep(2)
+            else:
+                print(f"Failed to fetch S&P 400 tickers after 3 attempts")
+
+    return [], pd.DataFrame(), {}, {}, {}
 
 def fetch_sp600_tickers():
-    """Scrape S&P SmallCap 600 tickers from Wikipedia"""
+    """Scrape S&P SmallCap 600 tickers from Wikipedia with retry logic"""
     url = "https://en.wikipedia.org/wiki/List_of_S%26P_600_companies"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
-    try:
-        r = requests.get(url, headers=headers, timeout=20)
-        r.raise_for_status()
+    for attempt in range(3):
+        try:
+            r = requests.get(url, headers=headers, timeout=30)
+            r.raise_for_status()
 
-        tables = pd.read_html(r.text)
-        if not tables:
-            raise RuntimeError("No tables found on S&P 600 Wikipedia page")
+            html_text = r.text
+            if not html_text or len(html_text) < 1000:
+                raise RuntimeError("Response too short or empty")
 
-        df = tables[0]
+            try:
+                tables = pd.read_html(html_text, flavor='lxml')
+            except Exception:
+                try:
+                    tables = pd.read_html(html_text, flavor='html5lib')
+                except Exception:
+                    tables = pd.read_html(html_text)
 
-        # Standardize ticker symbols
-        df['Symbol'] = df['Symbol'].str.replace('.', '-', regex=False)
-        tickers = df['Symbol'].tolist()
+            if not tables:
+                raise RuntimeError("No tables found on S&P 600 Wikipedia page")
 
-        # Extract sector, industry, and company name info with fallbacks
-        sectors = dict(zip(df['Symbol'], df.get('GICS Sector', ['Unknown'] * len(df))))
-        industries = dict(zip(df['Symbol'], df.get('GICS Sub-Industry', ['Unknown'] * len(df))))
-        
-        # Try different column names for company
-        if 'Security' in df.columns:
-            company_names = dict(zip(df['Symbol'], df['Security']))
-        elif 'Company' in df.columns:
-            company_names = dict(zip(df['Symbol'], df['Company']))
-        else:
-            company_names = dict(zip(df['Symbol'], df['Symbol']))
+            df = tables[0]
 
-        return tickers, df, sectors, industries, company_names
+            # Standardize ticker symbols
+            df['Symbol'] = df['Symbol'].str.replace('.', '-', regex=False)
+            tickers = df['Symbol'].tolist()
 
-    except Exception as e:
-        print(f"Error fetching S&P 600 tickers: {e}")
-        return [], pd.DataFrame(), {}, {}, {}
+            # Extract sector, industry, and company name info
+            sectors = dict(zip(df['Symbol'], df.get('GICS Sector', ['Unknown'] * len(df))))
+            industries = dict(zip(df['Symbol'], df.get('GICS Sub-Industry', ['Unknown'] * len(df))))
+
+            # Try different column names for company
+            if 'Security' in df.columns:
+                company_names = dict(zip(df['Symbol'], df['Security']))
+            elif 'Company' in df.columns:
+                company_names = dict(zip(df['Symbol'], df['Company']))
+            else:
+                company_names = dict(zip(df['Symbol'], df['Symbol']))
+
+            return tickers, df, sectors, industries, company_names
+
+        except Exception as e:
+            if attempt < 2:
+                print(f"Attempt {attempt + 1}/3 failed for S&P 600 tickers: {str(e)[:100]}. Retrying...")
+                time.sleep(2)
+            else:
+                print(f"Failed to fetch S&P 600 tickers after 3 attempts")
+
+    return [], pd.DataFrame(), {}, {}, {}
 
 def fetch_nasdaq100_tickers():
     """Scrape Nasdaq-100 tickers from Wikipedia with robust column detection"""
     url = "https://en.wikipedia.org/wiki/Nasdaq-100"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    
-    try:
-        r = requests.get(url, headers=headers, timeout=20)
-        r.raise_for_status()
-        
-        tables = pd.read_html(r.text)
-        if not tables:
-            raise RuntimeError("No tables found on Nasdaq-100 Wikipedia page")
-        
-        # Try to find the components table
-        df = None
-        for i, table in enumerate(tables):
-            # Skip None entries 
-            if table is None:
-                continue
-            
-            # Skip empty DataFrames
-            if isinstance(table, pd.DataFrame) and table.empty:
-                continue
-                
-            cols_str = [str(col).lower() for col in table.columns]
-            if any('ticker' in col for col in cols_str):
-                df = table
-                break
-        
-        if df is None:
-            # Fallback: find first non-None, non-empty DataFrame
-            for table in tables:
-                if table is not None and isinstance(table, pd.DataFrame) and not table.empty:
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+
+    for attempt in range(3):
+        try:
+            r = requests.get(url, headers=headers, timeout=30)
+            r.raise_for_status()
+
+            html_text = r.text
+            if not html_text or len(html_text) < 1000:
+                raise RuntimeError("Response too short or empty")
+
+            try:
+                tables = pd.read_html(html_text, flavor='lxml')
+            except Exception:
+                try:
+                    tables = pd.read_html(html_text, flavor='html5lib')
+                except Exception:
+                    tables = pd.read_html(html_text)
+
+            if not tables:
+                raise RuntimeError("No tables found on Nasdaq-100 Wikipedia page")
+
+            # Try to find the components table
+            df = None
+            for i, table in enumerate(tables):
+                if table is None:
+                    continue
+                if isinstance(table, pd.DataFrame) and table.empty:
+                    continue
+                cols_str = [str(col).lower() for col in table.columns]
+                if any('ticker' in col for col in cols_str):
                     df = table
                     break
-        
-        if df is None or df.empty:
-            raise RuntimeError("Could not find valid Nasdaq-100 components table")
-        
-        # Find ticker column
-        ticker_col = None
-        for col in df.columns:
-            if 'ticker' in str(col).lower() or 'symbol' in str(col).lower():
-                ticker_col = col
-                break
-        
-        if ticker_col is None:
-            raise RuntimeError(f"Could not find ticker column in: {list(df.columns)}")
-        
-        # Standardize ticker symbols
-        df[ticker_col] = df[ticker_col].astype(str).str.replace('.', '-', regex=False)
-        tickers = df[ticker_col].tolist()
-        
-        # Extract company names
-        company_col = None
-        for col in df.columns:
-            col_str = str(col).lower()
-            if 'company' in col_str or ('name' in col_str and 'ticker' not in col_str):
-                company_col = col
-                break
-        
-        if company_col:
-            company_names = dict(zip(df[ticker_col], df[company_col].astype(str)))
-        else:
-            company_names = {ticker: ticker for ticker in tickers}
-        
-        # Extract sector
-        sector_col = None
-        for col in df.columns:
-            col_str = str(col).lower()
-            if 'sector' in col_str:
-                sector_col = col
-                break
-        
-        if sector_col:
-            sectors = dict(zip(df[ticker_col], df[sector_col].astype(str)))
-        else:
-            sectors = {ticker: "Unknown" for ticker in tickers}
-        
-        # Extract industry
-        industry_col = None
-        for col in df.columns:
-            col_str = str(col).lower()
-            if 'industry' in col_str or 'sub-industry' in col_str:
-                industry_col = col
-                break
-        
-        if industry_col:
-            industries = dict(zip(df[ticker_col], df[industry_col].astype(str)))
-        else:
-            industries = {ticker: "Unknown" for ticker in tickers}
-        
-        print(f"Successfully fetched {len(tickers)} Nasdaq-100 tickers")
-        
-        return tickers, df, sectors, industries, company_names
-        
-    except Exception as e:
-        print(f"Error fetching Nasdaq-100 tickers: {e}")
-        import traceback
-        traceback.print_exc()
-        return [], pd.DataFrame(), {}, {}, {}
+
+            if df is None:
+                for table in tables:
+                    if table is not None and isinstance(table, pd.DataFrame) and not table.empty:
+                        df = table
+                        break
+
+            if df is None or df.empty:
+                raise RuntimeError("Could not find valid Nasdaq-100 components table")
+
+            # Find ticker column
+            ticker_col = None
+            for col in df.columns:
+                if 'ticker' in str(col).lower() or 'symbol' in str(col).lower():
+                    ticker_col = col
+                    break
+
+            if ticker_col is None:
+                raise RuntimeError(f"Could not find ticker column in: {list(df.columns)}")
+
+            # Standardize ticker symbols
+            df[ticker_col] = df[ticker_col].astype(str).str.replace('.', '-', regex=False)
+            tickers = df[ticker_col].tolist()
+
+            # Extract company names
+            company_col = None
+            for col in df.columns:
+                col_str = str(col).lower()
+                if 'company' in col_str or ('name' in col_str and 'ticker' not in col_str):
+                    company_col = col
+                    break
+
+            if company_col:
+                company_names = dict(zip(df[ticker_col], df[company_col].astype(str)))
+            else:
+                company_names = {ticker: ticker for ticker in tickers}
+
+            # Extract sector
+            sector_col = None
+            for col in df.columns:
+                col_str = str(col).lower()
+                if 'sector' in col_str:
+                    sector_col = col
+                    break
+
+            if sector_col:
+                sectors = dict(zip(df[ticker_col], df[sector_col].astype(str)))
+            else:
+                sectors = {ticker: "Unknown" for ticker in tickers}
+
+            # Extract industry
+            industry_col = None
+            for col in df.columns:
+                col_str = str(col).lower()
+                if 'industry' in col_str or 'sub-industry' in col_str:
+                    industry_col = col
+                    break
+
+            if industry_col:
+                industries = dict(zip(df[ticker_col], df[industry_col].astype(str)))
+            else:
+                industries = {ticker: "Unknown" for ticker in tickers}
+
+            print(f"Successfully fetched {len(tickers)} Nasdaq-100 tickers")
+            return tickers, df, sectors, industries, company_names
+
+        except Exception as e:
+            if attempt < 2:
+                print(f"Attempt {attempt + 1}/3 failed for Nasdaq-100 tickers: {str(e)[:100]}. Retrying...")
+                time.sleep(2)
+            else:
+                print(f"Failed to fetch Nasdaq-100 tickers after 3 attempts")
+
+    return [], pd.DataFrame(), {}, {}, {}
 
 def fetch_dow30_tickers():
     """Scrape Dow 30 tickers from Wikipedia with robust column detection"""
     url = "https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    
-    try:
-        r = requests.get(url, headers=headers, timeout=20)
-        r.raise_for_status()
-        
-        tables = pd.read_html(r.text)
-        if not tables:
-            raise RuntimeError("No tables found on Dow Jones Wikipedia page")
-        
-        # Find the components table
-        df = None
-        for i, table in enumerate(tables):
-            cols_str = [str(col).lower() for col in table.columns]
-            if any(keyword in ' '.join(cols_str) for keyword in ['symbol', 'ticker', 'company']):
-                df = table
-                break
-        
-        if df is None:
-            raise RuntimeError("Could not find Dow components table")
-        
-        # Find the ticker/symbol column
-        ticker_col = None
-        for col in df.columns:
-            col_str = str(col).lower()
-            if 'symbol' in col_str or 'ticker' in col_str:
-                ticker_col = col
-                break
-        
-        if ticker_col is None:
-            raise RuntimeError(f"Could not find ticker column in: {list(df.columns)}")
-        
-        # Standardize ticker symbols
-        df[ticker_col] = df[ticker_col].astype(str).str.replace('.', '-', regex=False)
-        tickers = df[ticker_col].tolist()
-        
-        # Extract company names
-        company_col = None
-        for col in df.columns:
-            col_str = str(col).lower()
-            if 'company' in col_str or ('name' in col_str and 'ticker' not in col_str):
-                company_col = col
-                break
-        
-        if company_col:
-            company_names = dict(zip(df[ticker_col], df[company_col].astype(str)))
-        else:
-            company_names = {ticker: ticker for ticker in tickers}
-        
-        # Extract industry/sector info
-        industry_col = None
-        for col in df.columns:
-            col_str = str(col).lower()
-            if 'industry' in col_str or 'sector' in col_str:
-                industry_col = col
-                break
-        
-        if industry_col:
-            industries = dict(zip(df[ticker_col], df[industry_col].astype(str)))
-            sectors = industries.copy()  # Dow doesn't separate sector/industry
-        else:
-            industries = {ticker: "Unknown" for ticker in tickers}
-            sectors = {ticker: "Unknown" for ticker in tickers}
-        
-        print(f"Successfully fetched {len(tickers)} Dow 30 tickers")
-        
-        return tickers, df, sectors, industries, company_names
-        
-    except Exception as e:
-        print(f"Error fetching Dow 30 tickers: {e}")
-        import traceback
-        traceback.print_exc()
-        return [], pd.DataFrame(), {}, {}, {}
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+
+    for attempt in range(3):
+        try:
+            r = requests.get(url, headers=headers, timeout=30)
+            r.raise_for_status()
+
+            html_text = r.text
+            if not html_text or len(html_text) < 1000:
+                raise RuntimeError("Response too short or empty")
+
+            try:
+                tables = pd.read_html(html_text, flavor='lxml')
+            except Exception:
+                try:
+                    tables = pd.read_html(html_text, flavor='html5lib')
+                except Exception:
+                    tables = pd.read_html(html_text)
+
+            if not tables:
+                raise RuntimeError("No tables found on Dow Jones Wikipedia page")
+
+            # Find the components table
+            df = None
+            for i, table in enumerate(tables):
+                cols_str = [str(col).lower() for col in table.columns]
+                if any(keyword in ' '.join(cols_str) for keyword in ['symbol', 'ticker', 'company']):
+                    df = table
+                    break
+
+            if df is None:
+                raise RuntimeError("Could not find Dow components table")
+
+            # Find the ticker/symbol column
+            ticker_col = None
+            for col in df.columns:
+                col_str = str(col).lower()
+                if 'symbol' in col_str or 'ticker' in col_str:
+                    ticker_col = col
+                    break
+
+            if ticker_col is None:
+                raise RuntimeError(f"Could not find ticker column in: {list(df.columns)}")
+
+            # Standardize ticker symbols
+            df[ticker_col] = df[ticker_col].astype(str).str.replace('.', '-', regex=False)
+            tickers = df[ticker_col].tolist()
+
+            # Extract company names
+            company_col = None
+            for col in df.columns:
+                col_str = str(col).lower()
+                if 'company' in col_str or ('name' in col_str and 'ticker' not in col_str):
+                    company_col = col
+                    break
+
+            if company_col:
+                company_names = dict(zip(df[ticker_col], df[company_col].astype(str)))
+            else:
+                company_names = {ticker: ticker for ticker in tickers}
+
+            # Extract industry/sector info
+            industry_col = None
+            for col in df.columns:
+                col_str = str(col).lower()
+                if 'industry' in col_str or 'sector' in col_str:
+                    industry_col = col
+                    break
+
+            if industry_col:
+                industries = dict(zip(df[ticker_col], df[industry_col].astype(str)))
+                sectors = industries.copy()
+            else:
+                industries = {ticker: "Unknown" for ticker in tickers}
+                sectors = {ticker: "Unknown" for ticker in tickers}
+
+            print(f"Successfully fetched {len(tickers)} Dow 30 tickers")
+            return tickers, df, sectors, industries, company_names
+
+        except Exception as e:
+            if attempt < 2:
+                print(f"Attempt {attempt + 1}/3 failed for Dow 30 tickers: {str(e)[:100]}. Retrying...")
+                time.sleep(2)
+            else:
+                print(f"Failed to fetch Dow 30 tickers after 3 attempts")
+
+    return [], pd.DataFrame(), {}, {}, {}
 
 def fetch_combined_tickers():
     """Fetch all tickers from S&P 500, MidCap 400, SmallCap 600, Nasdaq-100, and Dow 30 (deduplicated)"""
