@@ -667,13 +667,14 @@ def fetch_sp500_tickers():
             if not html_text or len(html_text) < 1000:
                 raise RuntimeError("Response too short or empty")
 
+            from io import StringIO
             try:
-                tables = pd.read_html(html_text, flavor='lxml')
+                tables = pd.read_html(StringIO(html_text), flavor='lxml')
             except Exception:
                 try:
-                    tables = pd.read_html(html_text, flavor='html5lib')
+                    tables = pd.read_html(StringIO(html_text), flavor='html5lib')
                 except Exception:
-                    tables = pd.read_html(html_text)
+                    tables = pd.read_html(StringIO(html_text))
 
             if not tables:
                 raise RuntimeError("No tables found on S&P500 Wikipedia page")
@@ -721,13 +722,14 @@ def fetch_sp400_tickers():
             if not html_text or len(html_text) < 1000:
                 raise RuntimeError("Response too short or empty")
 
+            from io import StringIO
             try:
-                tables = pd.read_html(html_text, flavor='lxml')
+                tables = pd.read_html(StringIO(html_text), flavor='lxml')
             except Exception:
                 try:
-                    tables = pd.read_html(html_text, flavor='html5lib')
+                    tables = pd.read_html(StringIO(html_text), flavor='html5lib')
                 except Exception:
-                    tables = pd.read_html(html_text)
+                    tables = pd.read_html(StringIO(html_text))
 
             if not tables:
                 raise RuntimeError("No tables found on S&P 400 Wikipedia page")
@@ -775,13 +777,14 @@ def fetch_sp600_tickers():
             if not html_text or len(html_text) < 1000:
                 raise RuntimeError("Response too short or empty")
 
+            from io import StringIO
             try:
-                tables = pd.read_html(html_text, flavor='lxml')
+                tables = pd.read_html(StringIO(html_text), flavor='lxml')
             except Exception:
                 try:
-                    tables = pd.read_html(html_text, flavor='html5lib')
+                    tables = pd.read_html(StringIO(html_text), flavor='html5lib')
                 except Exception:
-                    tables = pd.read_html(html_text)
+                    tables = pd.read_html(StringIO(html_text))
 
             if not tables:
                 raise RuntimeError("No tables found on S&P 600 Wikipedia page")
@@ -829,13 +832,14 @@ def fetch_nasdaq100_tickers():
             if not html_text or len(html_text) < 1000:
                 raise RuntimeError("Response too short or empty")
 
+            from io import StringIO
             try:
-                tables = pd.read_html(html_text, flavor='lxml')
+                tables = pd.read_html(StringIO(html_text), flavor='lxml')
             except Exception:
                 try:
-                    tables = pd.read_html(html_text, flavor='html5lib')
+                    tables = pd.read_html(StringIO(html_text), flavor='html5lib')
                 except Exception:
-                    tables = pd.read_html(html_text)
+                    tables = pd.read_html(StringIO(html_text))
 
             if not tables:
                 raise RuntimeError("No tables found on Nasdaq-100 Wikipedia page")
@@ -940,13 +944,14 @@ def fetch_dow30_tickers():
             if not html_text or len(html_text) < 1000:
                 raise RuntimeError("Response too short or empty")
 
+            from io import StringIO
             try:
-                tables = pd.read_html(html_text, flavor='lxml')
+                tables = pd.read_html(StringIO(html_text), flavor='lxml')
             except Exception:
                 try:
-                    tables = pd.read_html(html_text, flavor='html5lib')
+                    tables = pd.read_html(StringIO(html_text), flavor='html5lib')
                 except Exception:
-                    tables = pd.read_html(html_text)
+                    tables = pd.read_html(StringIO(html_text))
 
             if not tables:
                 raise RuntimeError("No tables found on Dow Jones Wikipedia page")
