@@ -4935,7 +4935,22 @@ def run_streamlit():
         layout="wide",
         initial_sidebar_state="expanded"
     )
-   
+
+    # Initialize session state with default index data (critical for Streamlit Cloud)
+    if 'metrics_df' not in st.session_state:
+        st.session_state['metrics_df'] = None
+        st.session_state['selected_stocks'] = []
+
+    # Pre-load default index data if not already loaded
+    if st.session_state['metrics_df'] is None:
+        try:
+            # Try to load SP500 as default
+            default_df = load_data_from_postgres('SP500')
+            if default_df is not None and not default_df.empty:
+                st.session_state['metrics_df'] = default_df
+        except Exception as e:
+            print(f"[WARNING] Could not pre-load metrics: {e}")
+
     # Check memory usage
     memory_info = check_and_display_memory()
    
@@ -5022,7 +5037,25 @@ def run_streamlit():
         
         # Update tracking
         st.session_state['last_loaded_index'] = current_index
-   
+
+        # Load new index data into session state for Cloud compatibility
+        try:
+            new_df = load_data_from_postgres(current_index)
+            if new_df is not None and not new_df.empty:
+                st.session_state['metrics_df'] = new_df
+        except Exception as e:
+            print(f"[WARNING] Could not load {current_index}: {e}")
+    else:
+        # Even if index didn't change, ensure metrics_df is populated from current index
+        if st.session_state['metrics_df'] is None or st.session_state.get('last_metrics_index') != current_index:
+            try:
+                new_df = load_data_from_postgres(current_index)
+                if new_df is not None and not new_df.empty:
+                    st.session_state['metrics_df'] = new_df
+                    st.session_state['last_metrics_index'] = current_index
+            except Exception as e:
+                print(f"[WARNING] Could not load {current_index}: {e}")
+
     # Get current index-specific data directory
     index_data_dir = os.path.join(DATA_DIR, current_index)
 
