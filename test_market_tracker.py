@@ -1283,10 +1283,10 @@ class TestDatabaseOperations(TestMarketTracker):
              'last_close': 150.0, 'pe_ratio': 25.5, 'status': 'ok'}
         ])
         
-        mt.save_metrics_to_db(metrics_df, 'SP500')
+        mt.save_metrics_to_db(metrics_df, 'TEST_SP500')
         
         # Load back
-        loaded_df = mt.load_metrics_from_db('SP500')
+        loaded_df = mt.load_metrics_from_db('TEST_SP500')
         
         self.assertIn('pe_ratio', loaded_df.columns)
         self.assertAlmostEqual(loaded_df.iloc[0]['pe_ratio'], 25.5, places=1)
@@ -1301,9 +1301,9 @@ class TestDatabaseOperations(TestMarketTracker):
         ])
         
         # Should not crash
-        mt.save_metrics_to_db(metrics_df, 'SP500')
+        mt.save_metrics_to_db(metrics_df, 'TEST_SP500')
         
-        loaded_df = mt.load_metrics_from_db('SP500')
+        loaded_df = mt.load_metrics_from_db('TEST_SP500')
         self.assertIn('pe_ratio', loaded_df.columns)
     
     def test_save_metrics_upsert_behavior(self):
@@ -1314,16 +1314,16 @@ class TestDatabaseOperations(TestMarketTracker):
         df1 = pd.DataFrame([
             {'ticker': 'AAPL', 'last_close': 100.0, 'pe_ratio': 20.0, 'status': 'ok'}
         ])
-        mt.save_metrics_to_db(df1, 'SP500')
+        mt.save_metrics_to_db(df1, 'TEST_SP500')
         
         # Update save
         df2 = pd.DataFrame([
             {'ticker': 'AAPL', 'last_close': 150.0, 'pe_ratio': 25.0, 'status': 'ok'}
         ])
-        mt.save_metrics_to_db(df2, 'SP500')
+        mt.save_metrics_to_db(df2, 'TEST_SP500')
         
         # Should have updated values, not duplicates
-        loaded_df = mt.load_metrics_from_db('SP500')
+        loaded_df = mt.load_metrics_from_db('TEST_SP500')
         self.assertEqual(len(loaded_df), 1)
         self.assertAlmostEqual(loaded_df.iloc[0]['last_close'], 150.0, places=1)
         self.assertAlmostEqual(loaded_df.iloc[0]['pe_ratio'], 25.0, places=1)
@@ -1336,11 +1336,11 @@ class TestDatabaseOperations(TestMarketTracker):
         df_sp500 = pd.DataFrame([{'ticker': 'AAPL', 'status': 'ok'}])
         df_nasdaq = pd.DataFrame([{'ticker': 'MSFT', 'status': 'ok'}])
         
-        mt.save_metrics_to_db(df_sp500, 'SP500')
-        mt.save_metrics_to_db(df_nasdaq, 'NASDAQ100')
+        mt.save_metrics_to_db(df_sp500, 'TEST_SP500')
+        mt.save_metrics_to_db(df_nasdaq, 'TEST_NASDAQ100')
         
         # Load SP500 only
-        sp500_data = mt.load_metrics_from_db('SP500')
+        sp500_data = mt.load_metrics_from_db('TEST_SP500')
         self.assertEqual(len(sp500_data), 1)
         self.assertIn('AAPL', sp500_data['ticker'].values)
         self.assertNotIn('MSFT', sp500_data['ticker'].values)
@@ -1374,7 +1374,7 @@ class TestDatabaseOperations(TestMarketTracker):
             {'ticker': 'AAPL', 'status': 'ok'},
             {'ticker': 'MSFT', 'status': 'ok'}
         ])
-        mt.save_metrics_to_db(df, 'SP500')
+        mt.save_metrics_to_db(df, 'TEST_SP500')
         
         stats = mt.get_database_stats()
         
@@ -1391,9 +1391,9 @@ class TestDatabaseOperations(TestMarketTracker):
         ])
         
         # Should rename to high_52w and low_52w for SQLite
-        mt.save_metrics_to_db(metrics_df, 'SP500')
+        mt.save_metrics_to_db(metrics_df, 'TEST_SP500')
         
-        loaded_df = mt.load_metrics_from_db('SP500')
+        loaded_df = mt.load_metrics_from_db('TEST_SP500')
         
         # Should be renamed back
         self.assertIn('52w_high', loaded_df.columns)
@@ -1963,10 +1963,10 @@ class TestRegressionAndBugFixes(unittest.TestCase):
         }])
         
         # Save to database (this converts to high_52w/low_52w internally)
-        mt.save_metrics_to_db(metrics_df, 'SP500')
+        mt.save_metrics_to_db(metrics_df, 'TEST_SP500')
         
         # Load back (this should convert back to 52w_high/52w_low)
-        loaded_df = mt.load_metrics_from_db('SP500')
+        loaded_df = mt.load_metrics_from_db('TEST_SP500')
         
         # After load_metrics_from_db, columns should be renamed back to original format
         self.assertIn('52w_high', loaded_df.columns, 
@@ -1993,10 +1993,10 @@ class TestRegressionAndBugFixes(unittest.TestCase):
         }])
         
         # Save to database
-        mt.save_metrics_to_db(metrics_df, 'SP500')
+        mt.save_metrics_to_db(metrics_df, 'TEST_SP500')
         
         # Load back
-        loaded_df = mt.load_metrics_from_db('SP500')
+        loaded_df = mt.load_metrics_from_db('TEST_SP500')
         
         # P/E ratio should still be there
         self.assertIn('pe_ratio', loaded_df.columns)
@@ -2123,10 +2123,10 @@ class TestStreamlitCompatibility(TestMarketTracker):
                 'pe_ratio': 25.5,
                 'status': 'ok'
             }])
-            mt.save_metrics_to_db(metrics_df, 'SP500')
+            mt.save_metrics_to_db(metrics_df, 'TEST_SP500')
             
             # Load using the function
-            loaded_df = mt.load_metrics_from_db('SP500')
+            loaded_df = mt.load_metrics_from_db('TEST_SP500')
             
             self.assertIsNotNone(loaded_df)
             self.assertIn('pe_ratio', loaded_df.columns)
