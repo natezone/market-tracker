@@ -227,10 +227,16 @@ class TestTickerFetching(TestMarketTracker):
             'GICS Sub-Industry': ['Tech Hardware', 'Software', 'Internet']
         })
         mock_read_html.return_value = [mock_df]
-        mock_get.return_value.raise_for_status.return_value = None
-        
+
+        # Set up the mock response object properly
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = '<html><body><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table></body></html>'
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
         tickers, df, sectors, industries, company_names = fetch_sp500_tickers()
-        
+
         self.assertEqual(len(tickers), 3)
         self.assertIn('AAPL', tickers)
         self.assertEqual(company_names['AAPL'], 'Apple Inc.')
@@ -247,7 +253,12 @@ class TestTickerFetching(TestMarketTracker):
             'GICS Sub-Industry': ['Tech Hardware', 'Software', 'Internet']
         })
         mock_read_html.return_value = [None, None, None, None, mock_df]
-        mock_get.return_value.raise_for_status.return_value = None
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = '<html><body><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table></body></html>'
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
         
         tickers, df, sectors, industries, company_names = fetch_nasdaq100_tickers()
         
@@ -268,7 +279,12 @@ class TestTickerFetching(TestMarketTracker):
         # Return empty DF first, then the real data
         empty_df = pd.DataFrame({'Other': ['data']})
         mock_read_html.return_value = [empty_df, mock_df]
-        mock_get.return_value.raise_for_status.return_value = None
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = '<html><body><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table></body></html>'
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
         
         tickers, df, sectors, industries, company_names = fetch_dow30_tickers()
         
@@ -288,7 +304,12 @@ class TestTickerFetching(TestMarketTracker):
         # Mix of None, empty DataFrames, and valid data
         empty_df = pd.DataFrame()
         mock_read_html.return_value = [None, empty_df, None, mock_df, None]
-        mock_get.return_value.raise_for_status.return_value = None
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = '<html><body><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table></body></html>'
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
         
         tickers, df, sectors, industries, company_names = fetch_nasdaq100_tickers()
         
@@ -307,7 +328,12 @@ class TestTickerFetching(TestMarketTracker):
             'GICS Sub-Industry': ['Apparel Retail', 'Restaurants', 'Regional Banks']
         })
         mock_read_html.return_value = [mock_df]
-        mock_get.return_value.raise_for_status.return_value = None
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = '<html><body><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table></body></html>'
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
         
         tickers, df, sectors, industries, company_names = fetch_sp400_tickers()
         
@@ -327,7 +353,12 @@ class TestTickerFetching(TestMarketTracker):
             'GICS Sub-Industry': ['IT Services', 'Property & Casualty Insurance', 'Water Utilities']
         })
         mock_read_html.return_value = [mock_df]
-        mock_get.return_value.raise_for_status.return_value = None
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = '<html><body><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table><table><tr><td>data</td></tr></table></body></html>'
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
         
         tickers, df, sectors, industries, company_names = fetch_sp600_tickers()
         
@@ -1888,14 +1919,20 @@ class TestRegressionAndBugFixes(unittest.TestCase):
     @patch('pandas.read_html')
     def test_nasdaq100_empty_tables_handling(self, mock_read_html, mock_get):
         """Test that Nasdaq-100 fetching handles None and empty tables"""
-        mock_get.return_value.raise_for_status.return_value = None
-        
+        # Set up mock response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        long_html = '<html><body>' + '<table><tr><td>data</td></tr></table>' * 50 + '</body></html>'
+        mock_response.text = long_html
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
         # Mix of None, empty, and valid tables
         valid_df = pd.DataFrame({
             'Ticker': ['AAPL', 'MSFT'],
             'Company': ['Apple', 'Microsoft']
         })
-        
+
         mock_read_html.return_value = [
             None,
             pd.DataFrame(),

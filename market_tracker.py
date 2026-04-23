@@ -184,7 +184,7 @@ def init_database():
 def save_metrics_to_db(metrics_df, index_name):
     """Save metrics to SQLite database with upsert logic"""
     if metrics_df.empty:
-        return
+        st.stop()
 
     init_database()
     conn = sqlite3.connect(DATABASE_PATH)
@@ -246,7 +246,7 @@ def load_metrics_from_db(index_name):
 def save_price_history_to_db(ticker, price_df):
     """Save price history to SQLite database"""
     if price_df.empty:
-        return
+        st.stop()
 
     init_database()
     conn = sqlite3.connect(DATABASE_PATH)
@@ -354,14 +354,14 @@ if POSTGRES_URL:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         
-        print("✅ PostgreSQL engine created successfully")
+        print("[OK] PostgreSQL engine created successfully")
         
     except Exception as e:
-        print(f"⚠️ PostgreSQL connection failed: {str(e)[:200]}")
-        print("📁 Will use CSV fallback mode")
+        print(f"[WARNING] PostgreSQL connection failed: {str(e)[:200]}")
+        print("[INFO] Will use CSV fallback mode")
         engine = None
 else:
-    print("ℹ️ No DATABASE_URL found. Using CSV mode.")
+    print("[INFO] No DATABASE_URL found. Using CSV mode.")
     engine = None
 
 class PostgreSQLManager:
@@ -483,7 +483,7 @@ class PostgreSQLManager:
             # Keep only valid columns that exist in DataFrame
             df = df[[col for col in valid_columns if col in df.columns]]
             
-            print(f"📊 Saving {len(df)} stocks with {len(df.columns)} columns to PostgreSQL...")
+            print(f"[INFO] Saving {len(df)} stocks with {len(df.columns)} columns to PostgreSQL...")
             
             # Delete existing records for this index
             with self.engine.begin() as conn:
@@ -511,12 +511,12 @@ class PostgreSQLManager:
                 count = result.scalar()
                 
                 if count > 0:
-                    print(f"✓ Saved {count} stocks to PostgreSQL for {index_name}")
+                    print(f"[OK] Saved {count} stocks to PostgreSQL for {index_name}")
                 else:
-                    print(f"⚠️ Warning: 0 rows in database after save!")
+                    print(f"[WARNING] Warning: 0 rows in database after save!")
             
         except Exception as e:
-            print(f"❌ Error saving to PostgreSQL: {e}")
+            print(f"[ERROR] Error saving to PostgreSQL: {e}")
             import traceback
             traceback.print_exc()
     
@@ -535,10 +535,10 @@ class PostgreSQLManager:
             with self.engine.connect() as conn:
                 df = pd.read_sql(query, conn, params={"idx": index_name})
             
-            print(f"🔍 DEBUG load_metrics: Loaded {len(df)} rows for {index_name}")
+            print(f"[DEBUG] load_metrics: Loaded {len(df)} rows for {index_name}")
             
             if df.empty:
-                print(f"⚠️ WARNING: No data found for index_name = '{index_name}'")
+                print(f"[WARNING] ...")
                 print(f"   Checking what's in the database...")
                 
                 # Check what index_names exist
@@ -554,7 +554,7 @@ class PostgreSQLManager:
             return df
             
         except Exception as e:
-            print(f"❌ Error loading from PostgreSQL: {e}")
+            print(f"[ERROR] Error loading from PostgreSQL: {e}")
             import traceback
             traceback.print_exc()
             return pd.DataFrame()
@@ -637,18 +637,18 @@ pg_manager = None
 if engine:
     try:
         pg_manager = PostgreSQLManager(engine)
-        print("✅ PostgreSQL manager initialized")
+        print(" PostgreSQL manager initialized")
         # Create tables if they don't exist
         pg_manager._create_tables()
-        print("✅ Database tables created/verified")
+        print(" Database tables created/verified")
     except Exception as e:
-        print(f"⚠️ PostgreSQL init failed: {type(e).__name__}: {str(e)}")
-        print("📁 Falling back to CSV mode")
+        print(f"[WARNING] ...")
+        print(" Falling back to CSV mode")
         engine = None
         pg_manager = None
 
 if not pg_manager:
-    print("ℹ️ Running in CSV-only mode")
+    print(" Running in CSV-only mode")
 
 def fetch_sp500_tickers():
     """Scrape S&P500 tickers from Wikipedia with robust parsing"""
@@ -1138,7 +1138,7 @@ def download_history(tickers, period="max", interval="1d", threads=True, progres
                     print(f"Download error (attempt {attempt + 1}/3), retrying in {wait}s: {e}")
                 time.sleep(wait)
         else:
-            print(f"❌ Failed to download chunk after 3 attempts: {chunk}")
+            print(f" Failed to download chunk after 3 attempts: {chunk}")
             # Add empty DataFrames for failed tickers
             for t in chunk:
                 out[t] = pd.DataFrame()
@@ -1168,7 +1168,7 @@ def download_history(tickers, period="max", interval="1d", threads=True, progres
 
     if VERBOSE:
         successful = sum(1 for df in out.values() if not df.empty)
-        print(f"✓ Downloaded data for {successful}/{len(tickers)} tickers")
+        print(f" Downloaded data for {successful}/{len(tickers)} tickers")
 
     return out
 
@@ -1571,7 +1571,7 @@ def show_color_legend():
         st.divider()
         
         # RSI Colors Section
-        st.markdown("### 📊 **RSI Colors** (Relative Strength Index)")
+        st.markdown("###  **RSI Colors** (Relative Strength Index)")
         st.markdown("*Technical indicator measuring overbought/oversold conditions (0-100 scale)*")
         
         rsi_cols = st.columns(3)
@@ -1791,17 +1791,17 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
         - Base Score: 75
         - Strategy: Growth
         - Regime: Bull Market
-        - **Adjusted Score: 75 × 1.05 = 78.75** ✅
+        - **Adjusted Score: 75 × 1.05 = 78.75** 
         
         ---
         
         ### Confidence Scoring
         
         Confidence reflects:
-        - ✅ **Data Completeness**: All metrics available?
-        - ✅ **Sentiment Quality**: Sufficient news articles?
-        - ✅ **Volatility**: Predictable price behavior?
-        - ✅ **Score Consistency**: Aligned signals across factors?
+        -  **Data Completeness**: All metrics available?
+        -  **Sentiment Quality**: Sufficient news articles?
+        -  **Volatility**: Predictable price behavior?
+        -  **Score Consistency**: Aligned signals across factors?
         
         | Confidence | Meaning |
         |-----------|---------|
@@ -1853,7 +1853,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
     with col4:
         st.metric("Market Volatility", f"{market_regime.volatility:.1f}%")
     
-    st.caption(f"📊 Market Breadth: {market_regime.breadth:.1f}% of stocks above 50-day average")
+    st.caption(f" Market Breadth: {market_regime.breadth:.1f}% of stocks above 50-day average")
     
     st.divider()
     
@@ -1974,7 +1974,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
                 st.session_state.ai_recommendations = recommendations
                 st.session_state.market_regime = regime_data
                 
-                st.success(f"✅ Ranked {len(recommendations)} opportunities!")
+                st.success(f" Ranked {len(recommendations)} opportunities!")
                 
             except Exception as e:
                 st.error(f"Error generating recommendations: {e}")
@@ -1989,7 +1989,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
         regime_data = st.session_state.get('market_regime', market_regime)
         
         # Summary
-        st.markdown("### 📊 Opportunity Summary")
+        st.markdown("###  Opportunity Summary")
         
         col1, col2, col3, col4 = st.columns(4)
         
@@ -2014,7 +2014,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
         # Tabs
         tabs = st.tabs([
             "🎯 Ranked Opportunities",
-            "📊 Detailed Analysis",
+            " Detailed Analysis",
             "📈 Visual Insights",
             "💼 Portfolio Builder",
             "📥 Export"
@@ -2135,7 +2135,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
             st.dataframe(styled_df, use_container_width=True, height=400)
             
             # Score distributions
-            st.markdown("### 📊 Score Distributions")
+            st.markdown("###  Score Distributions")
             
             col1, col2 = st.columns(2)
             
@@ -2283,7 +2283,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
                         if portfolio:
                             portfolio_df = pd.DataFrame(portfolio)
                             st.session_state.opportunity_portfolio = portfolio_df
-                            st.success(f"✅ Built portfolio with {len(portfolio_df)} opportunities!")
+                            st.success(f" Built portfolio with {len(portfolio_df)} opportunities!")
             
             # Display portfolio
             if 'opportunity_portfolio' in st.session_state:
@@ -2305,7 +2305,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
                     st.metric("Avg Volatility", f"{portfolio['volatility'].mean():.1f}%")
                 
                 # Sector breakdown
-                st.markdown("#### 📊 Portfolio Composition")
+                st.markdown("####  Portfolio Composition")
                 
                 sector_dist = portfolio['sector'].value_counts()
                 fig = px.pie(
@@ -2529,7 +2529,7 @@ def fetch_pe_ratios(tickers, metrics_df):
     
     if VERBOSE:
         valid_pe_count = metrics_df['pe_ratio'].notna().sum()
-        print(f"✓ Fetched P/E ratios for {valid_pe_count}/{len(tickers)} stocks")
+        print(f" Fetched P/E ratios for {valid_pe_count}/{len(tickers)} stocks")
     
     return metrics_df
 
@@ -2758,10 +2758,10 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
 
     # Show informative message if selections were cleared
     if selections_cleared and len(st.session_state[state_key]) == 0:
-        st.info(f"ℹ️ Previous selections cleared due to index change to {index_selection}")
+        st.info(f" Previous selections cleared due to index change to {index_selection}")
     elif selections_cleared:
         removed_count = len(st.session_state[selection_history_key]) - len(valid_stored_tickers)
-        st.warning(f"⚠️ {removed_count} previously selected ticker(s) not found in {index_selection}")
+        st.warning(f" {removed_count} previously selected ticker(s) not found in {index_selection}")
 
     # Update selection history
     st.session_state[selection_history_key] = valid_stored_tickers.copy()
@@ -2806,7 +2806,7 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
                     st.session_state[state_key] = top_30[:30]
                     st.rerun()
                 else:
-                    st.warning("⚠️ No performance data available")
+                    st.warning(" No performance data available")
             except Exception as e:
                 st.error(f"Error loading top performers: {e}")
 
@@ -2819,17 +2819,17 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
     
     if len(selected_tickers) < 2:
         st.info("👆 Please select at least 2 stocks to compare")
-        return
+        st.stop()
     
     # Get comparison data
     comparison_df = get_sector_comparison_data(valid_metrics, selected_tickers)
     
     if comparison_df.empty:
         st.error("No data available for selected stocks")
-        return
+        st.stop()
     
     # Display comparison table
-    st.subheader("📊 Performance Comparison")
+    st.subheader(" Performance Comparison")
     
     styled_comparison = format_and_style_dataframe(comparison_df)
     st.dataframe(styled_comparison, use_container_width=True)
@@ -3018,7 +3018,7 @@ def render_historical_analysis_mode(valid_metrics, hist):
     
     if not selected_ticker:
         st.info("Please select a valid stock")
-        return
+        st.stop()
 
     # Try to load from hist first, then from database
     if selected_ticker in hist:
@@ -3031,7 +3031,7 @@ def render_historical_analysis_mode(valid_metrics, hist):
 
     if df.empty or 'Close' not in df.columns:
         st.error("No historical data available for selected stock")
-        return
+        st.stop()
     
     # Date range selection
     col1, col2 = st.columns(2)
@@ -3063,7 +3063,7 @@ def render_historical_analysis_mode(valid_metrics, hist):
     
     if filtered_df.empty:
         st.error("No data available for selected date range")
-        return
+        st.stop()
     
     # Add technical indicators
     filtered_df = add_technical_indicators(filtered_df)
@@ -3176,7 +3176,7 @@ def render_historical_analysis_mode(valid_metrics, hist):
 
 def render_risk_management_mode(valid_metrics, hist):
     """Render the Risk Management Mode interface"""
-    st.subheader("⚠️ Risk Management Analysis")
+    st.subheader(" Risk Management Analysis")
     
     # Portfolio construction
     st.markdown("### 📋 Portfolio Construction")
@@ -3233,10 +3233,10 @@ def render_risk_management_mode(valid_metrics, hist):
     
     if len(portfolio_stocks) < 2 or total_weight == 0:
         st.info("Please select at least 2 stocks with valid weights")
-        return
+        st.stop()
     
     # Calculate portfolio metrics
-    st.markdown("### 📊 Portfolio Risk Metrics")
+    st.markdown("###  Portfolio Risk Metrics")
     
     # Get historical data for portfolio stocks
     portfolio_data = {}
@@ -3261,14 +3261,14 @@ def render_risk_management_mode(valid_metrics, hist):
 
     if portfolio_returns.empty:
         st.error("Insufficient historical data for risk analysis")
-        return
+        st.stop()
     
     # Align dates and calculate portfolio returns
     portfolio_returns = portfolio_returns.dropna()
     
     if len(portfolio_returns) < 50:
         st.error("Insufficient overlapping data for portfolio analysis")
-        return
+        st.stop()
     
     # Calculate weighted portfolio returns
     valid_stocks = list(portfolio_returns.columns)
@@ -3276,7 +3276,7 @@ def render_risk_management_mode(valid_metrics, hist):
     
     if len(valid_weights) != len(valid_stocks):
         st.error("Mismatch between stocks and weights")
-        return
+        st.stop()
     
     # Normalize weights for valid stocks
     valid_weights = np.array(valid_weights)
@@ -3755,7 +3755,7 @@ def analyze_sentiment_mixed(valid_metrics, horizon_col, max_newsapi_requests=75)
     
     # DEFAULT: Use Google News for everything if no NewsAPI key
     if not NEWS_API_KEY:
-        print("\n📰 Using Google News RSS for all stocks (free, no API key required)")
+        print("\n Using Google News RSS for all stocks (free, no API key required)")
         print(f"Analyzing sentiment for {len(all_tickers)} stocks...")
         
         for ticker in tqdm(all_tickers, desc="Google News Analysis"):
@@ -3765,11 +3765,11 @@ def analyze_sentiment_mixed(valid_metrics, horizon_col, max_newsapi_requests=75)
             sentiment_data.append(sentiment)
             time.sleep(0.3)  # Light rate limiting
         
-        print(f"✓ Completed: {len(all_tickers)} stocks analyzed with Google News RSS")
+        print(f" Completed: {len(all_tickers)} stocks analyzed with Google News RSS")
         return pd.DataFrame(sentiment_data)
     
     # PREMIUM: NewsAPI available - use mixed approach
-    print("\n📊 Mixed Strategy: NewsAPI + Google News")
+    print("\n Mixed Strategy: NewsAPI + Google News")
     
     valid_metrics['abs_return'] = valid_metrics[horizon_col].abs()
     top_movers = valid_metrics.nlargest(max_newsapi_requests, 'abs_return')
@@ -3798,12 +3798,12 @@ def analyze_sentiment_mixed(valid_metrics, horizon_col, max_newsapi_requests=75)
         sentiment['ticker'] = ticker
         sentiment_data.append(sentiment)
     
-    print(f"✓ Completed: {newsapi_count} NewsAPI + {google_news_count} Google News")
+    print(f" Completed: {newsapi_count} NewsAPI + {google_news_count} Google News")
     
     return pd.DataFrame(sentiment_data)
     
     # PREMIUM: NewsAPI available - use mixed approach
-    print("\n📊 Mixed Strategy: NewsAPI + Google News")
+    print("\n Mixed Strategy: NewsAPI + Google News")
     
     valid_metrics['abs_return'] = valid_metrics[horizon_col].abs()
     top_movers = valid_metrics.nlargest(max_newsapi_requests, 'abs_return')
@@ -3832,7 +3832,7 @@ def analyze_sentiment_mixed(valid_metrics, horizon_col, max_newsapi_requests=75)
         sentiment['ticker'] = ticker
         sentiment_data.append(sentiment)
     
-    print(f"✓ Completed: {newsapi_count} NewsAPI + {google_news_count} Google News")
+    print(f" Completed: {newsapi_count} NewsAPI + {google_news_count} Google News")
     
     return pd.DataFrame(sentiment_data)
 
@@ -3990,7 +3990,7 @@ def run_cli(consecutive_days=7, index_key="SP500"):
         for idx in indices:
             print(f"\n=== Running index: {idx} ===")
             run_cli(consecutive_days=consecutive_days, index_key=idx)
-        return
+        st.stop()
 
     # Create index-specific data directory
     index_data_dir = os.path.join(DATA_DIR, index_key)
@@ -4029,7 +4029,7 @@ def run_cli(consecutive_days=7, index_key="SP500"):
 
     if not tickers:
         print("Failed to fetch tickers. Exiting.")
-        return
+        st.stop()
 
     print(f"Found {len(tickers)} tickers")
 
@@ -4121,34 +4121,34 @@ def run_cli(consecutive_days=7, index_key="SP500"):
     save_successful = False
 
     if pg_manager:
-        print(f"📊 Saving {len(df_metrics)} stocks to PostgreSQL...")
+        print(f" Saving {len(df_metrics)} stocks to PostgreSQL...")
         try:
             pg_manager.save_metrics(df_metrics, index_key)
-            print(f"✅ Successfully saved to PostgreSQL!")
+            print(f" Successfully saved to PostgreSQL!")
             save_successful = True
         except Exception as e:
-            print(f"❌ PostgreSQL save failed: {e}")
+            print(f" PostgreSQL save failed: {e}")
             import traceback
             traceback.print_exc()
-            print(f"⚠️ Falling back to CSV-only mode for this run")
+            print(f"[WARNING] ...")
     else:
-        print("⚠️ No PostgreSQL connection. Using CSV-only mode.")
+        print("[WARNING] ...")
 
     # Always save CSV backup regardless of database status
     try:
         master_csv = os.path.join(index_data_dir, "latest_metrics.csv")
         ensure_dir(index_data_dir)
         df_metrics.to_csv(master_csv, index=False)
-        print(f"✓ Saved CSV backup to {master_csv}")
+        print(f" Saved CSV backup to {master_csv}")
     except Exception as csv_error:
-        print(f"❌ CRITICAL: CSV backup also failed: {csv_error}")
+        print(f" CRITICAL: CSV backup also failed: {csv_error}")
         # try to save to a temp location
         try:
             temp_csv = os.path.join(DATA_DIR, f"emergency_backup_{index_key}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
             df_metrics.to_csv(temp_csv, index=False)
-            print(f"⚠️ Saved emergency backup to {temp_csv}")
+            print(f"[WARNING] ...")
         except Exception:
-            print(f"❌ FATAL: All save methods failed!")
+            print(f" FATAL: All save methods failed!")
 
     print("=" * 60 + "\n")
 
@@ -4191,7 +4191,7 @@ def run_cli(consecutive_days=7, index_key="SP500"):
     master_csv = os.path.join(index_data_dir, "latest_metrics.csv")
     ensure_dir(index_data_dir)
     df_metrics.to_csv(master_csv, index=False)
-    print(f"\n✓ Saved master metrics to {master_csv}")
+    print(f"\n Saved master metrics to {master_csv}")
 
     # Rising and declining lists using configurable period
     rising_col = f'rising_{consecutive_days}day'
@@ -4273,7 +4273,7 @@ def run_cli(consecutive_days=7, index_key="SP500"):
             pct_val = row.get(pct_col, 0)
             print(f"  • {row['ticker']}: {pct_val:.2f}% ({row['sector']})")
 
-    print("\n✅ Analysis complete! Check the 'data' directory for all output files.")
+    print("\n Analysis complete! Check the 'data' directory for all output files.")
     print("=" * 60)
 
 # ---------------------------
@@ -4294,7 +4294,7 @@ def plot_ticker_price_rsi(ticker_csv_path, ticker):
         try:
             df = pd.read_csv(ticker_csv_path, parse_dates=True, index_col=0)
         except Exception as e:
-            st.error(f"❌ Error loading data for {ticker}: {e}")
+            st.error(f" Error loading data for {ticker}: {e}")
             st.info("💡 Try updating the data using the 'Update Data' button in the sidebar.")
             return
     else:
@@ -4306,25 +4306,25 @@ def plot_ticker_price_rsi(ticker_csv_path, ticker):
 
     # If still no data, show warning
     if df.empty:
-        st.warning(f"⚠️ Data file not found for {ticker}")
+        st.warning(f" Data file not found for {ticker}")
         st.info(f"Expected location: `{ticker_csv_path}`")
-        return
+        st.stop()
     
     # Validate data
     if df.empty:
-        st.info(f"ℹ️ No historical data available for {ticker}.")
-        return
+        st.info(f" No historical data available for {ticker}.")
+        st.stop()
     
     if 'Close' not in df.columns:
-        st.error(f"❌ Invalid data format for {ticker}: missing 'Close' column")
+        st.error(f" Invalid data format for {ticker}: missing 'Close' column")
         st.caption(f"Available columns: {', '.join(df.columns)}")
-        return
+        st.stop()
     
     # Add technical indicators
     try:
         df = add_technical_indicators(df)
     except Exception as e:
-        st.error(f"❌ Error calculating technical indicators: {e}")
+        st.error(f" Error calculating technical indicators: {e}")
         # Continue with basic plot even if indicators fail
     
     # Build subplot with price and RSI
@@ -4368,7 +4368,7 @@ def plot_ticker_price_rsi(ticker_csv_path, ticker):
         
         fig.update_yaxes(title_text="RSI", row=2, col=1, range=[0, 100])
     else:
-        st.caption("⚠️ RSI indicator not available")
+        st.caption(" RSI indicator not available")
     
     # Update layout
     fig.update_yaxes(title_text="Price ($)", row=1, col=1)
@@ -4392,7 +4392,7 @@ def plot_ticker_price_rsi(ticker_csv_path, ticker):
     st.plotly_chart(fig, use_container_width=True)
     
     # Show data summary
-    with st.expander("📊 Data Summary"):
+    with st.expander(" Data Summary"):
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -4433,8 +4433,8 @@ def fetch_and_enhance_metrics(valid_metrics: pd.DataFrame,
     """
     # Check if enhanced data fetcher is available
     if not ENHANCED_DATA_AVAILABLE:
-        st.warning("⚠️ Enhanced data fetcher not installed. Using base metrics only.")
-        with st.expander("ℹ️ How to Enable Enhanced Features"):
+        st.warning(" Enhanced data fetcher not installed. Using base metrics only.")
+        with st.expander(" How to Enable Enhanced Features"):
             st.markdown("""
             To enable comprehensive fundamental and institutional analysis:
             
@@ -4465,10 +4465,10 @@ def fetch_and_enhance_metrics(valid_metrics: pd.DataFrame,
             try:
                 enhanced_df = pd.read_pickle(cache_file)
                 merged = merge_enhanced_with_base_metrics(valid_metrics, enhanced_df)
-                st.success(f"✅ Loaded {len(enhanced_df)} enhanced records from cache")
+                st.success(f" Loaded {len(enhanced_df)} enhanced records from cache")
                 
                 # Show what's included
-                with st.expander("📊 Enhanced Data Summary"):
+                with st.expander(" Enhanced Data Summary"):
                     col1, col2, col3 = st.columns(3)
                     
                     with col1:
@@ -4486,14 +4486,14 @@ def fetch_and_enhance_metrics(valid_metrics: pd.DataFrame,
                 return merged
                 
             except Exception as e:
-                st.warning(f"⚠️ Cache error: {e}. Fetching fresh data...")
+                st.warning(f" Cache error: {e}. Fetching fresh data...")
     
     # Fetch fresh data
     st.info("🔄 Fetching comprehensive fundamental and institutional data...")
     st.caption("""
     **What's being fetched (FREE via yfinance):**
     - ⏰ Earnings dates and history
-    - 📊 Forward P/E and valuation metrics
+    -  Forward P/E and valuation metrics
     - 📈 Revenue/earnings growth
     - 💰 Profit margins and ROE
     - 🏢 Institutional ownership
@@ -4510,7 +4510,7 @@ def fetch_and_enhance_metrics(valid_metrics: pd.DataFrame,
     total_tickers = len(tickers)
     estimated_minutes = (total_tickers * 0.3) / 60  # ~0.3 seconds per ticker
     
-    st.info(f"📊 Fetching data for {total_tickers} tickers (est. {estimated_minutes:.1f} minutes)")
+    st.info(f" Fetching data for {total_tickers} tickers (est. {estimated_minutes:.1f} minutes)")
     
     try:
         # Create progress tracking
@@ -4524,20 +4524,20 @@ def fetch_and_enhance_metrics(valid_metrics: pd.DataFrame,
         enhanced_df = fetch_enhanced_data_batch(tickers, verbose=False)
         
         progress_bar.progress(100)
-        status_text.text("✅ Enhanced data fetch complete!")
+        status_text.text(" Enhanced data fetch complete!")
         
         # Save to cache
         try:
             enhanced_df.to_pickle(cache_file)
-            st.success(f"✅ Cached {len(enhanced_df)} enhanced records for future use")
+            st.success(f" Cached {len(enhanced_df)} enhanced records for future use")
         except Exception as e:
-            st.warning(f"⚠️ Could not cache data: {e}")
+            st.warning(f" Could not cache data: {e}")
         
         # Merge with base metrics
         merged = merge_enhanced_with_base_metrics(valid_metrics, enhanced_df)
         
         # Show summary
-        with st.expander("📊 Enhanced Data Summary"):
+        with st.expander(" Enhanced Data Summary"):
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
@@ -4565,13 +4565,13 @@ def fetch_and_enhance_metrics(valid_metrics: pd.DataFrame,
         return merged
         
     except Exception as e:
-        st.error(f"❌ Error fetching enhanced data: {e}")
+        st.error(f" Error fetching enhanced data: {e}")
         
         with st.expander("🐛 Error Details"):
             import traceback
             st.code(traceback.format_exc())
         
-        st.warning("⚠️ Falling back to base metrics only.")
+        st.warning(" Falling back to base metrics only.")
         st.info("💡 You can still use the recommendation system with base metrics, but some features will be limited.")
         
         return valid_metrics
@@ -4598,7 +4598,7 @@ def load_data_from_postgres(index_name):
                 st.session_state[f'cache_meta_{index_name}'] = cache_metadata
                 
                 # Log memory usage
-                print(f"✓ Loaded {index_name}: {len(df)} stocks, {cache_metadata['memory_mb']:.1f} MB")
+                print(f" Loaded {index_name}: {len(df)} stocks, {cache_metadata['memory_mb']:.1f} MB")
                 
                 return df
         except Exception as e:
@@ -4617,7 +4617,7 @@ def load_data_from_postgres(index_name):
             # Memory optimization on CSV data too
             df = optimize_dataframe_memory(df)
             
-            print(f"✓ Loaded {index_name} from CSV: {len(df)} stocks")
+            print(f" Loaded {index_name} from CSV: {len(df)} stocks")
             return df
         except Exception as e:
             print(f"CSV load failed: {e}")
@@ -4715,18 +4715,18 @@ def invalidate_cache(index_name=None):
         except Exception:
             pass
     
-    print(f"✓ Cleared {len(keys_to_delete)} session state keys")
+    print(f" Cleared {len(keys_to_delete)} session state keys")
     
     # 2. Clear ALL Streamlit caches
     try:
         st.cache_data.clear()
-        print("✓ Cleared st.cache_data")
+        print(" Cleared st.cache_data")
     except Exception:
         pass
     
     try:
         st.cache_resource.clear()
-        print("✓ Cleared st.cache_resource")
+        print(" Cleared st.cache_resource")
     except Exception:
         pass
     
@@ -4738,7 +4738,7 @@ def invalidate_cache(index_name=None):
         if collected == 0:
             break
     
-    print(f"✓ Garbage collected {collected_total} objects")
+    print(f" Garbage collected {collected_total} objects")
     
     # 4. Clear module-level caches if they exist
     try:
@@ -4765,7 +4765,7 @@ def invalidate_cache(index_name=None):
     
     return max(0, mem_freed)
     
-    print("✓ Memory freed via garbage collection")
+    print(" Memory freed via garbage collection")
 
 # Historical data loading with memory optimization
 @cache_data(ttl=3600)
@@ -4822,7 +4822,7 @@ def load_historical_data_global(index_key, tickers_subset=None, max_days=252):
     
     if loaded_count > 0:
         total_mem = sum(df.memory_usage(deep=True).sum() for df in hist.values()) / 1024 / 1024
-        print(f"✓ Loaded {loaded_count} historical datasets ({total_mem:.1f} MB total)")
+        print(f" Loaded {loaded_count} historical datasets ({total_mem:.1f} MB total)")
     
     return hist
 
@@ -4870,14 +4870,14 @@ def check_and_display_memory():
         with st.sidebar:
             if status == 'critical':
                 st.error(f"{emoji} **Memory:**\n{memory_mb:.0f}/{memory_limit_mb}MB ({usage_pct:.0f}%)")
-                st.warning("⚠️ High memory usage detected!")
+                st.warning(" High memory usage detected!")
                 
                 if st.button("🗑️ Clear Cache & Free Memory", use_container_width=True, key="clear_cache_btn"):
                     with st.spinner("Clearing cache..."):
                         mem_freed = invalidate_cache()
                         # Force immediate rerun to update display
                         time.sleep(0.5)  # Brief pause for GC to complete
-                    st.success(f"✓ Cache cleared! Freed ~{mem_freed:.0f} MB")
+                    st.success(f" Cache cleared! Freed ~{mem_freed:.0f} MB")
                     st.rerun()
                     
             elif status == 'warning':
@@ -4887,7 +4887,7 @@ def check_and_display_memory():
                     with st.spinner("Clearing cache..."):
                         mem_freed = invalidate_cache()
                         time.sleep(0.5)
-                    st.success(f"✓ Cache cleared!")
+                    st.success(f" Cache cleared!")
                     st.rerun()
             else:
                 # Compact display when memory is OK
@@ -4927,7 +4927,7 @@ def run_streamlit():
     if not STREAMLIT_AVAILABLE:
         print("Error: Streamlit is not installed. Please install with:")
         print("pip install streamlit plotly")
-        return
+        st.stop()
 
     st.set_page_config(
         page_title="Market Tracker",
@@ -4945,32 +4945,34 @@ def run_streamlit():
     # Display update info at top
     try:
         if pg_manager and pg_manager.engine:
-            result = pg_manager.engine.execute("SELECT MAX(date) FROM price_history")
-            row = result.fetchone()
-            latest_date = row[0] if row else None
-            if latest_date:
-                last_update_est = pd.Timestamp(latest_date).tz_localize(None) - timedelta(hours=5)
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.caption(f"📊 Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
-                with col2:
-                    st.caption("⏰ Updates: 9AM & 5PM EST daily")
-            else:
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.caption("📊 Data last updated: Loading...")
-                with col2:
-                    st.caption("⏰ Updates: 9AM & 5PM EST daily")
+            with pg_manager.engine.connect() as conn:
+                result = conn.execute(text("SELECT MAX(date) FROM price_history"))
+                row = result.fetchone()
+                latest_date = row[0] if row else None
+                if latest_date:
+                    last_update_est = pd.Timestamp(latest_date).tz_localize(None) - timedelta(hours=5)
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.caption(f" Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
+                    with col2:
+                        st.caption("⏰ Updates: 9AM & 5PM EST daily")
+                else:
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.caption(" Data last updated: Loading...")
+                    with col2:
+                        st.caption("⏰ Updates: 9AM & 5PM EST daily")
         else:
             col1, col2 = st.columns([3, 1])
             with col1:
-                st.caption("📊 Data last updated: Connecting to database...")
+                st.caption(" Data last updated: Connecting to database...")
             with col2:
                 st.caption("⏰ Updates: 9AM & 5PM EST daily")
     except Exception as e:
+        print(f"[DEBUG] Update info error: {str(e)}")
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.caption("📊 Data last updated: Unable to load")
+            st.caption(f" Data last updated: Unable to load")
         with col2:
             st.caption("⏰ Updates: 9AM & 5PM EST daily")
 
@@ -5031,7 +5033,7 @@ def run_streamlit():
                 try:
                     run_cli(consecutive_days=7, index_key=current_index)
                     st.session_state.data_fetched = True
-                    st.success("✅ Data fetched successfully!")
+                    st.success(" Data fetched successfully!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Failed to fetch data: {e}")
@@ -5145,7 +5147,7 @@ def run_streamlit():
 
     # Add warning for very long periods
     if consecutive_days > 63:
-        st.sidebar.warning("⚠️ Long periods may have fewer matching stocks")
+        st.sidebar.warning(" Long periods may have fewer matching stocks")
 
     # Load historical data if data exists
     if data_exists:
@@ -5186,17 +5188,18 @@ def run_streamlit():
         try:
             # Try to get latest date from PostgreSQL
             if pg_manager and pg_manager.engine:
-                result = pg_manager.engine.execute(
-                    "SELECT MAX(date) FROM price_history"
-                )
-                latest_date = result.fetchone()[0]
-                if latest_date:
-                    last_update_est = pd.Timestamp(latest_date).tz_localize(None) - timedelta(hours=5)
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.caption(f"Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
-                    with col2:
-                        st.caption("Updates: 9AM & 5PM EST daily")
+                with pg_manager.engine.connect() as conn:
+                    result = conn.execute(
+                        text("SELECT MAX(date) FROM price_history")
+                    )
+                    latest_date = result.fetchone()[0]
+                    if latest_date:
+                        last_update_est = pd.Timestamp(latest_date).tz_localize(None) - timedelta(hours=5)
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.caption(f"Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
+                        with col2:
+                            st.caption("Updates: 9AM & 5PM EST daily")
             else:
                 # Fallback to CSV file if PostgreSQL unavailable
                 latest_metrics_path = os.path.join(index_data_dir, "latest_metrics.csv")
@@ -5236,7 +5239,7 @@ def run_streamlit():
                 time.sleep(0.5)
                 
                 # Stage 2: Download historical data
-                status_text.text("📊 Downloading historical data (this may take 3-5 minutes)...")
+                status_text.text(" Downloading historical data (this may take 3-5 minutes)...")
                 progress_bar.progress(30)
                 
                 # Run the actual fetch
@@ -5250,14 +5253,14 @@ def run_streamlit():
                     
                     # Stage 4: Complete
                     progress_bar.progress(100)
-                    status_text.text("✅ Complete!")
+                    status_text.text(" Complete!")
                     
                     st.success("Data fetched successfully!")
                     time.sleep(1)
                     st.rerun()
                     
                 except Exception as e:
-                    st.error(f"❌ Fetch failed: {e}")
+                    st.error(f" Fetch failed: {e}")
                     status_text.text("Failed - check logs")
                     
     else:
@@ -5268,11 +5271,11 @@ def run_streamlit():
             hours_since = (datetime.now() - last_update).total_seconds() / 3600
             
             if hours_since < 1:
-                st.sidebar.info(f"✅ Data current ({int(hours_since * 60)} min ago)")
+                st.sidebar.info(f" Data current ({int(hours_since * 60)} min ago)")
             elif hours_since < 6:
-                st.sidebar.info(f"📊 Data updated {hours_since:.1f}h ago")
+                st.sidebar.info(f" Data updated {hours_since:.1f}h ago")
             else:
-                st.sidebar.warning(f"⚠️ Data is {hours_since:.1f}h old - consider updating")
+                st.sidebar.warning(f" Data is {hours_since:.1f}h old - consider updating")
         
         if st.sidebar.button("🔄 Update Data", key="update_data_btn"):
             progress_container = st.container()
@@ -5288,7 +5291,7 @@ def run_streamlit():
                     run_cli(consecutive_days, current_index)
                     
                     progress_bar.progress(100)
-                    status_text.text("✅ Update complete!")
+                    status_text.text(" Update complete!")
                     
                     # Invalidate cache
                     invalidate_cache(current_index)
@@ -5298,7 +5301,7 @@ def run_streamlit():
                     st.rerun()
                     
                 except Exception as e:
-                    st.error(f"❌ Update failed: {e}")
+                    st.error(f" Update failed: {e}")
                     status_text.text("Failed - check logs")
 
     # Define column names with safe defaults (for use in all code paths)
@@ -5324,7 +5327,7 @@ def run_streamlit():
 
     # Database status indicator
     if pg_manager:
-        with st.sidebar.expander("📊 Database Info"):
+        with st.sidebar.expander(" Database Info"):
             stats = pg_manager.get_stats()
             
             if stats:
@@ -5339,7 +5342,7 @@ def run_streamlit():
                     for item in stats['stocks_by_index']:
                         st.caption(f"• {item['index_name']}: {item['count']}")
     else:
-        with st.sidebar.expander("⚠️ Database Status"):
+        with st.sidebar.expander(" Database Status"):
             st.warning("No PostgreSQL connection")
             st.info("Using CSV fallback mode")
             
@@ -5362,7 +5365,7 @@ def run_streamlit():
             st.error("No data available. Please fetch data first.")
             return
 
-        st.subheader("📊 Market Overview")
+        st.subheader(" Market Overview")
 
         col1, col2, col3, col4 = st.columns(4)
 
@@ -5373,9 +5376,9 @@ def run_streamlit():
                 rising_col = available_rising_cols[0]
                 declining_col = rising_col.replace('rising_', 'declining_')
                 fallback_days = rising_col.replace('rising_', '').replace('day', '')
-                st.warning(f"⚠️ {consecutive_days}-day data not available. Showing {fallback_days}-day data. Click 'Update Data' to generate {consecutive_days}-day analysis.")
+                st.warning(f" {consecutive_days}-day data not available. Showing {fallback_days}-day data. Click 'Update Data' to generate {consecutive_days}-day analysis.")
             else:
-                st.error("❌ No consecutive day trend data found. Please update the data.")
+                st.error(" No consecutive day trend data found. Please update the data.")
                 rising_count = 0
                 declining_count = 0
         
@@ -5791,10 +5794,10 @@ def run_streamlit():
 
     # ---------- Sentiment Analysis ----------
     elif view_mode == "Sentiment Analysis":
-        st.subheader("📰 Market Sentiment Analysis")
+        st.subheader(" Market Sentiment Analysis")
         
         # Strategy explanation
-        with st.expander("ℹ️ How Sentiment Analysis Works"):
+        with st.expander(" How Sentiment Analysis Works"):
             if NEWS_API_KEY:
                 st.markdown("""
                 **🎯 Mixed Source Strategy** (NewsAPI key detected)
@@ -5816,7 +5819,7 @@ def run_streamlit():
                 """)
             else:
                 st.markdown("""
-                **📰 Google News RSS Strategy** (No API key required)
+                ** Google News RSS Strategy** (No API key required)
                 
                 Using 100% free sentiment analysis:
                 
@@ -5851,7 +5854,7 @@ def run_streamlit():
                     help="How many top movers to analyze with NewsAPI"
                 )
                 if max_newsapi > 100:
-                    st.warning("⚠️ Free tier limit is 100 requests/day")
+                    st.warning(" Free tier limit is 100 requests/day")
             
             with col2:
                 min_articles = st.number_input(
@@ -5861,7 +5864,7 @@ def run_streamlit():
                 )
             
             with col3:
-                st.success("✅ NewsAPI Active")
+                st.success(" NewsAPI Active")
                 st.caption(f"Premium analysis enabled")
                 if horizon_col:
                     st.info(f"Top movers: **{horizon_label}** returns")
@@ -5870,7 +5873,7 @@ def run_streamlit():
             col1, col2 = st.columns([2, 1])
             
             with col1:
-                st.info("📰 **Free Mode:** Using Google News RSS for all stocks")
+                st.info(" **Free Mode:** Using Google News RSS for all stocks")
                 st.caption("No API key required • No rate limits • Unlimited stocks")
             
             with col2:
@@ -5889,7 +5892,7 @@ def run_streamlit():
         # Analyze button
         st.markdown("### 🔍 Run Analysis")
         
-        if st.button("📊 Analyze Market Sentiment", key="analyze_sentiment_btn", type="primary"):
+        if st.button(" Analyze Market Sentiment", key="analyze_sentiment_btn", type="primary"):
             with st.spinner("Analyzing market sentiment... This may take 5-10 minutes."):
                 try:
                     sentiment_df = analyze_sentiment_mixed(
@@ -5916,24 +5919,24 @@ def run_streamlit():
                     if strategy:
                         if NEWS_API_KEY:
                             st.success(f"""
-                            ✅ **Sentiment analysis complete!**
+                             **Sentiment analysis complete!**
                             
                             - 🎯 NewsAPI: {strategy['newsapi_count']} stocks (premium)
-                            - 📰 Google News: {strategy['google_news_count']} stocks (free)
-                            - 📊 Total: {strategy['total']} stocks analyzed
+                            -  Google News: {strategy['google_news_count']} stocks (free)
+                            -  Total: {strategy['total']} stocks analyzed
                             - ⭐ High quality: {len(sentiment_df_filtered)} stocks
                             """)
                         else:
                             st.success(f"""
-                            ✅ **Sentiment analysis complete!**
+                             **Sentiment analysis complete!**
                             
-                            - 📰 Google News: {strategy['google_news_count']} stocks
-                            - 📊 Total: {strategy['total']} stocks analyzed
+                            -  Google News: {strategy['google_news_count']} stocks
+                            -  Total: {strategy['total']} stocks analyzed
                             - 💯 100% free coverage (no API key required)
                             """)
                     
                 except Exception as e:
-                    st.error(f"❌ Error during sentiment analysis: {e}")
+                    st.error(f" Error during sentiment analysis: {e}")
                     with st.expander("🐛 Debug Information"):
                         import traceback
                         st.code(traceback.format_exc())
@@ -5968,7 +5971,7 @@ def run_streamlit():
             
             with col4:
                 total_articles = sentiment_df['article_count'].sum()
-                st.metric("📰 Total Articles", f"{total_articles:,}")
+                st.metric(" Total Articles", f"{total_articles:,}")
             
             # Tabs for results
             tabs = st.tabs([
@@ -5995,9 +5998,9 @@ def run_streamlit():
                         st.metric("🎯 NewsAPI Coverage", newsapi_in_top)
                     with col2:
                         google_news_in_top = (top_20['source'] == 'google_news').sum()
-                        st.metric("📰 Google News Coverage", google_news_in_top)
+                        st.metric(" Google News Coverage", google_news_in_top)
                 else:
-                    st.info("📰 All sentiment data from Google News RSS (free)")
+                    st.info(" All sentiment data from Google News RSS (free)")
             
             with tabs[1]:
                 sector_sentiment = get_sector_sentiment_summary(sentiment_df, valid_metrics)
@@ -6050,7 +6053,7 @@ def run_streamlit():
             
             with tabs[2]:
                 if horizon_col in merged_data.columns:
-                    st.subheader(f"📊 Sentiment vs {horizon_label} Performance")
+                    st.subheader(f" Sentiment vs {horizon_label} Performance")
                     
                     plot_data = merged_data.dropna(subset=['sentiment_score', horizon_col])
                     
@@ -6082,7 +6085,7 @@ def run_streamlit():
                     
                     with col1:
                         corr_all = plot_data[['sentiment_score', horizon_col]].corr().iloc[0, 1]
-                        st.metric("📊 Overall Correlation", f"{corr_all:.3f}")
+                        st.metric(" Overall Correlation", f"{corr_all:.3f}")
                     
                     with col2:
                         if NEWS_API_KEY:
@@ -6096,10 +6099,10 @@ def run_streamlit():
                             google_data = plot_data[plot_data['source'] == 'google_news']
                             if len(google_data) > 10:
                                 corr_google = google_data[['sentiment_score', horizon_col]].corr().iloc[0, 1]
-                                st.metric("📰 Google News Correlation", f"{corr_google:.3f}")
+                                st.metric(" Google News Correlation", f"{corr_google:.3f}")
             
             with tabs[3]:
-                st.subheader("📊 Data Source Analysis")
+                st.subheader(" Data Source Analysis")
                 
                 if NEWS_API_KEY:
                     fig = create_sentiment_comparison_chart(sentiment_df_raw)
@@ -6120,7 +6123,7 @@ def run_streamlit():
                             st.info("No NewsAPI data")
                     
                     with col2:
-                        st.markdown("**📰 Google News Stocks**")
+                        st.markdown("** Google News Stocks**")
                         google_stocks = sentiment_df_raw[sentiment_df_raw['source'] == 'google_news']
                         if not google_stocks.empty:
                             st.dataframe(
@@ -6138,7 +6141,7 @@ def run_streamlit():
                     }).round(3)
                     st.dataframe(quality_comparison, use_container_width=True)
                 else:
-                    st.info("📰 **All sentiment data from Google News RSS**")
+                    st.info(" **All sentiment data from Google News RSS**")
                     
                     col1, col2, col3 = st.columns(3)
                     
@@ -6155,7 +6158,7 @@ def run_streamlit():
                         coverage = with_articles / total_stocks * 100
                         st.metric("Coverage", f"{coverage:.1f}%")
                     
-                    st.markdown("**📊 Article Distribution**")
+                    st.markdown("** Article Distribution**")
                     fig = px.histogram(
                         sentiment_df_raw,
                         x='article_count',
@@ -6206,7 +6209,7 @@ def run_streamlit():
             
             if NEWS_API_KEY:
                 st.markdown("""
-                **📊 What you'll get:**
+                ** What you'll get:**
                 - Comprehensive sentiment for top movers (NewsAPI)
                 - Free sentiment for remaining stocks (Google News)
                 - Sector sentiment breakdown
@@ -6215,7 +6218,7 @@ def run_streamlit():
                 """)
             else:
                 st.markdown("""
-                **📊 What you'll get:**
+                ** What you'll get:**
                 - Free sentiment analysis for all stocks
                 - Google News RSS coverage (10-20 articles/stock)
                 - Sector sentiment breakdown
@@ -6235,7 +6238,7 @@ def run_streamlit():
         with col1:
             st.info("""
             **Enhanced Mode includes:**
-            - 📊 Forward-looking fundamentals (earnings, growth, margins)
+            -  Forward-looking fundamentals (earnings, growth, margins)
             - 🏢 Institutional & insider activity
             - 📈 Sector-relative performance
             - ⚡ Catalyst detection
@@ -6258,7 +6261,7 @@ def run_streamlit():
             
             # Check if enhanced data is available
             if 'enhanced_metrics' not in st.session_state:
-                st.warning("⚠️ Enhanced data not loaded. Click 'Fetch Enhanced Data' button above.")
+                st.warning(" Enhanced data not loaded. Click 'Fetch Enhanced Data' button above.")
                 enhanced_metrics = valid_metrics  # Fallback to base
             else:
                 enhanced_metrics = st.session_state.enhanced_metrics
@@ -6361,7 +6364,7 @@ def main():
     # Simple detection: if no arguments provided and streamlit is available, run web mode
     if len(sys.argv) == 1 and STREAMLIT_AVAILABLE:
         run_streamlit()
-        return
+        st.stop()
     
     # Parse command line arguments for CLI mode
     parser = argparse.ArgumentParser(
