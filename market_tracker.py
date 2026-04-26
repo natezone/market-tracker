@@ -20,6 +20,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from newsapi import NewsApiClient
 from textblob import TextBlob
 from dotenv import load_dotenv
+import psycopg2
 from sqlalchemy import create_engine, text, Table, Column, Integer, String, Float, MetaData, DateTime
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
@@ -379,12 +380,23 @@ class PostgreSQLManager:
         self._tables_created = False
     
     def _create_tables(self):
-        """Create tables if they don't exist"""
+        """Create tables if they don't exist using psycopg2 directly"""
         if not self.engine:
             return
-        
-        with self.engine.begin() as conn:
-            conn.execute(text("""
+
+        try:
+            url = self.engine.url
+            conn = psycopg2.connect(
+                user=url.username,
+                password=url.password,
+                host=url.host,
+                port=url.port or 5432,
+                database=url.database,
+                sslmode='require'
+            )
+            cur = conn.cursor()
+
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS stocks (
                     id SERIAL PRIMARY KEY,
                     ticker VARCHAR(20) NOT NULL,
@@ -421,25 +433,20 @@ class PostgreSQLManager:
                     volume_vs_avg FLOAT,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(ticker, index_name)
-                );
-                
-                -- Existing indexes
-                CREATE INDEX IF NOT EXISTS idx_ticker ON stocks(ticker);
-                CREATE INDEX IF NOT EXISTS idx_index ON stocks(index_name);
-                CREATE INDEX IF NOT EXISTS idx_sector ON stocks(sector);
-                CREATE INDEX IF NOT EXISTS idx_pct_21d ON stocks(pct_21d);
+                )
+            """)
 
-                -- Performance optimization indexes
-                CREATE INDEX IF NOT EXISTS idx_sector_score ON stocks(sector, pct_21d DESC);
-                CREATE INDEX IF NOT EXISTS idx_updated_at ON stocks(updated_at DESC);
-                CREATE INDEX IF NOT EXISTS idx_status ON stocks(status) WHERE status = 'ok';
-                CREATE INDEX IF NOT EXISTS idx_rising_declining ON stocks(rising_7day, declining_7day) WHERE status = 'ok';
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_ticker ON stocks(ticker)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_index ON stocks(index_name)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_sector ON stocks(sector)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_pct_21d ON stocks(pct_21d)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_sector_score ON stocks(sector, pct_21d DESC)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_updated_at ON stocks(updated_at DESC)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_status ON stocks(status) WHERE status = 'ok'")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_rising_declining ON stocks(rising_7day, declining_7day) WHERE status = 'ok'")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_dashboard_query ON stocks(index_name, status, pct_21d DESC) WHERE status = 'ok'")
 
-                -- Composite index for common dashboard query
-                CREATE INDEX IF NOT EXISTS idx_dashboard_query ON stocks(index_name, status, pct_21d DESC)
-                    WHERE status = 'ok';
-
-                -- Price history table for technical analysis
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS price_history (
                     id SERIAL PRIMARY KEY,
                     ticker VARCHAR(20) NOT NULL,
@@ -450,21 +457,42 @@ class PostgreSQLManager:
                     close FLOAT NOT NULL,
                     volume BIGINT,
                     UNIQUE(ticker, date)
-                );
+                )
+            """)
 
-                CREATE INDEX IF NOT EXISTS idx_price_ticker_date ON price_history(ticker, date);
-                CREATE INDEX IF NOT EXISTS idx_price_date ON price_history(date);
-            """))
-    
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_price_ticker_date ON price_history(ticker, date)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_price_date ON price_history(date)")
+
+            conn.commit()
+            cur.close()
+            conn.close()
+
+        except Exception as e:
+            pass
+
     def save_metrics(self, metrics_df, index_name):
-        """Save metrics to PostgreSQL"""
+        """Save metrics to PostgreSQL using raw psycopg2"""
         if not self.engine or metrics_df.empty:
             return
-        
+
         try:
+            import psycopg2
+
+            # Get connection details directly from engine.url
+            url = self.engine.url
+            conn = psycopg2.connect(
+                user=url.username,
+                password=url.password,
+                host=url.host,
+                port=url.port or 5432,
+                database=url.database,
+                sslmode='require'
+            )
+            cur = conn.cursor()
+
             # Make a clean copy
             df = metrics_df.copy()
-            
+
             # Add index_name column
             df['index_name'] = index_name
             
@@ -490,37 +518,36 @@ class PostgreSQLManager:
             df = df[[col for col in valid_columns if col in df.columns]]
             
             print(f"[INFO] Saving {len(df)} stocks with {len(df.columns)} columns to PostgreSQL...")
-            
+
             # Delete existing records for this index
-            with self.engine.begin() as conn:
-                conn.execute(
-                    text("DELETE FROM stocks WHERE index_name = :idx"),
-                    {"idx": index_name}
-                )
-            
-            # Insert new data (suppress verbose output)
-            df.to_sql(
-                'stocks',
-                self.engine,
-                if_exists='append',
-                index=False,
-                method='multi',
-                chunksize=100
-            )
-            
+            cur.execute("DELETE FROM stocks WHERE index_name = %s", (index_name,))
+
+            # Prepare bulk insert
+            cols = ', '.join(df.columns)
+            placeholders = ', '.join(['%s'] * len(df.columns))
+            insert_query = f"INSERT INTO stocks ({cols}) VALUES ({placeholders})"
+
+            # Insert data
+            for _, row in df.iterrows():
+                try:
+                    cur.execute(insert_query, tuple(row))
+                except Exception:
+                    pass  # Skip duplicates
+
+            conn.commit()
+
             # Verify the save
-            with self.engine.connect() as conn:
-                result = conn.execute(
-                    text("SELECT COUNT(*) FROM stocks WHERE index_name = :idx"),
-                    {"idx": index_name}
-                )
-                count = result.scalar()
-                
-                if count > 0:
-                    print(f"[OK] Saved {count} stocks to PostgreSQL for {index_name}")
-                else:
-                    print(f"[WARNING] Warning: 0 rows in database after save!")
-            
+            cur.execute("SELECT COUNT(*) FROM stocks WHERE index_name = %s", (index_name,))
+            count = cur.fetchone()[0]
+
+            if count > 0:
+                print(f"[OK] Saved {count} stocks to PostgreSQL for {index_name}")
+            else:
+                print(f"[WARNING] Warning: 0 rows in database after save!")
+
+            cur.close()
+            conn.close()
+
         except Exception as e:
             print(f"[ERROR] Error saving to PostgreSQL: {e}")
             import traceback
@@ -566,11 +593,25 @@ class PostgreSQLManager:
             return pd.DataFrame()
     
     def save_price_history(self, ticker, price_df):
-        """Save price history to PostgreSQL with batch insert"""
+        """Save price history to PostgreSQL using raw psycopg2"""
         if not self.engine or price_df.empty:
             return
 
         try:
+            import psycopg2
+
+            # Get connection details directly from engine.url
+            url = self.engine.url
+            conn = psycopg2.connect(
+                user=url.username,
+                password=url.password,
+                host=url.host,
+                port=url.port or 5432,
+                database=url.database,
+                sslmode='require'
+            )
+            cur = conn.cursor()
+
             # Prepare data for insertion
             price_df_copy = price_df.copy()
 
@@ -589,19 +630,21 @@ class PostgreSQLManager:
             cols_to_keep = [col for col in cols_needed if col in price_df_copy.columns]
             price_df_copy = price_df_copy[cols_to_keep]
 
-            # Use pandas to_sql for bulk insert
-            price_df_copy.to_sql(
-                'price_history',
-                self.engine,
-                if_exists='append',
-                index=False,
-                method='multi',
-                chunksize=500
-            )
+            # Insert data using raw SQL
+            insert_query = f"INSERT INTO price_history ({','.join(cols_to_keep)}) VALUES ({','.join(['%s'] * len(cols_to_keep))})"
+
+            for _, row in price_df_copy.iterrows():
+                try:
+                    cur.execute(insert_query, tuple(row))
+                except Exception:
+                    pass  # Skip duplicates
+
+            conn.commit()
+            cur.close()
+            conn.close()
+
         except Exception as e:
-            # Silently ignore duplicate key errors
-            if 'duplicate' not in str(e).lower() and 'unique' not in str(e).lower():
-                pass  # Silently ignore
+            pass  # Silently ignore errors
 
     def get_stats(self):
         """Get database statistics"""
@@ -4963,39 +5006,6 @@ def run_streamlit():
     # Add custom CSS
     add_custom_css()
 
-    # Display update info at top
-    try:
-        if pg_manager and pg_manager.engine:
-            with pg_manager.engine.connect() as conn:
-                result = conn.execute(text("SELECT MAX(date) FROM price_history"))
-                row = result.fetchone()
-                latest_date = row[0] if row else None
-                if latest_date:
-                    last_update_est = pd.Timestamp(latest_date).tz_localize(None) - timedelta(hours=5)
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.caption(f" Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
-                    with col2:
-                        st.caption("⏰ Updates: 9AM & 5PM EST daily")
-                else:
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.caption(" Data last updated: Loading...")
-                    with col2:
-                        st.caption("⏰ Updates: 9AM & 5PM EST daily")
-        else:
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.caption(" Data last updated: Connecting to database...")
-            with col2:
-                st.caption("⏰ Updates: 9AM & 5PM EST daily")
-    except Exception as e:
-        print(f"[DEBUG] Update info error: {str(e)}")
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.caption(f" Data last updated: Unable to load")
-        with col2:
-            st.caption("⏰ Updates: 9AM & 5PM EST daily")
 
     # Sidebar - Controls
     st.sidebar.header("⚙️ Settings")
@@ -5238,20 +5248,7 @@ def run_streamlit():
                         with col1:
                             st.caption(f"Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
                         with col2:
-                            st.caption("Updates: 9AM & 5PM EST daily")
-            else:
-                # Fallback to CSV file if PostgreSQL unavailable
-                latest_metrics_path = os.path.join(index_data_dir, "latest_metrics.csv")
-                if os.path.exists(latest_metrics_path):
-                    last_modified = os.path.getmtime(latest_metrics_path)
-                    last_update = datetime.fromtimestamp(last_modified)
-                    last_update_est = last_update - timedelta(hours=5)
-
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.caption(f"Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
-                    with col2:
-                        st.caption("Updates: 9AM & 5PM EST daily")
+                            st.caption("⏰ Updates: 9AM & 5PM EST daily")
         except Exception:
             pass
     else:
