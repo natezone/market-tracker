@@ -5353,18 +5353,48 @@ def run_streamlit():
                     status_text.text("Failed - check logs")
                     
     else:
-        # Show last update time
-        if os.path.exists(os.path.join(index_data_dir, "latest_metrics.csv")):
-            last_modified = os.path.getmtime(os.path.join(index_data_dir, "latest_metrics.csv"))
-            last_update = datetime.fromtimestamp(last_modified)
-            hours_since = (datetime.now() - last_update).total_seconds() / 3600
-            
-            if hours_since < 1:
-                st.sidebar.info(f" Data current ({int(hours_since * 60)} min ago)")
-            elif hours_since < 6:
-                st.sidebar.info(f" Data updated {hours_since:.1f}h ago")
-            else:
-                st.sidebar.warning(f" Data is {hours_since:.1f}h old - consider updating")
+        # Show last update time from price_history table if available
+        try:
+            if pg_manager and pg_manager.engine:
+                url = pg_manager.engine.url
+                conn = psycopg2.connect(
+                    user=url.username,
+                    password=url.password,
+                    host=url.host,
+                    port=url.port or 5432,
+                    database=url.database,
+                    sslmode='require'
+                )
+                cur = conn.cursor()
+                cur.execute("SELECT MAX(date) FROM price_history")
+                result = cur.fetchone()
+                cur.close()
+                conn.close()
+
+                if result and result[0]:
+                    latest_date = result[0]
+                    hours_since = (datetime.now(timezone.utc).replace(tzinfo=None) - pd.Timestamp(latest_date)).total_seconds() / 3600
+
+                    if hours_since < 1:
+                        st.sidebar.info(f" Price data current ({int(hours_since * 60)} min ago)")
+                    elif hours_since < 24:
+                        st.sidebar.info(f" Price data {hours_since:.1f}h old")
+                    else:
+                        days_old = hours_since / 24
+                        st.sidebar.warning(f" Price data is {days_old:.1f} days old - consider updating")
+        except Exception:
+            # Fallback to file modification time
+            if os.path.exists(os.path.join(index_data_dir, "latest_metrics.csv")):
+                last_modified = os.path.getmtime(os.path.join(index_data_dir, "latest_metrics.csv"))
+                last_update = datetime.fromtimestamp(last_modified)
+                hours_since = (datetime.now() - last_update).total_seconds() / 3600
+
+                if hours_since < 1:
+                    st.sidebar.info(f" Data current ({int(hours_since * 60)} min ago)")
+                elif hours_since < 6:
+                    st.sidebar.info(f" Data updated {hours_since:.1f}h ago")
+                else:
+                    st.sidebar.warning(f" Data is {hours_since:.1f}h old - consider updating")
         
         if st.sidebar.button("🔄 Update Data", key="update_data_btn"):
             progress_container = st.container()
