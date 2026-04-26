@@ -295,12 +295,23 @@ def load_price_history_from_db(ticker):
     # Try PostgreSQL if SQLite is empty or not available
     if pg_manager and pg_manager.engine:
         try:
+            url = pg_manager.engine.url
+            conn = psycopg2.connect(
+                user=url.username,
+                password=url.password,
+                host=url.host,
+                port=url.port or 5432,
+                database=url.database,
+                sslmode='require'
+            )
+
             query = '''
                 SELECT date, open, high, low, close, volume
                 FROM price_history WHERE ticker = %s
                 ORDER BY date
             '''
-            df = pd.read_sql_query(query, pg_manager.engine, params=(ticker,))
+            df = pd.read_sql_query(query, conn, params=(ticker,))
+            conn.close()
 
             if not df.empty:
                 df['date'] = pd.to_datetime(df['date'])
@@ -714,7 +725,9 @@ if engine:
         pg_manager._create_tables()
         print(" Database tables created/verified")
     except Exception as e:
-        print(f"[WARNING] ...")
+        print(f"[WARNING] PostgreSQL manager initialization failed: {str(e)[:200]}")
+        import traceback
+        traceback.print_exc()
         print(" Falling back to CSV mode")
         engine = None
         pg_manager = None
@@ -5283,8 +5296,14 @@ def run_streamlit():
                         st.caption(f"Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
                     with col2:
                         st.caption("⏰ Updates: 9AM & 5PM EST daily")
-        except Exception:
-            pass
+                else:
+                    print(f"[DEBUG] No price_history data found. result={result}")
+            else:
+                print(f"[DEBUG] pg_manager check failed: pg_manager={pg_manager}")
+        except Exception as e:
+            print(f"[DEBUG] Data freshness info error: {e}")
+            import traceback
+            traceback.print_exc()
     else:
         hist = {}
         st.error(f"No data available for {index_selection}. Click 'Fetch All Data' below.")
