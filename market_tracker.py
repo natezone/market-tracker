@@ -557,35 +557,47 @@ class PostgreSQLManager:
         """Load metrics from PostgreSQL"""
         if not self.engine:
             return pd.DataFrame()
-        
+
         try:
-            query = text("""
-                SELECT * FROM stocks 
-                WHERE index_name = :idx 
+            url = self.engine.url
+            conn = psycopg2.connect(
+                user=url.username,
+                password=url.password,
+                host=url.host,
+                port=url.port or 5432,
+                database=url.database,
+                sslmode='require'
+            )
+
+            query = """
+                SELECT * FROM stocks
+                WHERE index_name = %s
                 ORDER BY ticker
-            """)
-            
-            with self.engine.connect() as conn:
-                df = pd.read_sql(query, conn, params={"idx": index_name})
-            
+            """
+
+            df = pd.read_sql(query, conn, params=[index_name])
+
             print(f"[DEBUG] load_metrics: Loaded {len(df)} rows for {index_name}")
-            
+
             if df.empty:
                 print(f"[WARNING] ...")
                 print(f"   Checking what's in the database...")
-                
+
                 # Check what index_names exist
-                with self.engine.connect() as conn:
-                    check = conn.execute(text("SELECT DISTINCT index_name, COUNT(*) FROM stocks GROUP BY index_name"))
-                    print(f"   Available indices:")
-                    for row in check:
-                        print(f"     - {row[0]}: {row[1]} stocks")
-            
+                cur = conn.cursor()
+                cur.execute("SELECT DISTINCT index_name, COUNT(*) FROM stocks GROUP BY index_name")
+                print(f"   Available indices:")
+                for row in cur.fetchall():
+                    print(f"     - {row[0]}: {row[1]} stocks")
+                cur.close()
+
+            conn.close()
+
             # Drop PostgreSQL-specific columns
             df = df.drop(columns=['id', 'updated_at'], errors='ignore')
-            
+
             return df
-            
+
         except Exception as e:
             print(f"[ERROR] Error loading from PostgreSQL: {e}")
             import traceback
@@ -652,30 +664,41 @@ class PostgreSQLManager:
             return {}
 
         try:
-            with self.engine.connect() as conn:
-                # Total stocks
-                result = conn.execute(text("SELECT COUNT(*) FROM stocks"))
-                total = result.scalar()
+            url = self.engine.url
+            conn = psycopg2.connect(
+                user=url.username,
+                password=url.password,
+                host=url.host,
+                port=url.port or 5432,
+                database=url.database,
+                sslmode='require'
+            )
+            cur = conn.cursor()
 
-                # Stocks by index
-                result = conn.execute(text("""
-                    SELECT index_name, COUNT(*) as count
-                    FROM stocks
-                    GROUP BY index_name
-                """))
-                by_index = [{"index_name": row[0], "count": row[1]} for row in result]
+            # Total stocks
+            cur.execute("SELECT COUNT(*) FROM stocks")
+            total = cur.fetchone()[0]
 
-                # Last update
-                result = conn.execute(text("""
-                    SELECT MAX(updated_at) FROM stocks
-                """))
-                last_update = result.scalar()
+            # Stocks by index
+            cur.execute("""
+                SELECT index_name, COUNT(*) as count
+                FROM stocks
+                GROUP BY index_name
+            """)
+            by_index = [{"index_name": row[0], "count": row[1]} for row in cur.fetchall()]
 
-                return {
-                    'total_stocks': total,
-                    'stocks_by_index': by_index,
-                    'last_update': str(last_update) if last_update else None
-                }
+            # Last update
+            cur.execute("SELECT MAX(updated_at) FROM stocks")
+            last_update = cur.fetchone()[0]
+
+            cur.close()
+            conn.close()
+
+            return {
+                'total_stocks': total,
+                'stocks_by_index': by_index,
+                'last_update': str(last_update) if last_update else None
+            }
         except Exception as e:
             print(f"Error getting stats: {e}")
             return {}
@@ -5237,18 +5260,29 @@ def run_streamlit():
         try:
             # Try to get latest date from PostgreSQL
             if pg_manager and pg_manager.engine:
-                with pg_manager.engine.connect() as conn:
-                    result = conn.execute(
-                        text("SELECT MAX(date) FROM price_history")
-                    )
-                    latest_date = result.fetchone()[0]
-                    if latest_date:
-                        last_update_est = pd.Timestamp(latest_date).tz_localize(None) - timedelta(hours=5)
-                        col1, col2 = st.columns([3, 1])
-                        with col1:
-                            st.caption(f"Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
-                        with col2:
-                            st.caption("⏰ Updates: 9AM & 5PM EST daily")
+                url = pg_manager.engine.url
+                conn = psycopg2.connect(
+                    user=url.username,
+                    password=url.password,
+                    host=url.host,
+                    port=url.port or 5432,
+                    database=url.database,
+                    sslmode='require'
+                )
+                cur = conn.cursor()
+                cur.execute("SELECT MAX(date) FROM price_history")
+                result = cur.fetchone()
+                cur.close()
+                conn.close()
+
+                if result and result[0]:
+                    latest_date = result[0]
+                    last_update_est = pd.Timestamp(latest_date).tz_localize(None) - timedelta(hours=5)
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.caption(f"Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
+                    with col2:
+                        st.caption("⏰ Updates: 9AM & 5PM EST daily")
         except Exception:
             pass
     else:
