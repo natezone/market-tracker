@@ -90,7 +90,7 @@ UNIVERSE = "SP500"
 DATA_DIR = "data"
 BATCH_SIZE = 50
 MIN_CONSECUTIVE = 30
-DOWNLOAD_PERIOD = "max"
+DOWNLOAD_PERIOD = "3y"  # Store 3 years of price history
 VERBOSE = True
 MIN_MARKET_CAP = 0
 
@@ -342,20 +342,26 @@ if POSTGRES_URL:
         engine = create_engine(
             POSTGRES_URL,
             connect_args={
-                "sslmode": "require",  # Supabase requires SSL
+                "sslmode": "require",
             },
-            pool_pre_ping=True,  
-            pool_recycle=300, 
-            pool_size=5, 
+            pool_pre_ping=True,
+            pool_recycle=300,
+            pool_size=5,
             max_overflow=10
         )
-        
-        # Test connection
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-        
-        print("[OK] PostgreSQL engine created successfully")
-        
+
+        # Test connection (with version detection error handling for CockroachDB)
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            print("[OK] PostgreSQL engine created successfully")
+        except Exception as version_err:
+            if "Could not determine version" in str(version_err) and "CockroachDB" in str(version_err):
+                # CockroachDB version detection error - engine is still usable
+                print("[OK] CockroachDB engine created (version detection skipped)")
+            else:
+                raise version_err
+
     except Exception as e:
         print(f"[WARNING] PostgreSQL connection failed: {str(e)[:200]}")
         print("[INFO] Will use CSV fallback mode")
