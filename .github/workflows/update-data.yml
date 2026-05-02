@@ -75,7 +75,9 @@ jobs:
       - name: Load all indices data to PostgreSQL
         env:
           INDEX: ${{ github.event.inputs.index || 'ALL' }}
-        run: python refresh_postgres.py --index $INDEX
+        run: |
+          ls -la refresh_postgres.py
+          python refresh_postgres.py --index $INDEX
           
       - name: Verify database updates
         if: always()
