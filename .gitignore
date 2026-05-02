@@ -44,3 +44,5 @@ data/**/*.sqlite3
 
 # testing
 test.py
+
+SCORING_METHODOLOGY.md

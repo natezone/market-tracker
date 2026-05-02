@@ -75,8 +75,12 @@ jobs:
       - name: Load all indices data to PostgreSQL
         env:
           INDEX: ${{ github.event.inputs.index || 'ALL' }}
+          DOWNLOAD_PERIOD: '1y'
+          GITHUB_ACTIONS: 'true'
         run: |
-          ls -la refresh_postgres.py
+          echo "📊 Updating indices: $INDEX"
+          echo "⏱️  Using 1-year history period for faster refresh"
+          echo "⚡ Skipping P/E ratio fetch (will load on-demand in UI)"
           python refresh_postgres.py --index $INDEX
           
       - name: Verify database updates

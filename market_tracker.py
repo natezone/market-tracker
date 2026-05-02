@@ -91,7 +91,7 @@ UNIVERSE = "SP500"
 DATA_DIR = "data"
 BATCH_SIZE = 50
 MIN_CONSECUTIVE = 30
-DOWNLOAD_PERIOD = "3y"  # Store 3 years of price history
+DOWNLOAD_PERIOD = os.environ.get('DOWNLOAD_PERIOD', "3y")  # Store 3 years of price history (or override in GitHub Actions)
 VERBOSE = True
 MIN_MARKET_CAP = 0
 
@@ -2571,51 +2571,60 @@ def compute_metrics_for_ticker(df, consecutive_days=7):
 def fetch_pe_ratios(tickers, metrics_df):
     """
     Fetch P/E ratios for all tickers and update metrics dataframe
-    
+
+    Optimized to skip in GitHub Actions (too slow for 1600+ stocks).
+    P/E ratios are fetched on-demand in Streamlit when needed.
+
     Args:
         tickers: List of ticker symbols
         metrics_df: DataFrame with existing metrics
-    
+
     Returns:
         Updated DataFrame with pe_ratio column
     """
+    # Skip if running in GitHub Actions (set by workflow)
+    if os.environ.get('GITHUB_ACTIONS'):
+        print("⏭️  Skipping P/E fetch (set to null)")
+        metrics_df['pe_ratio'] = np.nan
+        return metrics_df
+
     if VERBOSE:
         print(f"\nFetching P/E ratios for {len(tickers)} tickers...")
-    
+
     pe_data = {}
-    
+
     # Fetching in batches to avoid overwhelming the API
     for chunk in tqdm(batch(tickers, 50), desc="Fetching P/E ratios"):
         for ticker in chunk:
             try:
                 stock = yf.Ticker(ticker)
                 info = stock.info
-                
+
                 # Try multiple P/E ratio fields
                 pe_ratio = info.get('trailingPE', None)
                 if pe_ratio is None:
                     pe_ratio = info.get('forwardPE', None)
-                
+
                 # Validate P/E ratio (should be positive and reasonable)
                 if pe_ratio is not None and pe_ratio > 0 and pe_ratio < 1000:
                     pe_data[ticker] = float(pe_ratio)
                 else:
                     pe_data[ticker] = np.nan
-                    
+
             except Exception as e:
                 if VERBOSE:
                     print(f"Error fetching P/E for {ticker}: {e}")
                 pe_data[ticker] = np.nan
-            
+
             time.sleep(0.1)  # Rate limiting
-    
+
     # Update metrics dataframe
     metrics_df['pe_ratio'] = metrics_df['ticker'].map(pe_data)
-    
+
     if VERBOSE:
         valid_pe_count = metrics_df['pe_ratio'].notna().sum()
         print(f" Fetched P/E ratios for {valid_pe_count}/{len(tickers)} stocks")
-    
+
     return metrics_df
 
 def calculate_rsi(prices, period=14):
@@ -4195,8 +4204,14 @@ def run_cli(consecutive_days=7, index_key="SP500"):
     metrics_rows = results
 
     df_metrics = pd.DataFrame(metrics_rows)
-    print("\nFetching P/E ratios...")
-    df_metrics = fetch_pe_ratios(tickers, df_metrics)
+    # Skip P/E fetching in CLI mode (too slow for ~1600 stocks)
+    # P/E ratios will be fetched on-demand in Streamlit when user needs them
+    if not os.environ.get('GITHUB_ACTIONS'):
+        print("\nFetching P/E ratios...")
+        df_metrics = fetch_pe_ratios(tickers, df_metrics)
+    else:
+        print("⏭️  Skipping P/E ratio fetch in GitHub Actions (will fetch on-demand in UI)")
+        df_metrics['pe_ratio'] = np.nan
 
     # Save to PostgreSQL
     print("\n" + "=" * 60)
