@@ -2017,7 +2017,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
             )
     
     # -------------------- GENERATE RECOMMENDATIONS --------------------
-    if st.button("🚀 Rank Opportunities", type="primary", use_container_width=True):
+    if st.button("🚀 Rank Opportunities", type="primary", width='stretch'):
         with st.spinner("Analyzing opportunities with market regime awareness..."):
             try:
                 # Generate recommendations with regime awareness
@@ -2217,7 +2217,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
             
             styled_df = display_df.style.format(format_dict)
             
-            st.dataframe(styled_df, use_container_width=True, height=400)
+            st.dataframe(styled_df, width='stretch', height=400)
             
             # Score distributions
             st.markdown("###  Score Distributions")
@@ -2237,7 +2237,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
                         'Low Confidence': '#FF6347'
                     }
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
             
             with col2:
                 fig = px.box(
@@ -2252,7 +2252,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
                         'Low Confidence': '#FF6347'
                     }
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
         
         with tabs[2]:
             st.markdown("### 📈 Visual Opportunity Analysis")
@@ -2278,7 +2278,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
                     'Strong Sell': '#8B0000'
                 }
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
             
             # Regime adjustment impact
             st.markdown("### 🌍 Regime Adjustment Impact")
@@ -2297,7 +2297,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
                 title="Top 20: Regime Adjustment Impact on Scores",
                 labels={'adjustment_impact': 'Score Change from Regime'}
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
             
             # Confidence breakdown
             st.markdown("### 🎯 Confidence Analysis")
@@ -2315,7 +2315,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
                     'Low Confidence': '#FF6347'
                 }
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         
         with tabs[3]:
             st.markdown("### 💼 Build Opportunity Portfolio")
@@ -2336,7 +2336,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
             with col3:
                 min_portfolio_score = st.slider("Min Score", 50, 90, 65)
             
-            if st.button("🏗️ Build Portfolio", use_container_width=True):
+            if st.button("🏗️ Build Portfolio", width='stretch'):
                 with st.spinner("Optimizing portfolio..."):
                     # Filter by score first
                     eligible = recommendations[
@@ -2398,7 +2398,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
                     names=sector_dist.index,
                     title="Sector Allocation"
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
                 
                 # Holdings table
                 st.markdown("#### 📋 Portfolio Holdings")
@@ -2410,7 +2410,7 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
                 
                 st.dataframe(
                     portfolio[[col for col in holdings_cols if col in portfolio.columns]],
-                    use_container_width=True
+                    width='stretch'
                 )
         
         with tabs[4]:
@@ -2441,10 +2441,10 @@ def render_opportunity_recommendations_mode(valid_metrics, hist):
                 data=csv,
                 file_name=f"opportunity_ranking_{selected_strategy.value}_{pd.Timestamp.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
-                use_container_width=True
+                width='stretch'
             )
             
-            st.dataframe(export_df, use_container_width=True, height=400)
+            st.dataframe(export_df, width='stretch', height=400)
     
     else:
         st.info("👆 Configure your preferences and click 'Rank Opportunities' to begin!")
@@ -2879,7 +2879,7 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
 
     with col2:
         # Add top performers button
-        if st.button("⭐ Top Performers", key=f"add_top_performers_{current_index}", use_container_width=True):
+        if st.button("⭐ Top Performers", key=f"add_top_performers_{current_index}", width='stretch'):
             try:
                 available_return_cols = [col for col in ['pct_21d', 'pct_5d', 'pct_1d']
                                         if col in valid_metrics.columns]
@@ -2897,7 +2897,7 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
 
     with col3:
         # Clear selections button
-        if st.button("🗑️ Clear All", key=f"clear_selections_{current_index}", use_container_width=True):
+        if st.button("🗑️ Clear All", key=f"clear_selections_{current_index}", width='stretch'):
             st.session_state[state_key] = []
             st.info("Selections cleared")
             st.rerun()
@@ -2917,7 +2917,7 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
     st.subheader(" Performance Comparison")
     
     styled_comparison = format_and_style_dataframe(comparison_df)
-    st.dataframe(styled_comparison, use_container_width=True)
+    st.dataframe(styled_comparison, width='stretch')
     
     # Performance charts
     st.subheader("📈 Visual Comparison")
@@ -2950,7 +2950,7 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
                 yaxis_title="Return (%)",
                 height=400
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
     
     with tabs[1]:
         # Risk vs Return scatter plot
@@ -2977,7 +2977,7 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
             )
             fig.update_traces(textposition="top center")
             fig.update_layout(height=500)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         else:
             st.info("Insufficient data for risk vs return analysis")
     
@@ -3001,7 +3001,7 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
                         color_continuous_scale="RdBu"
                     )
                     fig.update_layout(height=500)
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
                     
                     st.markdown("**Interpretation:**")
                     st.markdown("- Values close to 1: Stocks move together")
@@ -3038,14 +3038,14 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
                     display_df,
                     format_dict={'rank': '{:.0f}'}
                 )
-                st.dataframe(styled_top20, use_container_width=True)
+                st.dataframe(styled_top20, width='stretch')
                 
                 if horizon_col in top_20.columns:
                     fig = create_enhanced_bar_chart(
                         top_20.head(20), 'ticker', horizon_col,
                         f"Top 20 Performers ({horizon_label})", 'return'
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
                 
                 sector_counts = top_20['sector'].value_counts()
                 
@@ -3058,7 +3058,7 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
                         names=sector_counts.index,
                         title="Top Performers by Sector"
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
                 
                 with col2:
                     st.subheader("Performance Stats")
@@ -3195,7 +3195,7 @@ def render_historical_analysis_mode(valid_metrics, hist):
                                name='Volume'), row=2, col=1)
         
         fig.update_layout(height=600, title=f"{selected_ticker} Price and Volume")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with tabs[1]:
         # Returns distribution
@@ -3206,7 +3206,7 @@ def render_historical_analysis_mode(valid_metrics, hist):
             xaxis_title="Daily Return (%)",
             yaxis_title="Frequency"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
         
         # Returns statistics
         st.subheader("Returns Statistics")
@@ -3236,7 +3236,7 @@ def render_historical_analysis_mode(valid_metrics, hist):
             xaxis_title="Date",
             yaxis_title="Drawdown (%)"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with tabs[3]:
         # Seasonal analysis
@@ -3255,7 +3255,7 @@ def render_historical_analysis_mode(valid_metrics, hist):
                 xaxis_title="Month",
                 yaxis_title="Average Return (%)"
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         else:
             st.info("Insufficient data for seasonal analysis (need at least 1 year)")
 
@@ -3404,7 +3404,7 @@ def render_risk_management_mode(valid_metrics, hist):
             title="Portfolio Correlation Matrix",
             color_continuous_scale="RdBu"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with tabs[1]:
     # Individual stock contributions
@@ -3433,7 +3433,7 @@ def render_risk_management_mode(valid_metrics, hist):
             }
             individual_metrics.append(metrics)
         
-        st.dataframe(pd.DataFrame(individual_metrics), use_container_width=True)
+        st.dataframe(pd.DataFrame(individual_metrics), width='stretch')
     
     with tabs[2]:
         # VaR analysis
@@ -3449,7 +3449,7 @@ def render_risk_management_mode(valid_metrics, hist):
                 'Monthly VaR': f"{var_value * np.sqrt(22):.2f}%"
             })
         
-        st.dataframe(pd.DataFrame(var_results), use_container_width=True)
+        st.dataframe(pd.DataFrame(var_results), width='stretch')
         
         # VaR visualization
         fig = go.Figure()
@@ -3465,7 +3465,7 @@ def render_risk_management_mode(valid_metrics, hist):
             xaxis_title="Daily Return (%)",
             yaxis_title="Frequency"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with tabs[3]:
         # Stress testing
@@ -3525,7 +3525,7 @@ def render_risk_management_mode(valid_metrics, hist):
                 'New Portfolio Value': value_impact
             })
             
-        st.dataframe(pd.DataFrame(stress_results), use_container_width=True)
+        st.dataframe(pd.DataFrame(stress_results), width='stretch')
 
 # ---------------------------
 # Sentiment Analysis Module
@@ -4474,7 +4474,7 @@ def plot_ticker_price_rsi(ticker_csv_path, ticker):
     )
     
     # Display the chart
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
     
     # Show data summary
     with st.expander(" Data Summary"):
@@ -4957,7 +4957,7 @@ def check_and_display_memory():
                 st.error(f"{emoji} **Memory:**\n{memory_mb:.0f}/{memory_limit_mb}MB ({usage_pct:.0f}%)")
                 st.warning(" High memory usage detected!")
                 
-                if st.button("🗑️ Clear Cache & Free Memory", use_container_width=True, key="clear_cache_btn"):
+                if st.button("🗑️ Clear Cache & Free Memory", width='stretch', key="clear_cache_btn"):
                     with st.spinner("Clearing cache..."):
                         mem_freed = invalidate_cache()
                         # Force immediate rerun to update display
@@ -4968,7 +4968,7 @@ def check_and_display_memory():
             elif status == 'warning':
                 st.warning(f"{emoji} **Memory:**\n{memory_mb:.0f}/{memory_limit_mb}MB ({usage_pct:.0f}%)")
                 
-                if st.button("🗑️ Clear Cache & Free Memory", use_container_width=True, key="clear_cache_btn"):
+                if st.button("🗑️ Clear Cache & Free Memory", width='stretch', key="clear_cache_btn"):
                     with st.spinner("Clearing cache..."):
                         mem_freed = invalidate_cache()
                         time.sleep(0.5)
@@ -5549,7 +5549,7 @@ def run_streamlit():
                 top_gainers, 'ticker', horizon_col, 
                 f"Top Gainers ({horizon_label})", 'return'
             )
-            st.plotly_chart(fig_gainers, use_container_width=True)
+            st.plotly_chart(fig_gainers, width='stretch')
 
         with col2:
             st.markdown("### 📉 Top Decliners")
@@ -5558,13 +5558,13 @@ def run_streamlit():
                 top_losers, 'ticker', horizon_col, 
                 f"Top Decliners ({horizon_label})", 'return'
             )
-            st.plotly_chart(fig_losers, use_container_width=True)
+            st.plotly_chart(fig_losers, width='stretch')
 
         # Add sector heatmap
         st.subheader("🏢 Sector Performance Heatmap")
         sector_perf = valid_metrics.groupby('sector')[horizon_col].mean().sort_values(ascending=False)
         fig_heatmap = create_sector_heatmap(sector_perf, horizon_col, f"Sector Performance ({horizon_label})")
-        st.plotly_chart(fig_heatmap, use_container_width=True)
+        st.plotly_chart(fig_heatmap, width='stretch')
 
         # Enhanced data table with colors
         st.subheader("📋 All Stocks")
@@ -5584,7 +5584,7 @@ def run_streamlit():
 
         display_df = valid_metrics[display_cols].copy()
         styled_df = format_and_style_dataframe(display_df)
-        st.dataframe(styled_df, use_container_width=True, height=400)
+        st.dataframe(styled_df, width='stretch', height=400)
 
     # ---------- Sector Analysis ----------
     elif view_mode == "Sector Analysis":
@@ -5605,7 +5605,7 @@ def run_streamlit():
             f"Average Sector Returns ({horizon_label})", 'return'
         )
         fig_sector.update_layout(xaxis_tickangle=-45)
-        st.plotly_chart(fig_sector, use_container_width=True)
+        st.plotly_chart(fig_sector, width='stretch')
 
         styled_sector = format_and_style_dataframe(
             sector_perf,
@@ -5617,7 +5617,7 @@ def run_streamlit():
                 'Avg Volatility': 'volatility'
             }
         )
-        st.dataframe(styled_sector, use_container_width=True)
+        st.dataframe(styled_sector, width='stretch')
 
     # ---------- Top Movers ----------
     elif view_mode == "Top Movers":
@@ -5646,7 +5646,7 @@ def run_streamlit():
                 
                 rising_display = rising[display_cols].head(20)
                 styled_rising = format_and_style_dataframe(rising_display)
-                st.dataframe(styled_rising, use_container_width=True)
+                st.dataframe(styled_rising, width='stretch')
         
         with tabs[1]:
             if declining_col in valid_metrics.columns:
@@ -5668,7 +5668,7 @@ def run_streamlit():
                 
                 declining_display = declining[display_cols].head(20)
                 styled_declining = format_and_style_dataframe(declining_display)
-                st.dataframe(styled_declining, use_container_width=True)
+                st.dataframe(styled_declining, width='stretch')
 
         with tabs[2]:
             if 'ann_vol_pct' in valid_metrics.columns:
@@ -5691,7 +5691,7 @@ def run_streamlit():
                 
                 # Format the data
                 styled_volatile = format_and_style_dataframe(most_volatile)
-                st.dataframe(styled_volatile, use_container_width=True)
+                st.dataframe(styled_volatile, width='stretch')
             else:
                 st.info("Volatility data not available")
 
@@ -5705,13 +5705,13 @@ def run_streamlit():
                     st.markdown("### Near 52-Week Highs")
                     # Format the data
                     styled_highs = format_and_style_dataframe(near_highs)
-                    st.dataframe(styled_highs, use_container_width=True)
+                    st.dataframe(styled_highs, width='stretch')
                     
                 with col2:
                     st.markdown("### Near 52-Week Lows")
                     # Format the data
                     styled_lows = format_and_style_dataframe(near_lows)
-                    st.dataframe(styled_lows, use_container_width=True)
+                    st.dataframe(styled_lows, width='stretch')
             else:
                 st.info("52-week high/low data not available")
 
@@ -5863,7 +5863,7 @@ def run_streamlit():
             # Format the screener results
             screener_results = screened_df[display_cols]
             styled_screener = format_and_style_dataframe(screener_results)
-            st.dataframe(styled_screener, use_container_width=True, height=400)
+            st.dataframe(styled_screener, width='stretch', height=400)
 
             # Enhanced Visualization with color coding
             if len(screened_df) > 1 and 'ann_vol_pct' in screened_df.columns:
@@ -5889,7 +5889,7 @@ def run_streamlit():
                     }
                 )
                 fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
 
             # Per-ticker plotting: choose one from screened results
             tickers_list = screened_df['ticker'].tolist()
@@ -6107,7 +6107,7 @@ def run_streamlit():
                 top_20 = sentiment_df.nlargest(20, 'sentiment_score')
                 
                 fig = create_sentiment_chart(top_20, 20)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
                 
                 # Source breakdown
                 if NEWS_API_KEY:
@@ -6134,7 +6134,7 @@ def run_streamlit():
                         vmin=-1,
                         vmax=1
                     )
-                    st.dataframe(styled_sector, use_container_width=True)
+                    st.dataframe(styled_sector, width='stretch')
                 except ImportError:
                     # Fallback: Use custom color function instead
                     def color_sentiment(val):
@@ -6148,7 +6148,7 @@ def run_streamlit():
                         color_sentiment, 
                         subset=['Avg Sentiment']
                     )
-                    st.dataframe(styled_sector, use_container_width=True)
+                    st.dataframe(styled_sector, width='stretch')
                 
                 fig = go.Figure(data=[
                     go.Bar(
@@ -6168,7 +6168,7 @@ def run_streamlit():
                     yaxis=dict(range=[-1, 1])
                 )
                 fig.add_hline(y=0, line_dash="dash", opacity=0.5)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
             
             with tabs[2]:
                 if horizon_col in merged_data.columns:
@@ -6197,7 +6197,7 @@ def run_streamlit():
                     fig.add_hline(y=0, line_dash="dash", opacity=0.3)
                     fig.add_vline(x=0, line_dash="dash", opacity=0.3)
                     fig.update_layout(height=500)
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
                     
                     # Correlation metrics
                     col1, col2 = st.columns(2)
@@ -6226,7 +6226,7 @@ def run_streamlit():
                 if NEWS_API_KEY:
                     fig = create_sentiment_comparison_chart(sentiment_df_raw)
                     if fig:
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width='stretch')
                     
                     col1, col2 = st.columns(2)
                     
@@ -6236,7 +6236,7 @@ def run_streamlit():
                         if not newsapi_stocks.empty:
                             st.dataframe(
                                 newsapi_stocks[['ticker', 'sentiment_score', 'article_count']].head(10),
-                                use_container_width=True
+                                width='stretch'
                             )
                         else:
                             st.info("No NewsAPI data")
@@ -6247,7 +6247,7 @@ def run_streamlit():
                         if not google_stocks.empty:
                             st.dataframe(
                                 google_stocks[['ticker', 'sentiment_score', 'article_count']].head(10),
-                                use_container_width=True
+                                width='stretch'
                             )
                         else:
                             st.info("No Google News data")
@@ -6258,7 +6258,7 @@ def run_streamlit():
                         'sentiment_score': ['mean', 'std'],
                         'ticker': 'count'
                     }).round(3)
-                    st.dataframe(quality_comparison, use_container_width=True)
+                    st.dataframe(quality_comparison, width='stretch')
                 else:
                     st.info(" **All sentiment data from Google News RSS**")
                     
@@ -6285,7 +6285,7 @@ def run_streamlit():
                         title="Distribution of Articles per Stock",
                         labels={'article_count': 'Articles per Stock'}
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
             
             with tabs[4]:
                 st.subheader("📋 All Sentiment Data")
@@ -6311,7 +6311,7 @@ def run_streamlit():
                         vmin=-1,
                         vmax=1
                     ),
-                    use_container_width=True,
+                    width='stretch',
                     height=400
                 )
                 
@@ -6452,7 +6452,7 @@ def run_streamlit():
             )
 
             styled_preview = format_and_style_dataframe(export_df.head(10))
-            st.dataframe(styled_preview, use_container_width=True)
+            st.dataframe(styled_preview, width='stretch')
     # ---------- Comparison Mode ----------
     elif view_mode == "Comparison Mode":
         render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, current_index)
