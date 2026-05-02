@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 Refresh PostgreSQL with latest market data
-Runs the market tracker CLI in data refresh mode for all indices
+Runs the market tracker CLI in data refresh mode
 """
 
 import sys
 import os
+import argparse
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -16,17 +17,34 @@ if not os.environ.get('DATABASE_URL'):
     print("❌ DATABASE_URL environment variable not found")
     sys.exit(1)
 
+# Parse command line arguments
+parser = argparse.ArgumentParser(description='Refresh PostgreSQL market data')
+parser.add_argument(
+    '--index',
+    default='ALL',
+    choices=['ALL', 'SP500', 'SP400', 'SP600', 'NASDAQ100', 'DOW30', 'COMBINED'],
+    help='Market index to refresh (default: ALL)'
+)
+parser.add_argument(
+    '--consecutive-days',
+    type=int,
+    default=7,
+    help='Consecutive days for trend analysis (default: 7)'
+)
+
+args = parser.parse_args()
+
 print("=" * 60)
-print("MARKET DATA REFRESH - ALL INDICES")
+print(f"MARKET DATA REFRESH - {args.index}")
 print("=" * 60)
 
 # Import and run market_tracker CLI
 from market_tracker import run_cli
 
-# Run CLI for all indices
+# Run CLI with specified index
 try:
-    print("\nStarting data refresh for all market indices...\n")
-    run_cli(consecutive_days=7, index_key="ALL")
+    print(f"\nStarting data refresh for {args.index}...\n")
+    run_cli(consecutive_days=args.consecutive_days, index_key=args.index)
     print("\n" + "=" * 60)
     print("✅ Data refresh completed successfully!")
     print("=" * 60)
