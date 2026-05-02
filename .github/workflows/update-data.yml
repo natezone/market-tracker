@@ -73,12 +73,9 @@ jobs:
           "
           
       - name: Load all indices data to PostgreSQL
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            python refresh_postgres.py --index ${{ github.event.inputs.index }}
-          else
-            python refresh_postgres.py --index ALL
-          fi
+        env:
+          INDEX: ${{ github.event.inputs.index || 'ALL' }}
+        run: python refresh_postgres.py --index $INDEX
           
       - name: Verify database updates
         if: always()
