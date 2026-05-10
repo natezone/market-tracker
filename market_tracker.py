@@ -4161,9 +4161,14 @@ def run_cli(consecutive_days=7, index_key="SP500"):
             df.to_csv(os.path.join(per_ticker_dir, safe_filename))
             # Also save to PostgreSQL
             if pg_manager:
-                pg_manager.save_price_history(t, df)
-        except Exception:
-            pass
+                try:
+                    pg_manager.save_price_history(t, df)
+                except Exception as db_err:
+                    if os.environ.get('GITHUB_ACTIONS'):
+                        print(f"[WARNING] Failed to save {t} to PostgreSQL: {str(db_err)[:100]}")
+        except Exception as e:
+            if os.environ.get('GITHUB_ACTIONS'):
+                print(f"[WARNING] Failed to process {t}: {str(e)[:100]}")
 
         metrics = compute_metrics_for_ticker(df, consecutive_days)
 
@@ -5299,20 +5304,27 @@ def run_streamlit():
                 )
                 cur = conn.cursor()
 
-                # First try to get the update timestamp from stocks table (most reliable)
+                # Primary: Get the most recent updated_at from stocks table (current index)
                 cur.execute(f"SELECT MAX(updated_at) FROM stocks WHERE index_name = '{current_index}'")
                 result = cur.fetchone()
+                latest_date = result[0] if result and result[0] else None
 
-                # Fallback to price_history date if stocks table doesn't have updates
-                if not result or not result[0]:
+                # Secondary: If no recent update, try last_date from stocks
+                if not latest_date:
+                    cur.execute(f"SELECT MAX(last_date) FROM stocks WHERE index_name = '{current_index}'")
+                    result = cur.fetchone()
+                    latest_date = result[0] if result and result[0] else None
+
+                # Tertiary fallback: price_history date (least preferred)
+                if not latest_date:
                     cur.execute("SELECT MAX(date) FROM price_history")
                     result = cur.fetchone()
+                    latest_date = result[0] if result and result[0] else None
 
                 cur.close()
                 conn.close()
 
-                if result and result[0]:
-                    latest_date = result[0]
+                if latest_date:
                     last_update_est = pd.Timestamp(latest_date).tz_localize(None) - timedelta(hours=5)
                     col1, col2 = st.columns([3, 1])
                     with col1:
@@ -5320,11 +5332,11 @@ def run_streamlit():
                     with col2:
                         st.caption("⏰ Updates: 9AM & 5PM EST daily")
                 else:
-                    print(f"[DEBUG] No data found in database. result={result}")
+                    st.warning("⚠️ No data in database. Run workflow or manual update.")
             else:
-                print(f"[DEBUG] pg_manager check failed: pg_manager={pg_manager}")
+                st.warning("⚠️ Database connection failed. Check DATABASE_URL.")
         except Exception as e:
-            print(f"[DEBUG] Data freshness info error: {e}")
+            st.warning(f"⚠️ Error loading data freshness info: {str(e)[:100]}")
             import traceback
             traceback.print_exc()
     else:
