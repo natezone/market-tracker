@@ -5310,13 +5310,13 @@ def run_streamlit():
                 cur = conn.cursor()
 
                 # Primary: Get the most recent updated_at from stocks table (current index)
-                cur.execute(f"SELECT MAX(updated_at) FROM stocks WHERE index_name = '{current_index}'")
+                cur.execute("SELECT MAX(updated_at) FROM stocks WHERE index_name = %s", (current_index,))
                 result = cur.fetchone()
                 latest_date = result[0] if result and result[0] else None
 
                 # Secondary: If no recent update, try last_date from stocks
                 if not latest_date:
-                    cur.execute(f"SELECT MAX(last_date) FROM stocks WHERE index_name = '{current_index}'")
+                    cur.execute("SELECT MAX(last_date) FROM stocks WHERE index_name = %s", (current_index,))
                     result = cur.fetchone()
                     latest_date = result[0] if result and result[0] else None
 
