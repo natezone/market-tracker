@@ -533,15 +533,20 @@ class PostgreSQLManager:
             # Delete existing records for this index
             cur.execute("DELETE FROM stocks WHERE index_name = %s", (index_name,))
 
-            # Prepare bulk insert
-            cols = ', '.join(df.columns)
-            placeholders = ', '.join(['%s'] * len(df.columns))
+            # Prepare bulk insert with explicit updated_at timestamp
+            cols_list = list(df.columns) + ['updated_at']
+            cols = ', '.join(cols_list)
+            placeholders = ', '.join(['%s'] * len(cols_list))
             insert_query = f"INSERT INTO stocks ({cols}) VALUES ({placeholders})"
 
-            # Insert data
+            # Insert data with current timestamp
+            from datetime import datetime
+            current_time = datetime.utcnow()
+
             for _, row in df.iterrows():
                 try:
-                    cur.execute(insert_query, tuple(row))
+                    values = tuple(row) + (current_time,)
+                    cur.execute(insert_query, values)
                 except Exception:
                     pass  # Skip duplicates
 
