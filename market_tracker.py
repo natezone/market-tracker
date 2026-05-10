@@ -5286,7 +5286,7 @@ def run_streamlit():
 
         # Show data freshness info
         try:
-            # Try to get latest date from PostgreSQL
+            # Try to get latest update timestamp from PostgreSQL
             if pg_manager and pg_manager.engine:
                 url = pg_manager.engine.url
                 conn = psycopg2.connect(
@@ -5298,8 +5298,16 @@ def run_streamlit():
                     sslmode='require'
                 )
                 cur = conn.cursor()
-                cur.execute("SELECT MAX(date) FROM price_history")
+
+                # First try to get the update timestamp from stocks table (most reliable)
+                cur.execute(f"SELECT MAX(updated_at) FROM stocks WHERE index_name = '{current_index}'")
                 result = cur.fetchone()
+
+                # Fallback to price_history date if stocks table doesn't have updates
+                if not result or not result[0]:
+                    cur.execute("SELECT MAX(date) FROM price_history")
+                    result = cur.fetchone()
+
                 cur.close()
                 conn.close()
 
@@ -5312,7 +5320,7 @@ def run_streamlit():
                     with col2:
                         st.caption("⏰ Updates: 9AM & 5PM EST daily")
                 else:
-                    print(f"[DEBUG] No price_history data found. result={result}")
+                    print(f"[DEBUG] No data found in database. result={result}")
             else:
                 print(f"[DEBUG] pg_manager check failed: pg_manager={pg_manager}")
         except Exception as e:
