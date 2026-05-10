@@ -1,5 +1,10 @@
 import os
 import sys
+
+# MUST load environment variables before any other imports that might use them
+from dotenv import load_dotenv
+load_dotenv()
+
 import time
 import math
 import argparse
@@ -19,7 +24,6 @@ from scipy.optimize import minimize
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from newsapi import NewsApiClient
 from textblob import TextBlob
-from dotenv import load_dotenv
 import psycopg2
 from sqlalchemy import create_engine, text, Table, Column, Integer, String, Float, MetaData, DateTime
 from sqlalchemy.orm import sessionmaker
@@ -52,9 +56,6 @@ try:
 except ImportError:
     ENHANCED_DATA_AVAILABLE = False
     print("Note: Enhanced data fetcher not available. Some features will be limited.")
-
-# Load environment variables
-load_dotenv()
 
 # Try importing Streamlit and Plotly for web interface
 try:
