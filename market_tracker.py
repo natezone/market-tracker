@@ -827,27 +827,37 @@ def fetch_sp400_tickers():
 
             df = tables[0]
 
+            # Find ticker symbol column (try multiple names)
+            ticker_col = None
+            for col in ['Symbol', 'Ticker', 'ticker']:
+                if col in df.columns:
+                    ticker_col = col
+                    break
+
+            if not ticker_col:
+                raise RuntimeError(f"No ticker column found. Available columns: {df.columns.tolist()}")
+
             # Standardize ticker symbols
-            df['Symbol'] = df['Symbol'].str.replace('.', '-', regex=False)
-            tickers = df['Symbol'].tolist()
+            df[ticker_col] = df[ticker_col].str.replace('.', '-', regex=False)
+            tickers = df[ticker_col].tolist()
 
             # Extract sector, industry, and company name info
-            sectors = dict(zip(df['Symbol'], df.get('GICS Sector', ['Unknown'] * len(df))))
-            industries = dict(zip(df['Symbol'], df.get('GICS Sub-Industry', ['Unknown'] * len(df))))
+            sectors = dict(zip(df[ticker_col], df.get('GICS Sector', ['Unknown'] * len(df))))
+            industries = dict(zip(df[ticker_col], df.get('GICS Sub-Industry', ['Unknown'] * len(df))))
 
             # Try different column names for company
             if 'Security' in df.columns:
-                company_names = dict(zip(df['Symbol'], df['Security']))
+                company_names = dict(zip(df[ticker_col], df['Security']))
             elif 'Company' in df.columns:
-                company_names = dict(zip(df['Symbol'], df['Company']))
+                company_names = dict(zip(df[ticker_col], df['Company']))
             else:
-                company_names = dict(zip(df['Symbol'], df['Symbol']))
+                company_names = dict(zip(df[ticker_col], df[ticker_col]))
 
             return tickers, df, sectors, industries, company_names
 
         except Exception as e:
             if attempt < 2:
-                print(f"Attempt {attempt + 1}/3 failed for S&P 400 tickers: {str(e)[:100]}. Retrying...")
+                print(f"Attempt {attempt + 1}/3 failed for S&P 400 tickers: {str(e)[:200]}. Retrying...")
                 time.sleep(2)
             else:
                 print(f"Failed to fetch S&P 400 tickers after 3 attempts")
@@ -4330,6 +4340,11 @@ def run_cli(consecutive_days=7, index_key="SP500"):
         else:
             pct_col = 'pct_252d'
 
+    # Check if we have any data
+    if df_metrics.empty:
+        print(f"\n⚠️ No data to process for {index_key}. Skipping summary.")
+        return
+
     # Verify the column exists before using it
     if pct_col not in df_metrics.columns:
         print(f"Warning: Column {pct_col} not found. Available columns: {list(df_metrics.columns)}")
@@ -4338,15 +4353,29 @@ def run_cli(consecutive_days=7, index_key="SP500"):
 
     print(f"Using {pct_col} for sorting (consecutive days: {consecutive_days})")
 
-    rising = df_metrics[
-        (df_metrics['status'] == 'ok') &
-        (df_metrics[rising_col] == True)
-    ].sort_values(by=pct_col, ascending=False)
+    # Only try to access 'status' column if it exists
+    if 'status' in df_metrics.columns:
+        rising = df_metrics[
+            (df_metrics['status'] == 'ok') &
+            (df_metrics[rising_col] == True)
+        ].sort_values(by=pct_col, ascending=False)
+    else:
+        # Fallback if status column missing
+        rising = df_metrics[
+            df_metrics[rising_col] == True
+        ].sort_values(by=pct_col, ascending=False)
 
-    declining = df_metrics[
-        (df_metrics['status'] == 'ok') &
-        (df_metrics[declining_col] == True)
-    ].sort_values(by=pct_col)
+    # Only try to access 'status' column if it exists
+    if 'status' in df_metrics.columns:
+        declining = df_metrics[
+            (df_metrics['status'] == 'ok') &
+            (df_metrics[declining_col] == True)
+        ].sort_values(by=pct_col)
+    else:
+        # Fallback if status column missing
+        declining = df_metrics[
+            df_metrics[declining_col] == True
+        ].sort_values(by=pct_col)
 
     rising.to_csv(os.path.join(index_data_dir, f"rising_{consecutive_days}day.csv"), index=False)
     declining.to_csv(os.path.join(index_data_dir, f"declining_{consecutive_days}day.csv"), index=False)
