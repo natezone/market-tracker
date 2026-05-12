@@ -5293,24 +5293,11 @@ def run_streamlit():
     if data_exists:
         @cache_data(ttl=3600)  # Cache for 1 hour
         def load_historical_data(index_key):
-            hist_dir = os.path.join(DATA_DIR, index_key, "history")
+            """Load price history from CockroachDB (always up-to-date), fallback to CSV if needed"""
             hist = {}
 
-            # Try to load from CSV first
-            if os.path.exists(hist_dir):
-                for file in os.listdir(hist_dir):
-                    if file.endswith('.csv'):
-                        ticker = file.replace('.csv', '')
-                        try:
-                            df = pd.read_csv(os.path.join(hist_dir, file),
-                                        parse_dates=True, index_col=0)
-                            if not df.empty:
-                                hist[ticker] = df
-                        except Exception:
-                            continue
-
-            # If no CSV data found, try PostgreSQL for all available tickers
-            if not hist and valid_metrics is not None:
+            # PRIMARY: Load from CockroachDB (always current)
+            if valid_metrics is not None:
                 for ticker in valid_metrics['ticker'].unique():
                     try:
                         df = load_price_history_from_db(ticker)
@@ -5318,6 +5305,21 @@ def run_streamlit():
                             hist[ticker] = df
                     except Exception:
                         continue
+
+            # FALLBACK: If database fails completely, try CSV files
+            if not hist:
+                hist_dir = os.path.join(DATA_DIR, index_key, "history")
+                if os.path.exists(hist_dir):
+                    for file in os.listdir(hist_dir):
+                        if file.endswith('.csv'):
+                            ticker = file.replace('.csv', '')
+                            try:
+                                df = pd.read_csv(os.path.join(hist_dir, file),
+                                            parse_dates=True, index_col=0)
+                                if not df.empty:
+                                    hist[ticker] = df
+                            except Exception:
+                                continue
 
             return hist
         
