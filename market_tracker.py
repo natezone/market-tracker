@@ -546,12 +546,20 @@ class PostgreSQLManager:
             from datetime import datetime
             current_time = datetime.utcnow()
 
-            for _, row in df.iterrows():
+            # Track insertion errors
+            insert_error_count = 0
+            for idx, (_, row) in enumerate(df.iterrows()):
                 try:
                     values = tuple(row) + (current_time,)
                     cur.execute(insert_query, values)
-                except Exception:
-                    pass  # Skip duplicates
+                except Exception as e:
+                    insert_error_count += 1
+                    # Log first few errors to diagnose
+                    if insert_error_count <= 3:
+                        print(f"[WARNING] Insert error for row {idx}: {str(e)[:150]}")
+
+            if insert_error_count > 0:
+                print(f"[WARNING] {insert_error_count} INSERT errors out of {len(df)} rows")
 
             conn.commit()
 
