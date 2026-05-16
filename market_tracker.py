@@ -5648,7 +5648,7 @@ def run_streamlit():
         fig_heatmap = create_sector_heatmap(sector_perf, horizon_col, f"Sector Performance ({horizon_label})")
         st.plotly_chart(fig_heatmap, width='stretch')
 
-        # Enhanced data table with colors
+# Enhanced data table with colors
         st.subheader("📋 All Stocks")
 
         # Build display columns safely as some datasets may not have pe_ratio
