@@ -480,7 +480,9 @@ class PostgreSQLManager:
             conn.close()
 
         except Exception as e:
-            pass
+            print(f"[ERROR] Failed to create database tables: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
     def save_metrics(self, metrics_df, index_name):
         """Save metrics to PostgreSQL using raw psycopg2"""
