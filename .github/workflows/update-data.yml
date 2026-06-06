@@ -1,10 +1,10 @@
-name: Update Market Data - Refresh PostgreSQL
+name: Update Market Data - CSV Refresh
 
 on:
   schedule:
     # Run at 9 AM EST weekdays only (before market open)
     - cron: '0 14 * * 1-5'   # 14:00 UTC = 9:00 AM EST (Mon-Fri)
-    # Run at 5 PM EST weekdays only (after market close)  
+    # Run at 5 PM EST weekdays only (after market close)
     - cron: '0 22 * * 1-5'   # 22:00 UTC = 5:00 PM EST (Mon-Fri)
   workflow_dispatch:
     inputs:
@@ -22,22 +22,19 @@ on:
           - DOW30
           - COMBINED
 
-env:
-  DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
 jobs:
   update-data:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          
+
       - name: Cache pip dependencies
         uses: actions/cache@v3
         with:
@@ -45,83 +42,35 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-            
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          
-      - name: Verify PostgreSQL connection
-        run: |
-          python -c "
-          import os
-          from sqlalchemy import create_engine, text
-          
-          db_url = os.environ.get('DATABASE_URL')
-          if not db_url:
-              print('❌ DATABASE_URL not found')
-              exit(1)
-          
-          try:
-              engine = create_engine(db_url)
-              with engine.connect() as conn:
-                  result = conn.execute(text('SELECT 1'))
-                  print('✅ PostgreSQL connection successful')
-          except Exception as e:
-              print(f'❌ PostgreSQL connection failed: {e}')
-              exit(1)
-          "
-          
-      - name: Load all indices data to PostgreSQL
+
+      - name: Fetch market data and update CSVs
         env:
           INDEX: ${{ github.event.inputs.index || 'ALL' }}
-          DOWNLOAD_PERIOD: '1y'
-          GITHUB_ACTIONS: 'true'
         run: |
           echo "📊 Updating indices: $INDEX"
-          echo "⏱️  Using 1-year history period for faster refresh"
-          echo "⚡ Skipping P/E ratio fetch (will load on-demand in UI)"
-          python refresh_postgres.py --index $INDEX
-          
-      - name: Verify database updates
-        if: always()
+          python market_tracker.py --mode cli --index $INDEX
+
+      - name: Commit updated CSV files
         run: |
-          python -c "
-          import os
-          from sqlalchemy import create_engine, text
-          
-          db_url = os.environ.get('DATABASE_URL')
-          if not db_url:
-              print('DATABASE_URL not found')
-              exit(0)
-          
-          try:
-              engine = create_engine(db_url)
-              
-              print('\\n=== Database Statistics ===')
-              
-              with engine.connect() as conn:
-                  # Total stocks
-                  result = conn.execute(text('SELECT COUNT(*) FROM stocks'))
-                  total = result.scalar()
-                  print(f'Total stocks in database: {total:,}')
-                  
-                  # By index
-                  result = conn.execute(text('''
-                      SELECT index_name, COUNT(*) as count, MAX(updated_at) as last_update
-                      FROM stocks 
-                      GROUP BY index_name
-                      ORDER BY index_name
-                  '''))
-                  
-                  print('\\nStocks by index:')
-                  for row in result:
-                      print(f'  • {row[0]}: {row[1]:,} stocks (last updated: {row[2]})')
-                  
-          except Exception as e:
-              print(f'Error querying database: {e}')
-          "
-          
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          # Check if there are changes to CSV files
+          if git diff --quiet; then
+              echo "✅ No changes to CSV files"
+          else
+              git add *.csv
+              git add **/*.csv
+              git commit -m "Update market data - $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+              git push
+              echo "✅ CSV files updated and pushed"
+          fi
+
       - name: Workflow Summary
         if: always()
         run: |
@@ -134,5 +83,5 @@ jobs:
             echo "Scheduled trigger - All indices updated"
           fi
           echo ""
-          echo "✅ Data stored in PostgreSQL (not committed to Git)"
-          echo "📊 Streamlit app will load data from database"
+          echo "✅ Data stored in CSV files (committed to Git)"
+          echo "📊 Streamlit app will load data from CSV files"
