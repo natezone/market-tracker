@@ -31,6 +31,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -62,6 +64,9 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
+          # Fetch latest changes first
+          git fetch origin main
+
           # Add all CSV files (in data directory structure)
           git add data/
 
@@ -70,7 +75,6 @@ jobs:
               echo "✅ No changes to CSV files"
           else
               git commit -m "Update market data - $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
-              git pull --rebase origin main
               git push origin main
               echo "✅ CSV files updated and pushed to main"
           fi
