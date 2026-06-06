@@ -5336,56 +5336,25 @@ def run_streamlit():
         # Load historical data
         hist = load_historical_data(current_index)
 
-        # Show data freshness info
+        # Show data freshness info from CSV
         try:
-            # Try to get latest update timestamp from PostgreSQL
-            if pg_manager and pg_manager.engine:
-                url = pg_manager.engine.url
-                conn = psycopg2.connect(
-                    user=url.username,
-                    password=url.password,
-                    host=url.host,
-                    port=url.port or 5432,
-                    database=url.database,
-                    sslmode='require'
-                )
-                cur = conn.cursor()
+            # Get latest date from loaded data
+            latest_date = None
+            if hist and not hist.empty:
+                if 'last_date' in hist.columns:
+                    latest_date = hist['last_date'].max()
+                elif 'date' in hist.columns:
+                    latest_date = hist['date'].max()
 
-                # Primary: Get the most recent updated_at from stocks table (current index)
-                cur.execute("SELECT MAX(updated_at) FROM stocks WHERE index_name = %s", (current_index,))
-                result = cur.fetchone()
-                latest_date = result[0] if result and result[0] else None
-
-                # Secondary: If no recent update, try last_date from stocks
-                if not latest_date:
-                    cur.execute("SELECT MAX(last_date) FROM stocks WHERE index_name = %s", (current_index,))
-                    result = cur.fetchone()
-                    latest_date = result[0] if result and result[0] else None
-
-                # Tertiary fallback: price_history date (least preferred)
-                if not latest_date:
-                    cur.execute("SELECT MAX(date) FROM price_history")
-                    result = cur.fetchone()
-                    latest_date = result[0] if result and result[0] else None
-
-                cur.close()
-                conn.close()
-
-                if latest_date:
-                    last_update_est = pd.Timestamp(latest_date).tz_localize(None) - timedelta(hours=5)
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.caption(f"Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
-                    with col2:
-                        st.caption("⏰ Updates: 9AM & 5PM EST daily")
-                else:
-                    st.warning("⚠️ No data in database. Run workflow or manual update.")
-            else:
-                st.warning("⚠️ Database connection failed. Check DATABASE_URL.")
+            if latest_date:
+                last_update_est = pd.Timestamp(latest_date).tz_localize(None) - timedelta(hours=5)
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.caption(f"📊 Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
+                with col2:
+                    st.caption("⏰ Updates: 9AM & 5PM EST daily")
         except Exception as e:
-            st.warning(f"⚠️ Error loading data freshness info: {str(e)[:100]}")
-            import traceback
-            traceback.print_exc()
+            pass  # Silently skip if we can't determine update time
     else:
         hist = {}
         st.error(f"No data available for {index_selection}. Click 'Fetch All Data' below.")
