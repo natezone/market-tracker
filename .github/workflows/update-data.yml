@@ -60,15 +60,16 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-          # Check if there are changes to CSV files
-          if git diff --quiet; then
+          # Add all CSV files (in data directory structure)
+          git add data/
+
+          # Check if there are changes
+          if git diff --cached --quiet; then
               echo "✅ No changes to CSV files"
           else
-              git add *.csv
-              git add **/*.csv
               git commit -m "Update market data - $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
-              git push
-              echo "✅ CSV files updated and pushed"
+              git push origin main
+              echo "✅ CSV files updated and pushed to main"
           fi
 
       - name: Workflow Summary
