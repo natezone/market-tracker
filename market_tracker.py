@@ -5327,20 +5327,21 @@ def run_streamlit():
         # Load historical data
         hist = load_historical_data(current_index)
 
-        # Show data freshness info from CSV
+        # Show data freshness info from CSV file modification time
         try:
             metrics_path = os.path.join(DATA_DIR, current_index, "latest_metrics.csv")
             if os.path.exists(metrics_path):
-                df_check = pd.read_csv(metrics_path, nrows=1, usecols=['last_date'])
-                if not df_check.empty and 'last_date' in df_check.columns:
-                    latest_date = pd.to_datetime(df_check['last_date'].iloc[0])
-                    if pd.notna(latest_date):
-                        last_update_est = latest_date - timedelta(hours=5)
-                        col1, col2 = st.columns([3, 1])
-                        with col1:
-                            st.caption(f"📊 Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
-                        with col2:
-                            st.caption("⏰ Updates: 9AM & 5PM EST daily")
+                # Get file modification time (when GitHub Actions last updated it)
+                mtime = os.path.getmtime(metrics_path)
+                from datetime import datetime
+                file_datetime = datetime.fromtimestamp(mtime)
+                # Convert to EST (subtract 5 hours)
+                file_datetime_est = file_datetime - timedelta(hours=5)
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.caption(f"📊 Data last updated: {file_datetime_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
+                with col2:
+                    st.caption("⏰ Updates: 9AM & 5PM EST daily")
         except Exception as e:
             pass
     else:
