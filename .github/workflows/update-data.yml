@@ -75,7 +75,7 @@ jobs:
               echo "✅ No changes to CSV files"
           else
               git commit -m "Update market data - $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
-              git push origin main
+              git push --force-with-lease origin main
               echo "✅ CSV files updated and pushed to main"
           fi
 
