@@ -5508,24 +5508,6 @@ def run_streamlit():
                     st.caption("**Stocks by Index:**")
                     for item in stats['stocks_by_index']:
                         st.caption(f"• {item['index_name']}: {item['count']}")
-    else:
-        with st.sidebar.expander(" Database Status"):
-            st.warning("No PostgreSQL connection")
-            st.info("Using CSV fallback mode")
-            
-            if not os.environ.get('DATABASE_URL'):
-                st.markdown("""
-                **Setup PostgreSQL:**
-                1. Get free database from:
-                   - [Supabase](https://supabase.com) or
-                   - [Neon](https://neon.tech)
-                2. Add to Streamlit secrets:
-                ```
-                   DATABASE_URL = "postgresql://..."
-                ```
-                3. Restart app
-                """)
-
     # ---------- Dashboard ----------
     if view_mode == "Dashboard":
         if valid_metrics is None or valid_metrics.empty:
