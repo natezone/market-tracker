@@ -33,7 +33,6 @@ Thumbs.db
 data/*/history/
 
 # Data files - stored in PostgreSQL, not Git
-data/**/*.csv
 data/**/*.db
 data/**/*.sqlite
 data/**/*.sqlite3
