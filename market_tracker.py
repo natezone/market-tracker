@@ -5338,21 +5338,19 @@ def run_streamlit():
 
         # Show data freshness info from CSV
         try:
-            # Get latest date from loaded data
-            latest_date = None
-            if hist and not hist.empty:
-                if 'last_date' in hist.columns:
-                    latest_date = hist['last_date'].max()
-                elif 'date' in hist.columns:
-                    latest_date = hist['date'].max()
-
-            if latest_date:
-                last_update_est = pd.Timestamp(latest_date).tz_localize(None) - timedelta(hours=5)
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.caption(f"📊 Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
-                with col2:
-                    st.caption("⏰ Updates: 9AM & 5PM EST daily")
+            # Get latest date from metrics CSV
+            metrics_path = os.path.join(DATA_DIR, current_index, "latest_metrics.csv")
+            if os.path.exists(metrics_path):
+                df_check = pd.read_csv(metrics_path)
+                if not df_check.empty and 'last_date' in df_check.columns:
+                    latest_date = pd.to_datetime(df_check['last_date']).max()
+                    if pd.notna(latest_date):
+                        last_update_est = latest_date - timedelta(hours=5)
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.caption(f"📊 Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
+                        with col2:
+                            st.caption("⏰ Updates: 9AM & 5PM EST daily")
         except Exception as e:
             pass  # Silently skip if we can't determine update time
     else:
