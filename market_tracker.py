@@ -3088,10 +3088,10 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
                 
                 with col2:
                     st.subheader("Performance Stats")
-                    avg_return = top_20[horizon_col].mean()
-                    median_return = top_20[horizon_col].median()
-                    min_return = top_20[horizon_col].min()
-                    max_return = top_20[horizon_col].max()
+                    avg_return = top_30[horizon_col].mean()
+                    median_return = top_30[horizon_col].median()
+                    min_return = top_30[horizon_col].min()
+                    max_return = top_30[horizon_col].max()
                     
                     st.metric("Average Return", f"{avg_return:.2f}%")
                     st.metric("Median Return", f"{median_return:.2f}%")
