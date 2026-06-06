@@ -29,8 +29,8 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# History folders (too large - regenerate locally)
-data/*/history/
+# # History folders (too large - regenerate locally)
+# data/*/history/
 
 # Data files - stored in PostgreSQL, not Git
 data/**/*.db
