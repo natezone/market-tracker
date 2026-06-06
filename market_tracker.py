@@ -3040,40 +3040,40 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
 
     with tabs[3]:
         # Top Performers
-        st.subheader("🏆 Top 20 Performers")
-        
+        st.subheader("🏆 Top 30 Performers")
+
         if horizon_col and horizon_col in valid_metrics.columns:
-            top_20 = valid_metrics.nlargest(20, horizon_col)
-            
-            st.info(f"Showing top 20 performers over {horizon_label}")
-            
-            top_20_tickers = top_20['ticker'].tolist()
-            top_20_comparison = get_sector_comparison_data(valid_metrics, top_20_tickers)
-            
-            if not top_20_comparison.empty:
-                display_df = top_20_comparison.copy()
+            top_30 = valid_metrics.nlargest(30, horizon_col)
+
+            st.info(f"Showing top 30 performers over {horizon_label}")
+
+            top_30_tickers = top_30['ticker'].tolist()
+            top_30_comparison = get_sector_comparison_data(valid_metrics, top_30_tickers)
+
+            if not top_30_comparison.empty:
+                display_df = top_30_comparison.copy()
                 display_df['rank'] = range(1, len(display_df) + 1)
-                
+
                 cols = ['rank', 'ticker']
                 if 'company_name' in display_df.columns:
                     cols.append('company_name')
                 cols += [col for col in display_df.columns if col not in cols]
                 display_df = display_df[cols]
-                
-                styled_top20 = format_and_style_dataframe(
+
+                styled_top30 = format_and_style_dataframe(
                     display_df,
                     format_dict={'rank': '{:.0f}'}
                 )
-                st.dataframe(styled_top20, width='stretch')
-                
-                if horizon_col in top_20.columns:
+                st.dataframe(styled_top30, width='stretch')
+
+                if horizon_col in top_30.columns:
                     fig = create_enhanced_bar_chart(
-                        top_20.head(20), 'ticker', horizon_col,
-                        f"Top 20 Performers ({horizon_label})", 'return'
+                        top_30.head(30), 'ticker', horizon_col,
+                        f"Top 30 Performers ({horizon_label})", 'return'
                     )
                     st.plotly_chart(fig, width='stretch')
-                
-                sector_counts = top_20['sector'].value_counts()
+
+                sector_counts = top_30['sector'].value_counts()
                 
                 col1, col2 = st.columns(2)
                 
