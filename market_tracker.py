@@ -2888,8 +2888,24 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
     
     col1, col2, col3 = st.columns([2, 1, 1])
 
+    # Handle button clicks first
+    with col2:
+        if st.button("⭐ Top Performers", key=f"add_top_performers_{current_index}", width='stretch'):
+            try:
+                available_return_cols = [col for col in ['pct_21d', 'pct_5d', 'pct_1d']
+                                        if col in valid_metrics.columns]
+
+                if available_return_cols and not valid_metrics.empty:
+                    top_30 = valid_metrics.nlargest(30, available_return_cols[0])['ticker'].tolist()
+                    st.session_state[state_key] = top_30[:30]
+            except Exception as e:
+                st.error(f"Error loading top performers: {e}")
+
+    with col3:
+        if st.button("🗑️ Clear All", key=f"clear_selections_{current_index}", width='stretch'):
+            st.session_state[state_key] = []
+
     with col1:
-        # Map current_index to display name
         index_display_names = {
             "SP500": "S&P 500",
             "SP400": "S&P MidCap 400",
@@ -2899,43 +2915,17 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
             "COMBINED": "Combined Indices"
         }
         index_display = index_display_names.get(current_index, current_index)
-        
+
         selected_tickers = st.multiselect(
             "Select stocks to compare (2-30 stocks)",
             options=available_tickers,
-            default=st.session_state[state_key],
+            default=st.session_state.get(state_key, []),
             max_selections=30,
             key=f"stock_selector_{current_index}",
             help=f"Select 2-30 stocks from {index_display} to compare"
         )
-        
-        # Update session state when user manually changes selection
+
         st.session_state[state_key] = selected_tickers
-
-    with col2:
-        # Add top performers button
-        if st.button("⭐ Top Performers", key=f"add_top_performers_{current_index}", width='stretch'):
-            try:
-                available_return_cols = [col for col in ['pct_21d', 'pct_5d', 'pct_1d']
-                                        if col in valid_metrics.columns]
-
-                if available_return_cols and not valid_metrics.empty:
-                    top_30 = valid_metrics.nlargest(30, available_return_cols[0])['ticker'].tolist()
-
-                    # Update state to show top 30
-                    st.session_state[state_key] = top_30[:30]
-                    st.rerun()
-                else:
-                    st.warning(" No performance data available")
-            except Exception as e:
-                st.error(f"Error loading top performers: {e}")
-
-    with col3:
-        # Clear selections button
-        if st.button("🗑️ Clear All", key=f"clear_selections_{current_index}", width='stretch'):
-            st.session_state[state_key] = []
-            st.info("Selections cleared")
-            st.rerun()
     
     if len(selected_tickers) < 2:
         st.info("👆 Please select at least 2 stocks to compare")
