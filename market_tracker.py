@@ -5341,16 +5341,26 @@ def run_streamlit():
             # Get latest date from metrics CSV
             metrics_path = os.path.join(DATA_DIR, current_index, "latest_metrics.csv")
             if os.path.exists(metrics_path):
-                df_check = pd.read_csv(metrics_path)
-                if not df_check.empty and 'last_date' in df_check.columns:
-                    latest_date = pd.to_datetime(df_check['last_date']).max()
-                    if pd.notna(latest_date):
-                        last_update_est = latest_date - timedelta(hours=5)
-                        col1, col2 = st.columns([3, 1])
-                        with col1:
-                            st.caption(f"📊 Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
-                        with col2:
-                            st.caption("⏰ Updates: 9AM & 5PM EST daily")
+                df_check = pd.read_csv(metrics_path, nrows=10)  # Read just first 10 rows for speed
+                if not df_check.empty:
+                    # Try different column names for the date
+                    date_col = None
+                    for col in ['last_date', 'last_close', 'date']:
+                        if col in df_check.columns:
+                            date_col = col
+                            break
+
+                    if date_col and df_check[date_col].dtype == 'object':
+                        # Parse as datetime
+                        dates = pd.to_datetime(df_check[date_col], errors='coerce')
+                        latest_date = dates.max()
+                        if pd.notna(latest_date):
+                            last_update_est = latest_date - timedelta(hours=5)
+                            col1, col2 = st.columns([3, 1])
+                            with col1:
+                                st.caption(f"📊 Data last updated: {last_update_est.strftime('%Y-%m-%d at %I:%M %p EST')}")
+                            with col2:
+                                st.caption("⏰ Updates: 9AM & 5PM EST daily")
         except Exception as e:
             pass  # Silently skip if we can't determine update time
     else:
