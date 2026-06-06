@@ -2888,6 +2888,26 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
     
     col1, col2, col3 = st.columns([2, 1, 1])
 
+    # Handle button clicks BEFORE rendering multiselect
+    with col2:
+        if st.button("⭐ Top Performers", key=f"add_top_performers_{current_index}", width='stretch'):
+            try:
+                available_return_cols = [col for col in ['pct_21d', 'pct_5d', 'pct_1d']
+                                        if col in valid_metrics.columns]
+
+                if available_return_cols and not valid_metrics.empty:
+                    top_30 = valid_metrics.nlargest(30, available_return_cols[0])['ticker'].tolist()
+                    st.session_state[state_key] = top_30[:30]
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Error loading top performers: {e}")
+
+    with col3:
+        if st.button("🗑️ Clear All", key=f"clear_selections_{current_index}", width='stretch'):
+            st.session_state[state_key] = []
+            st.rerun()
+
+    # NOW render the multiselect with updated state
     with col1:
         index_display_names = {
             "SP500": "S&P 500",
@@ -2907,22 +2927,6 @@ def render_comparison_mode(valid_metrics, hist, horizon_col, horizon_label, curr
             key=state_key,
             help=f"Select 2-30 stocks from {index_display} to compare"
         )
-
-    with col2:
-        if st.button("⭐ Top Performers", key=f"add_top_performers_{current_index}", width='stretch'):
-            try:
-                available_return_cols = [col for col in ['pct_21d', 'pct_5d', 'pct_1d']
-                                        if col in valid_metrics.columns]
-
-                if available_return_cols and not valid_metrics.empty:
-                    top_30 = valid_metrics.nlargest(30, available_return_cols[0])['ticker'].tolist()
-                    st.session_state[state_key] = top_30[:30]
-            except Exception as e:
-                st.error(f"Error loading top performers: {e}")
-
-    with col3:
-        if st.button("🗑️ Clear All", key=f"clear_selections_{current_index}", width='stretch'):
-            st.session_state[state_key] = []
     
     if len(selected_tickers) < 2:
         st.info("👆 Please select at least 2 stocks to compare")
