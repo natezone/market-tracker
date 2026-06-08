@@ -379,7 +379,6 @@ NSIT,"Insight Enterprises, Inc.",Industrials,Technology Distributors,"Tempe, Ari
 NSP,Insperity,Industrials,Human Resource & Employment Services,"Houston, Texas",view,1000753
 NSSC,Napco Security Technologies,Information Technology,Electronic Equipment & Instruments,"Amityville, New York",view,69633
 NTCT,"NETSCOUT Systems, Inc.",Information Technology,Communications Equipment,"Westford, Massachusetts",view,1078075
-NVRI,Enviri Corporation,Industrials,Industrial Machinery & Supplies & Components,"Philadelphia, Pennsylvania",view,45876
 NWBI,"Northwest Bancshares, Inc.",Financials,Regional Banks,"Warren, Pennsylvania",view,1471265
 NWL,Newell Brands,Consumer Discretionary,Housewares & Specialties,"Atlanta, Georgia",view,814453
 NWN,NW Natural,Utilities,Gas Utilities,"Portland, Oregon",view,1733998
@@ -439,6 +438,7 @@ PSMT,PriceSmart,Consumer Staples,Consumer Staples Merchandise Retail,"San Diego,
 PTCT,"PTC Therapeutics, Inc.",Health Care,Pharmaceuticals,"Warren Township, New Jersey",view,1070081
 PTEN,"Patterson-UTI Energy, Inc.",Energy,Oil & Gas Drilling,"Houston, Texas",view,889900
 PTGX,"Protagonist Therapeutics, Inc.",Health Care,Biotechnology,"Newark, California",view,1377121
+PTON,"Peloton Interactive, Inc.",Consumer Discretionary,Leisure Products,"New York City, New York",view,1639825
 PZZA,Papa John's Pizza,Consumer Discretionary,Restaurants,"Jeffersontown, Kentucky",view,901491
 QDEL,QuidelOrtho,Health Care,Health Care Supplies,"San Diego, California",view,1906324
 QNST,"QuinStreet, Inc.",Communication Services,Interactive Media & Services,"Foster City, California",view,1117297
@@ -551,6 +551,7 @@ UPBD,"Upbound Group, Inc.",Consumer Discretionary,Computer & Electronics Retail,
 UPWK,"Upwork, Inc.",Industrials,Human Resource & Employment Services,"Palo Alto, California",view,1627475
 URBN,"Urban Outfitters, Inc.",Consumer Discretionary,Apparel Retail,"Philadelphia, Pennsylvania",view,912615
 USPH,"U.S. Physical Therapy, Inc.",Health Care,Health Care Facilities,"Houston, Texas",view,885978
+UTI,Universal Technical Institute,Consumer Discretionary,Education Services,"Phoenix, Arizona",view,1261654
 UTL,Unitil Corporation,Utilities,Electric Utilities,"Hampton, New Hampshire",view,755001
 UVV,Universal Corporation,Consumer Staples,Tobacco,"Richmond, Virginia",view,102037
 VAC,Marriott Vacations Worldwide,Consumer Discretionary,"Hotels, Resorts & Cruise Lines","Orlando, Florida",view,1524358
@@ -563,7 +564,6 @@ VIAV,VIAVI Solutions,Information Technology,Communications Equipment,"Chandler, 
 VIR,"Vir Biotechnology, Inc.",Health Care,Biotechnology,"San Francisco, California",view,1706431
 VIRT,"Virtu Financial, Inc.",Financials,Financial Exchanges & Data,"New York City, New York",view,1592386
 VITL,"Vital Farms, Inc.",Consumer Staples,Agricultural Products & Services,"Austin, Texas",view,1579733
-VRE,"Veris Residential, Inc.",Real Estate,Office REITs,"Jersey City, New Jersey",view,924901
 VRRM,Verra Mobility Corporation,Industrials,Data Processing & Outsourced Services,"Mesa, Arizona",view,1682745
 VRTS,"Virtus Investment Partners, Inc.",Financials,Asset Management & Custody Banks,"Hartford, Connecticut",view,883237
 VSAT,"Viasat, Inc.",Information Technology,Communications Equipment,"Carlsbad, California",view,797721
