@@ -943,7 +943,6 @@ AMR,"Alpha Metallurgical Resources, Inc.",Materials,Steel,S&P SmallCap 600
 AMRX,Amneal Pharmaceuticals,Health Care,Pharmaceuticals,S&P SmallCap 600
 AMSF,"Amerisafe, Inc.",Financials,Property & Casualty Insurance,S&P SmallCap 600
 AMTM,Amentum,Industrials,Diversified Support Services,S&P SmallCap 600
-AMWD,American Woodmark Corp.,Industrials,Building Products,S&P SmallCap 600
 ANDE,"The Andersons, Inc.",Consumer Staples,Food Distributors,S&P SmallCap 600
 ANIP,"ANI Pharmaceuticals, Inc.",Health Care,Pharmaceuticals,S&P SmallCap 600
 AORT,Artivion,Health Care,Health Care Equipment,S&P SmallCap 600
@@ -1055,6 +1054,7 @@ CXM,"Sprinklr, Inc.",Information Technology,Application Software,S&P SmallCap 60
 CXW,CoreCivic,Industrials,Diversified Support Services,S&P SmallCap 600
 CZR,Caesars Entertainment,Consumer Discretionary,Casinos & Gaming,S&P SmallCap 600
 DAN,Dana Incorporated,Consumer Discretionary,Automotive Parts & Equipment,S&P SmallCap 600
+DAVE,"Dave, Inc.",Financials,Consumer Finance,S&P SmallCap 600
 DBD,Diebold Nixdorf,Information Technology,Electronic Equipment & Instruments,S&P SmallCap 600
 DCH,Dauch Corporation,Consumer Discretionary,Automotive Parts & Equipment,S&P SmallCap 600
 DCOM,"Dime Community Bancshares, Inc.",Financials,Regional Banks,S&P SmallCap 600
@@ -1085,6 +1085,7 @@ ENPH,Enphase Energy,Information Technology,Semiconductor Materials & Equipment,S
 ENR,Energizer,Consumer Staples,Household Products,S&P SmallCap 600
 ENVA,"Enova International, Inc.",Financials,Consumer Finance,S&P SmallCap 600
 EPAC,Enerpac Tool Group,Industrials,Industrial Machinery & Supplies & Components,S&P SmallCap 600
+EPAM,EPAM Systems,Information Technology,IT Consulting & Other Services,S&P SmallCap 600
 EPC,Edgewell Personal Care,Consumer Staples,Household Products,S&P SmallCap 600
 EPRT,"Essential Properties Realty Trust, Inc.",Real Estate,Diversified REITs,S&P SmallCap 600
 ESE,ESCO Technologies Inc.,Industrials,Industrial Machinery & Supplies & Components,S&P SmallCap 600
@@ -1407,7 +1408,6 @@ SPHR,Sphere Entertainment,Communication Services,Movies & Entertainment,S&P Smal
 SPNT,SiriusPoint Ltd.,Financials,Reinsurance,S&P SmallCap 600
 SPSC,"SPS Commerce, Inc.",Information Technology,Application Software,S&P SmallCap 600
 SRPT,Sarepta Therapeutics,Health Care,Biotechnology,S&P SmallCap 600
-SSTK,"Shutterstock, Inc.",Communication Services,Interactive Media & Services,S&P SmallCap 600
 STAA,STAAR Surgical Company,Health Care,Health Care Equipment,S&P SmallCap 600
 STBA,"S&T Bancorp, Inc.",Financials,Regional Banks,S&P SmallCap 600
 STC,Stewart Information Services Corporation,Financials,Property & Casualty Insurance,S&P SmallCap 600

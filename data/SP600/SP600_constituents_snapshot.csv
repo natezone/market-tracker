@@ -40,7 +40,6 @@ AMR,"Alpha Metallurgical Resources, Inc.",Materials,Steel,"Bristol, Tennessee",v
 AMRX,Amneal Pharmaceuticals,Health Care,Pharmaceuticals,"Bridgewater Township, New Jersey",view,1723128
 AMSF,"Amerisafe, Inc.",Financials,Property & Casualty Insurance,"DeRidder, Louisiana",view,1018979
 AMTM,Amentum,Industrials,Diversified Support Services,"Chantilly, Virginia",view,2011286
-AMWD,American Woodmark Corp.,Industrials,Building Products,"Winchester, Virginia",view,794619
 ANDE,"The Andersons, Inc.",Consumer Staples,Food Distributors,"Maumee, Ohio",view,821026
 ANIP,"ANI Pharmaceuticals, Inc.",Health Care,Pharmaceuticals,"Baudette, Minnesota",view,1023024
 AORT,Artivion,Health Care,Health Care Equipment,"Kennesaw, Georgia",view,784199
@@ -152,6 +151,7 @@ CXM,"Sprinklr, Inc.",Information Technology,Application Software,"New York City,
 CXW,CoreCivic,Industrials,Diversified Support Services,"Brentwood, Tennessee",view,1070985
 CZR,Caesars Entertainment,Consumer Discretionary,Casinos & Gaming,"Reno, Nevada",view,1590895
 DAN,Dana Incorporated,Consumer Discretionary,Automotive Parts & Equipment,"Maumee, Ohio",view,26780
+DAVE,"Dave, Inc.",Financials,Consumer Finance,"Los Angeles, California",view,1841408
 DBD,Diebold Nixdorf,Information Technology,Electronic Equipment & Instruments,"North Canton, Ohio",view,28823
 DCH,Dauch Corporation,Consumer Discretionary,Automotive Parts & Equipment,"Detroit, Michigan",view,1062231
 DCOM,"Dime Community Bancshares, Inc.",Financials,Regional Banks,"Hauppauge, New York",view,846617
@@ -182,6 +182,7 @@ ENPH,Enphase Energy,Information Technology,Semiconductor Materials & Equipment,"
 ENR,Energizer,Consumer Staples,Household Products,"St. Louis, Missouri",view,1632790
 ENVA,"Enova International, Inc.",Financials,Consumer Finance,"Chicago, Illinois",view,1529864
 EPAC,Enerpac Tool Group,Industrials,Industrial Machinery & Supplies & Components,"Menomonee Falls, Wisconsin",view,6955
+EPAM,EPAM Systems,Information Technology,IT Consulting & Other Services,"Newtown, Pennsylvania",view,1352010
 EPC,Edgewell Personal Care,Consumer Staples,Household Products,"Shelton, Connecticut",view,1096752
 EPRT,"Essential Properties Realty Trust, Inc.",Real Estate,Diversified REITs,"Princeton, New Jersey",view,1728951
 ESE,ESCO Technologies Inc.,Industrials,Industrial Machinery & Supplies & Components,"St. Louis, Missouri",view,866706
@@ -504,7 +505,6 @@ SPHR,Sphere Entertainment,Communication Services,Movies & Entertainment,"New Yor
 SPNT,SiriusPoint Ltd.,Financials,Reinsurance,"New York City, New York",view,1576018
 SPSC,"SPS Commerce, Inc.",Information Technology,Application Software,"Minneapolis, Minnesota",view,1092699
 SRPT,Sarepta Therapeutics,Health Care,Biotechnology,"Cambridge, Massachusetts",view,873303
-SSTK,"Shutterstock, Inc.",Communication Services,Interactive Media & Services,"New York City, New York",view,1549346
 STAA,STAAR Surgical Company,Health Care,Health Care Equipment,"Monrovia, California",view,718937
 STBA,"S&T Bancorp, Inc.",Financials,Regional Banks,"Indiana, Pennsylvania",view,719220
 STC,Stewart Information Services Corporation,Financials,Property & Casualty Insurance,"Houston, Texas",view,94344
