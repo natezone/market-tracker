@@ -57,6 +57,7 @@ jobs:
           INDEX: ${{ github.event.inputs.index || 'ALL' }}
         run: |
           echo "📊 Updating indices: $INDEX"
+          echo "⏱️  Fetching P/E ratios (may take 5-10 minutes)"
           python market_tracker.py --mode cli --index $INDEX
 
       - name: Commit updated CSV files

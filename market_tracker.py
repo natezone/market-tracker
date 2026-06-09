@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 
 # MUST load environment variables before any other imports that might use them
@@ -4227,13 +4227,9 @@ def run_cli(consecutive_days=7, index_key="SP500"):
 
     df_metrics = pd.DataFrame(metrics_rows)
     # Skip P/E fetching in CLI mode (too slow for ~1600 stocks)
-    # P/E ratios will be fetched on-demand in Streamlit when user needs them
-    if not os.environ.get('GITHUB_ACTIONS'):
-        print("\nFetching P/E ratios...")
-        df_metrics = fetch_pe_ratios(tickers, df_metrics)
-    else:
-        print("⏭️  Skipping P/E ratio fetch in GitHub Actions (will fetch on-demand in UI)")
-        df_metrics['pe_ratio'] = np.nan
+    # Fetch P/E ratios for all metrics 
+    print("\nFetching P/E ratios...")
+    df_metrics = fetch_pe_ratios(tickers, df_metrics)
 
     # Save to PostgreSQL
     print("\n" + "=" * 60)
