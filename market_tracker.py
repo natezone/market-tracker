@@ -2608,12 +2608,6 @@ def fetch_pe_ratios(tickers, metrics_df):
     Returns:
         Updated DataFrame with pe_ratio column
     """
-    # Skip if running in GitHub Actions (set by workflow)
-    if os.environ.get('GITHUB_ACTIONS'):
-        print("⏭️  Skipping P/E fetch (set to null)")
-        metrics_df['pe_ratio'] = np.nan
-        return metrics_df
-
     if VERBOSE:
         print(f"\nFetching P/E ratios for {len(tickers)} tickers...")
 
