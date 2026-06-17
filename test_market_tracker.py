@@ -189,17 +189,19 @@ class TestMultiIndexStructure(TestMarketTracker):
     """Test multi-index directory structure"""
     
     def test_index_directories_creation(self):
-        """Test that index-specific directories are created"""
+        """Test that centralized UNIFIED directory and index-specific metric directories are created"""
         indices = ['SP500', 'NASDAQ100', 'DOW30', 'COMBINED']
-        
+
+        # Test centralized UNIFIED history directory
+        unified_history_dir = os.path.join(self.test_dir, 'UNIFIED', 'history')
+        ensure_dir(unified_history_dir)
+        self.assertTrue(os.path.exists(unified_history_dir))
+
+        # Test that index-specific directories still exist for metrics
         for index in indices:
             index_dir = os.path.join(self.test_dir, index)
             ensure_dir(index_dir)
             self.assertTrue(os.path.exists(index_dir))
-            
-            history_dir = os.path.join(index_dir, 'history')
-            ensure_dir(history_dir)
-            self.assertTrue(os.path.exists(history_dir))
     
     def test_index_specific_file_paths(self):
         """Test that files are saved in correct index directories"""
@@ -1816,17 +1818,17 @@ class TestCLIIntegration(TestMarketTracker):
             self.skipTest(f"CLI test skipped due to: {e}")
     
     def test_cli_creates_index_specific_directories(self):
-        """Test that CLI creates correct directory structure for each index"""
+        """Test that CLI creates correct directory structure with centralized history"""
+        # Test centralized UNIFIED history directory
+        unified_history_dir = os.path.join(self.test_dir, 'UNIFIED', 'history')
+        mt.ensure_dir(unified_history_dir)
+        self.assertTrue(os.path.exists(unified_history_dir))
+
+        # Test that index-specific directories exist for metrics
         for index in ['SP500', 'SP400', 'SP600', 'NASDAQ100', 'DOW30', 'COMBINED']:
             index_dir = os.path.join(self.test_dir, index)
             mt.ensure_dir(index_dir)
-            
             self.assertTrue(os.path.exists(index_dir))
-            
-            # Check history subdirectory
-            history_dir = os.path.join(index_dir, 'history')
-            mt.ensure_dir(history_dir)
-            self.assertTrue(os.path.exists(history_dir))
 
 
 class TestDataExportAndFormating(TestMarketTracker):

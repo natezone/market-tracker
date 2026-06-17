@@ -4148,7 +4148,7 @@ def run_cli(consecutive_days=7, index_key="SP500"):
     hist = download_history(tickers, period=DOWNLOAD_PERIOD, interval="1d")
 
     metrics_rows = []
-    per_ticker_dir = os.path.join(index_data_dir, "history")
+    per_ticker_dir = os.path.join(DATA_DIR, "UNIFIED", "history")
     ensure_dir(per_ticker_dir)
 
     print(f"\nProcessing ticker data with {consecutive_days}-day consecutive analysis...")
@@ -4912,9 +4912,9 @@ def load_historical_data_global(index_key, tickers_subset=None, max_days=252):
     Returns:
         Dict of {ticker: DataFrame}
     """
-    hist_dir = os.path.join(DATA_DIR, index_key, "history")
+    hist_dir = os.path.join(DATA_DIR, "UNIFIED", "history")
     hist = {}
-    
+
     if not os.path.exists(hist_dir):
         return hist
     
@@ -5299,7 +5299,7 @@ def run_streamlit():
 
             # FALLBACK: If database fails completely, try CSV files
             if not hist:
-                hist_dir = os.path.join(DATA_DIR, index_key, "history")
+                hist_dir = os.path.join(DATA_DIR, "UNIFIED", "history")
                 if os.path.exists(hist_dir):
                     for file in os.listdir(hist_dir):
                         if file.endswith('.csv'):
@@ -5917,8 +5917,8 @@ def run_streamlit():
                 else:
                     chosen_ticker = st.selectbox("Select ticker to chart", options=tickers_list, key="ts_ticker_chart")
                 
-                # Load per-ticker CSV from data/<index>/history/<ticker>.csv and plot
-                ticker_csv_path = os.path.join(index_data_dir, "history", f"{chosen_ticker}.csv")
+                # Load per-ticker CSV from unified history directory and plot
+                ticker_csv_path = os.path.join(DATA_DIR, "UNIFIED", "history", f"{chosen_ticker}.csv")
                 plot_ticker_price_rsi(ticker_csv_path, chosen_ticker)
         else:
             st.info("No stocks match the selected criteria")
