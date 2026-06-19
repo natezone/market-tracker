@@ -82,7 +82,6 @@ BXP,"BXP, Inc.",Real Estate,Office REITs,S&P 500
 CHRW,C.H. Robinson,Industrials,Air Freight & Logistics,S&P 500
 CDNS,Cadence Design Systems,Information Technology,Application Software,"S&P 500, Nasdaq-100"
 CPT,Camden Property Trust,Real Estate,Multi-Family Residential REITs,S&P 500
-CPB,Campbell's Company (The),Consumer Staples,Packaged Foods & Meats,S&P 500
 COF,Capital One,Financials,Consumer Finance,S&P 500
 CAH,Cardinal Health,Health Care,Health Care Distributors,S&P 500
 CCL,Carnival Corporation,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",S&P 500
@@ -202,6 +201,7 @@ FITB,Fifth Third Bancorp,Financials,Regional Banks,S&P 500
 FSLR,First Solar,Information Technology,Semiconductors,S&P 500
 FE,FirstEnergy,Utilities,Electric Utilities,S&P 500
 FISV,Fiserv,Financials,Transaction & Payment Processing Services,S&P 500
+FLEX,Flex Ltd.,Information Technology,Electronic Manufacturing Services,"S&P 500, S&P MidCap 400"
 F,Ford Motor Company,Consumer Discretionary,Automobile Manufacturers,S&P 500
 FTNT,Fortinet,Information Technology,Systems Software,"S&P 500, Nasdaq-100"
 FTV,Fortive,Industrials,Industrial Machinery & Supplies & Components,S&P 500
@@ -301,6 +301,7 @@ MPC,Marathon Petroleum,Energy,Oil & Gas Refining & Marketing,S&P 500
 MAR,Marriott International,Consumer Discretionary,"Hotels, Resorts & Cruise Lines","S&P 500, Nasdaq-100"
 MRSH,Marsh McLennan,Financials,Insurance Brokers,S&P 500
 MLM,Martin Marietta Materials,Materials,Construction Materials,S&P 500
+MRVL,Marvell Technology,Information Technology,Semiconductors,"S&P 500, Nasdaq-100"
 MAS,Masco,Industrials,Building Products,S&P 500
 MA,Mastercard,Financials,Transaction & Payment Processing Services,S&P 500
 MKC,McCormick & Company,Consumer Staples,Packaged Foods & Meats,S&P 500
@@ -369,7 +370,6 @@ PM,Philip Morris International,Consumer Staples,Tobacco,S&P 500
 PSX,Phillips 66,Energy,Oil & Gas Refining & Marketing,S&P 500
 PNW,Pinnacle West Capital,Utilities,Multi-Utilities,S&P 500
 PNC,PNC Financial Services,Financials,Diversified Banks,S&P 500
-POOL,Pool Corporation,Consumer Discretionary,Distributors,S&P 500
 PPG,PPG Industries,Materials,Specialty Chemicals,S&P 500
 PPL,PPL Corporation,Utilities,Electric Utilities,S&P 500
 PFG,Principal Financial Group,Financials,Life & Health Insurance,S&P 500
@@ -644,7 +644,6 @@ FFIN,First Financial Bankshares,Financials,Regional Banks,S&P MidCap 400
 FHI,Federated Hermes,Financials,Asset Management & Custody Banks,S&P MidCap 400
 FHN,First Horizon,Financials,Regional Banks,S&P MidCap 400
 FIVE,Five Below,Consumer Discretionary,Specialty Stores,S&P MidCap 400
-FLEX,Flex Ltd.,Information Technology,Electronic Manufacturing Services,S&P MidCap 400
 FLG,Flagstar Bank,Financials,Regional Banks,S&P MidCap 400
 FLR,Fluor,Industrials,Construction & Engineering,S&P MidCap 400
 FLS,Flowserve,Industrials,Industrial Machinery & Supplies & Components,S&P MidCap 400
@@ -1511,7 +1510,6 @@ ASML,ASML Holding,Industrial Machinery,Technology,Nasdaq-100
 CCEP,Coca-Cola Europacific Partners,Soft Drinks,Consumer Staples,Nasdaq-100
 FER,Ferrovial,"Military, Government, Technical",Industrials,Nasdaq-100
 INSM,Insmed Incorporated,Biotechnology,Health Care,Nasdaq-100
-MRVL,Marvell Technology,Semiconductors,Technology,Nasdaq-100
 MELI,Mercado Libre,Catalog/Specialty Distribution,Consumer Discretionary,Nasdaq-100
 MSTR,MicroStrategy,Computer Software,Technology,Nasdaq-100
 PDD,PDD Holdings,EDP Services,Technology,Nasdaq-100
