@@ -201,7 +201,7 @@ FITB,Fifth Third Bancorp,Financials,Regional Banks,S&P 500
 FSLR,First Solar,Information Technology,Semiconductors,S&P 500
 FE,FirstEnergy,Utilities,Electric Utilities,S&P 500
 FISV,Fiserv,Financials,Transaction & Payment Processing Services,S&P 500
-FLEX,Flex Ltd.,Information Technology,Electronic Manufacturing Services,"S&P 500, S&P MidCap 400"
+FLEX,Flex Ltd.,Information Technology,Electronic Manufacturing Services,S&P 500
 F,Ford Motor Company,Consumer Discretionary,Automobile Manufacturers,S&P 500
 FTNT,Fortinet,Information Technology,Systems Software,"S&P 500, Nasdaq-100"
 FTV,Fortive,Industrials,Industrial Machinery & Supplies & Components,S&P 500
@@ -550,9 +550,7 @@ BIO,Bio-Rad Laboratories,Health Care,Life Sciences Tools & Services,S&P MidCap 4
 BJ,BJ's Wholesale Club,Consumer Staples,Consumer Staples Merchandise Retail,S&P MidCap 400
 BKH,Black Hills Corporation,Utilities,Multi-Utilities,S&P MidCap 400
 BLD,TopBuild Corp.,Consumer Discretionary,Homebuilding,S&P MidCap 400
-BLKB,Blackbaud,Information Technology,Application Software,S&P MidCap 400
 BMRN,BioMarin Pharmaceutical,Health Care,Biotechnology,S&P MidCap 400
-BRBR,BellRing Brands,Consumer Staples,Packaged Foods & Meats,S&P MidCap 400
 BRKR,Bruker,Health Care,Health Care Equipment,S&P MidCap 400
 BROS,Dutch Bros Inc.,Consumer Discretionary,Restaurants,S&P MidCap 400
 BRX,Brixmor Property Group,Real Estate,Retail REITs,S&P MidCap 400
@@ -568,6 +566,7 @@ CAVA,Cava Group,Consumer Discretionary,Restaurants,S&P MidCap 400
 CBSH,Commerce Bancshares,Financials,Regional Banks,S&P MidCap 400
 CBT,Cabot Corp,Materials,Diversified Chemicals,S&P MidCap 400
 CCK,Crown Holdings,Materials,Paper & Plastic Packaging Products & Materials,S&P MidCap 400
+CDE,Coeur Mining,Materials,Gold,S&P MidCap 400
 CDP,COPT Defense Properties,Real Estate,Office REITs,S&P MidCap 400
 CELH,Celsius Holdings,Consumer Staples,Soft Drinks & Non-alcoholic Beverages,S&P MidCap 400
 CFR,Frost Bank,Financials,Regional Banks,S&P MidCap 400
@@ -585,11 +584,9 @@ CNH,CNH Industrial,Industrials,Agricultural & Farm Machinery,S&P MidCap 400
 CNM,Core & Main,Industrials,Trading Companies & Distributors,S&P MidCap 400
 CNO,CNO Financial Group,Financials,Life & Health Insurance,S&P MidCap 400
 CNX,CNX Resources,Energy,Oil & Gas Exploration & Production,S&P MidCap 400
-CNXC,Concentrix,Industrials,Data Processing & Outsourced Services,S&P MidCap 400
 COKE,Coca-Cola Consolidated,Consumer Staples,Soft Drinks & Non-alcoholic Beverages,S&P MidCap 400
 COLB,Columbia Banking System,Financials,Regional Banks,S&P MidCap 400
 COLM,Columbia Sportswear,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",S&P MidCap 400
-COTY,Coty,Consumer Staples,Personal Care Products,S&P MidCap 400
 CPRI,Capri Holdings,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",S&P MidCap 400
 CR,Crane,Industrials,Industrial Machinery & Supplies & Components,S&P MidCap 400
 CRBG,Corebridge Financial,Financials,Asset Management & Custody Banks,S&P MidCap 400
@@ -805,6 +802,7 @@ RLI,RLI Corp.,Financials,Property & Casualty Insurance,S&P MidCap 400
 RMBS,Rambus,Information Technology,Semiconductors,S&P MidCap 400
 RNR,RenaissanceRe,Financials,Reinsurance,S&P MidCap 400
 ROIV,Roivant Sciences,Health Care,Biotechnology,S&P MidCap 400
+ROKU,"Roku, Inc.",Communication Services,Movies & Entertainment,S&P MidCap 400
 RPM,RPM International,Materials,Specialty Chemicals,S&P MidCap 400
 RRC,Range Resources,Energy,Oil & Gas Exploration & Production,S&P MidCap 400
 RRX,Regal Rexnord,Industrials,Electrical Components & Equipment,S&P MidCap 400
@@ -814,6 +812,7 @@ RYN,Rayonier,Real Estate,Timber REITs,S&P MidCap 400
 SAIA,Saia,Industrials,Cargo Ground Transportation,S&P MidCap 400
 SAIC,Science Applications Intl Corp,Industrials,Diversified Support Services,S&P MidCap 400
 SAM,Boston Beer Company,Consumer Staples,Brewers,S&P MidCap 400
+SANM,Sanmina Corporation,Information Technology,Electronic Manufacturing Services,"S&P MidCap 400, S&P SmallCap 600"
 SARO,StandardAero,Industrials,Aerospace & Defense,S&P MidCap 400
 SBRA,Sabra Health Care REIT,Real Estate,Health Care REITs,S&P MidCap 400
 SCI,Service Corp Intl,Consumer Discretionary,Specialized Consumer Services,S&P MidCap 400
@@ -829,6 +828,7 @@ SLAB,Silicon Labs,Information Technology,Semiconductors,S&P MidCap 400
 SLGN,Silgan Holdings,Materials,"Metal, Glass & Plastic Containers",S&P MidCap 400
 SLM,SLM Corp,Financials,Consumer Finance,S&P MidCap 400
 SMG,Scotts Miracle-Gro Company,Materials,Fertilizers & Agricultural Chemicals,S&P MidCap 400
+SMTC,Semtech,Information Technology,Semiconductors,"S&P MidCap 400, S&P SmallCap 600"
 SN,SharkNinja,Consumer Discretionary,Household Appliances,S&P MidCap 400
 SNX,TD Synnex,Information Technology,Technology Distributors,S&P MidCap 400
 SOLS,Solstice Advanced Materials,Materials,Specialty Chemicals,S&P MidCap 400
@@ -872,6 +872,7 @@ UTHR,United Therapeutics,Health Care,Biotechnology,S&P MidCap 400
 VAL,Valaris,Energy,Oil & Gas Drilling,S&P MidCap 400
 VC,Visteon,Consumer Discretionary,Automotive Parts & Equipment,S&P MidCap 400
 VFC,VF Corporation,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",S&P MidCap 400
+VIAV,Viavi Solutions,Information Technology,Communications Equipment,"S&P MidCap 400, S&P SmallCap 600"
 VICR,Vicor Corporation,Industrials,Electrical Components & Equipment,S&P MidCap 400
 VLY,Valley Bank,Financials,Regional Banks,S&P MidCap 400
 VMI,Valmont Industries,Industrials,Industrial Machinery & Supplies & Components,S&P MidCap 400
@@ -1373,7 +1374,6 @@ SAFE,"Safehold, Inc.",Real Estate,Other Specialized REITs,S&P SmallCap 600
 SABR,Sabre,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",S&P SmallCap 600
 SAFT,"Safety Insurance Group, Inc.",Financials,Property & Casualty Insurance,S&P SmallCap 600
 SAH,"Sonic Automotive, Inc.",Consumer Discretionary,Automotive Retail,S&P SmallCap 600
-SANM,Sanmina Corporation,Information Technology,Electronic Manufacturing Services,S&P SmallCap 600
 SBCF,Seacoast Banking Corporation of Florida,Financials,Regional Banks,S&P SmallCap 600
 SBH,"Sally Beauty Holdings, Inc.",Consumer Discretionary,Specialty Stores,S&P SmallCap 600
 SBSI,"Southside Bancshares, Inc.",Financials,Regional Banks,S&P SmallCap 600
@@ -1399,7 +1399,6 @@ SLVM,Sylvamo Corp.,Materials,Paper Products,S&P SmallCap 600
 SM,SM Energy Company,Energy,Oil & Gas Exploration & Production,S&P SmallCap 600
 SMP,"Standard Motor Products, Inc.",Consumer Discretionary,Automotive Parts & Equipment,S&P SmallCap 600
 SMPL,Simply Good Foods Company,Consumer Staples,Packaged Foods & Meats,S&P SmallCap 600
-SMTC,Semtech Corporation,Information Technology,Semiconductors,S&P SmallCap 600
 SNDR,Schneider National,Industrials,Cargo Ground Transportation,S&P SmallCap 600
 SNEX,StoneX Group Inc.,Financials,Investment Banking & Brokerage,S&P SmallCap 600
 SONO,"Sonos, Inc.",Consumer Discretionary,Consumer Electronics,S&P SmallCap 600
@@ -1462,7 +1461,6 @@ VCTR,"Victory Capital Holdings, Inc.",Financials,Asset Management & Custody Bank
 VCYT,"Veracyte, Inc.",Health Care,Health Care Services,S&P SmallCap 600
 VECO,Veeco Instruments Inc.,Information Technology,Semiconductor Materials & Equipment,S&P SmallCap 600
 VGNT,Versigent PLC,Consumer Discretionary,Other Specialty Retail,S&P SmallCap 600
-VIAV,VIAVI Solutions,Information Technology,Communications Equipment,S&P SmallCap 600
 VIR,"Vir Biotechnology, Inc.",Health Care,Biotechnology,S&P SmallCap 600
 VIRT,"Virtu Financial, Inc.",Financials,Financial Exchanges & Data,S&P SmallCap 600
 VITL,"Vital Farms, Inc.",Consumer Staples,Agricultural Products & Services,S&P SmallCap 600
