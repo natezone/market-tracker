@@ -98,7 +98,7 @@ CNP,CenterPoint Energy,Utilities,Multi-Utilities,S&P 500
 CF,CF Industries,Materials,Fertilizers & Agricultural Chemicals,S&P 500
 CRL,Charles River Laboratories,Health Care,Life Sciences Tools & Services,S&P 500
 SCHW,Charles Schwab Corporation,Financials,Investment Banking & Brokerage,S&P 500
-CHTR,Charter Communications,Communication Services,Cable & Satellite,"S&P 500, Nasdaq-100"
+CHTR,Charter Communications,Communication Services,Cable & Satellite,S&P 500
 CVX,Chevron Corporation,Energy,Integrated Oil & Gas,"S&P 500, Dow 30"
 CMG,Chipotle Mexican Grill,Consumer Discretionary,Restaurants,S&P 500
 CB,Chubb Limited,Financials,Property & Casualty Insurance,S&P 500
@@ -114,7 +114,7 @@ CLX,Clorox,Consumer Staples,Household Products,S&P 500
 CME,CME Group,Financials,Financial Exchanges & Data,S&P 500
 CMS,CMS Energy,Utilities,Multi-Utilities,S&P 500
 KO,Coca-Cola Company (The),Consumer Staples,Soft Drinks & Non-alcoholic Beverages,"S&P 500, Dow 30"
-CTSH,Cognizant,Information Technology,IT Consulting & Other Services,"S&P 500, Nasdaq-100"
+CTSH,Cognizant,Information Technology,IT Consulting & Other Services,S&P 500
 COHR,Coherent Corp.,Information Technology,Electronic Components,S&P 500
 COIN,Coinbase,Financials,Financial Exchanges & Data,S&P 500
 CL,Colgate-Palmolive,Consumer Staples,Household Products,S&P 500
@@ -436,7 +436,7 @@ TRGP,Targa Resources,Energy,Oil & Gas Storage & Transportation,S&P 500
 TGT,Target Corporation,Consumer Staples,Consumer Staples Merchandise Retail,S&P 500
 TEL,TE Connectivity,Information Technology,Electronic Manufacturing Services,S&P 500
 TDY,Teledyne Technologies,Information Technology,Electronic Equipment & Instruments,S&P 500
-TER,Teradyne,Information Technology,Semiconductor Materials & Equipment,S&P 500
+TER,Teradyne,Information Technology,Semiconductor Materials & Equipment,"S&P 500, Nasdaq-100"
 TSLA,"Tesla, Inc.",Consumer Discretionary,Automobile Manufacturers,"S&P 500, Nasdaq-100"
 TXN,Texas Instruments,Information Technology,Semiconductors,"S&P 500, Nasdaq-100"
 TPL,Texas Pacific Land Corporation,Energy,Oil & Gas Exploration & Production,S&P 500
@@ -468,7 +468,7 @@ VEEV,Veeva Systems,Health Care,Health Care Technology,S&P 500
 VTR,Ventas,Real Estate,Health Care REITs,S&P 500
 VLTO,Veralto,Industrials,Environmental & Facilities Services,S&P 500
 VRSN,Verisign,Information Technology,Internet Services & Infrastructure,S&P 500
-VRSK,Verisk Analytics,Industrials,Research & Consulting Services,"S&P 500, Nasdaq-100"
+VRSK,Verisk Analytics,Industrials,Research & Consulting Services,S&P 500
 VZ,Verizon,Communication Services,Integrated Telecommunication Services,"S&P 500, Dow 30"
 VRTX,Vertex Pharmaceuticals,Health Care,Biotechnology,"S&P 500, Nasdaq-100"
 VRT,Vertiv,Industrials,Electrical Components & Equipment,S&P 500
@@ -1505,12 +1505,14 @@ ZWS,Zurn Elkay Water Solutions Corp.,Industrials,Industrial Machinery & Supplies
 ALNY,Alnylam Pharmaceuticals,Biotechnology,Health Care,Nasdaq-100
 ARM,Arm Holdings,Semiconductors,Technology,Nasdaq-100
 ASML,ASML Holding,Industrial Machinery,Technology,Nasdaq-100
+ALAB,Astera Labs,Semiconductors,Technology,Nasdaq-100
 CCEP,Coca-Cola Europacific Partners,Soft Drinks,Consumer Staples,Nasdaq-100
+CRWV,CoreWeave,Computer Services,Technology,Nasdaq-100
 FER,Ferrovial,"Military, Government, Technical",Industrials,Nasdaq-100
-INSM,Insmed Incorporated,Biotechnology,Health Care,Nasdaq-100
 MELI,Mercado Libre,Catalog/Specialty Distribution,Consumer Discretionary,Nasdaq-100
-MSTR,MicroStrategy,Computer Software,Technology,Nasdaq-100
+MSTR,MicroStrategy,Software,Technology,Nasdaq-100
+NBIS,Nebius Group,Computer Services,Technology,Nasdaq-100
 PDD,PDD Holdings,EDP Services,Technology,Nasdaq-100
-SHOP,Shopify,Computer Software,Technology,Nasdaq-100
-TRI,Thomson Reuters,Computer Software,Technology,Nasdaq-100
-ZS,Zscaler,EDP Services,Technology,Nasdaq-100
+RKLB,Rocket Lab,Aerospace,Industrials,Nasdaq-100
+SHOP,Shopify,Software,Technology,Nasdaq-100
+TRI,Thomson Reuters,Software,Technology,Nasdaq-100
