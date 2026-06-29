@@ -18,7 +18,7 @@ ALGN,Align Technology,Health Care,Health Care Supplies,S&P 500
 ALLE,Allegion,Industrials,Building Products,S&P 500
 LNT,Alliant Energy,Utilities,Electric Utilities,S&P 500
 ALL,Allstate,Financials,Property & Casualty Insurance,S&P 500
-GOOGL,Alphabet Inc. (Class A),Communication Services,Interactive Media & Services,"S&P 500, Nasdaq-100"
+GOOGL,Alphabet Inc. (Class A),Communication Services,Interactive Media & Services,"S&P 500, Nasdaq-100, Dow 30"
 GOOG,Alphabet Inc. (Class C),Communication Services,Interactive Media & Services,"S&P 500, Nasdaq-100"
 MO,Altria,Consumer Staples,Tobacco,S&P 500
 AMZN,Amazon,Consumer Discretionary,Broadline Retail,"S&P 500, Nasdaq-100, Dow 30"
@@ -469,7 +469,7 @@ VTR,Ventas,Real Estate,Health Care REITs,S&P 500
 VLTO,Veralto,Industrials,Environmental & Facilities Services,S&P 500
 VRSN,Verisign,Information Technology,Internet Services & Infrastructure,S&P 500
 VRSK,Verisk Analytics,Industrials,Research & Consulting Services,S&P 500
-VZ,Verizon,Communication Services,Integrated Telecommunication Services,"S&P 500, Dow 30"
+VZ,Verizon,Communication Services,Integrated Telecommunication Services,S&P 500
 VRTX,Vertex Pharmaceuticals,Health Care,Biotechnology,"S&P 500, Nasdaq-100"
 VRT,Vertiv,Industrials,Electrical Components & Equipment,S&P 500
 VTRS,Viatris,Health Care,Pharmaceuticals,S&P 500
