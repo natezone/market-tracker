@@ -120,7 +120,6 @@ COIN,Coinbase,Financials,Financial Exchanges & Data,S&P 500
 CL,Colgate-Palmolive,Consumer Staples,Household Products,S&P 500
 CMCSA,Comcast,Communication Services,Cable & Satellite,"S&P 500, Nasdaq-100"
 FIX,Comfort Systems USA,Industrials,Construction & Engineering,S&P 500
-CAG,Conagra Brands,Consumer Staples,Packaged Foods & Meats,S&P 500
 COP,ConocoPhillips,Energy,Oil & Gas Exploration & Production,S&P 500
 ED,Consolidated Edison,Utilities,Multi-Utilities,S&P 500
 STZ,Constellation Brands,Consumer Staples,Distillers & Vintners,S&P 500
@@ -235,7 +234,8 @@ HSY,Hershey Company (The),Consumer Staples,Packaged Foods & Meats,S&P 500
 HPE,Hewlett Packard Enterprise,Information Technology,"Technology Hardware, Storage & Peripherals",S&P 500
 HLT,Hilton Worldwide,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",S&P 500
 HD,Home Depot (The),Consumer Discretionary,Home Improvement Retail,"S&P 500, Dow 30"
-HON,Honeywell,Industrials,Industrial Conglomerates,"S&P 500, Nasdaq-100, Dow 30"
+HONA,Honeywell Aerospace,Industrials,Aerospace & Defense,S&P 500
+HON,Honeywell Technologies,Industrials,Industrial Conglomerates,"S&P 500, Nasdaq-100, Dow 30"
 HRL,Hormel Foods,Consumer Staples,Packaged Foods & Meats,S&P 500
 HST,Host Hotels & Resorts,Real Estate,Hotel & Resort REITs,S&P 500
 HWM,Howmet Aerospace,Industrials,Aerospace & Defense,S&P 500
@@ -1283,6 +1283,7 @@ NSIT,"Insight Enterprises, Inc.",Industrials,Technology Distributors,S&P SmallCa
 NSP,Insperity,Industrials,Human Resource & Employment Services,S&P SmallCap 600
 NSSC,Napco Security Technologies,Information Technology,Electronic Equipment & Instruments,S&P SmallCap 600
 NTCT,"NETSCOUT Systems, Inc.",Information Technology,Communications Equipment,S&P SmallCap 600
+NTST,NETSTREIT Corp.,Financials,Mortgage REITs,S&P SmallCap 600
 NWBI,"Northwest Bancshares, Inc.",Financials,Regional Banks,S&P SmallCap 600
 NWL,Newell Brands,Consumer Discretionary,Housewares & Specialties,S&P SmallCap 600
 NWN,NW Natural,Utilities,Gas Utilities,S&P SmallCap 600
@@ -1326,7 +1327,6 @@ PMT,PennyMac Mortgage Investment Trust,Real Estate,Mortgage REITs,S&P SmallCap 6
 POWI,Power Integrations,Information Technology,Semiconductors,S&P SmallCap 600
 POWL,"Powell Industries, Inc.",Industrials,Electrical Components & Equipment,S&P SmallCap 600
 PPLI,People Inc.,Communication Services,Interactive Media & Services,S&P SmallCap 600
-PRA,ProAssurance Corporation,Financials,Property & Casualty Insurance,S&P SmallCap 600
 PRAA,"PRA Group, Inc.",Financials,Consumer Finance,S&P SmallCap 600
 PRDO,Perdoceo Education Corp.,Consumer Discretionary,Education Services,S&P SmallCap 600
 PRG,"PROG Holdings, Inc.",Financials,Consumer Finance,S&P SmallCap 600
