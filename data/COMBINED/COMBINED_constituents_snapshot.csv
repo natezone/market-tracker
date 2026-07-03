@@ -951,7 +951,6 @@ APAM,"Artisan Partners Asset Management, Inc.",Financials,Asset Management & Cus
 APLE,"Apple Hospitality REIT, Inc.",Real Estate,Hotel & Resort REITs,S&P SmallCap 600
 APOG,"Apogee Enterprises, Inc.",Industrials,Building Products,S&P SmallCap 600
 ARCB,ArcBest Corp.,Industrials,Cargo Ground Transportation,S&P SmallCap 600
-ARI,Apollo Commercial Real Estate Finance,Real Estate,Mortgage REITs,S&P SmallCap 600
 ARLO,Arlo Technologies,Information Technology,Communications Equipment,S&P SmallCap 600
 AROC,"Archrock, Inc.",Energy,Oil & Gas Equipment & Services,S&P SmallCap 600
 ARR,Armour Residential REIT,Real Estate,Mortgage REITs,S&P SmallCap 600
@@ -994,6 +993,7 @@ BTSG,"BrightSpring Health Services, Inc.",Health Care,Health Care Services,S&P S
 BTU,"Peabody Energy, Inc.",Energy,Coal & Consumable Fuels,S&P SmallCap 600
 BXMT,"Blackstone Mortgage Trust, Inc.",Financials,Mortgage REITs,S&P SmallCap 600
 CABO,Cable One,Communication Services,Cable & Satellite,S&P SmallCap 600
+CAG,Conagra Brands,Consumer Staples,Packaged Foods & Meats,S&P SmallCap 600
 CAKE,"The Cheesecake Factory, Inc.",Consumer Discretionary,Restaurants,S&P SmallCap 600
 CALM,"Cal-Maine Foods, Inc.",Consumer Staples,Packaged Foods & Meats,S&P SmallCap 600
 CALX,Calix,Information Technology,Application Software,S&P SmallCap 600
@@ -1123,7 +1123,6 @@ FULT,Fulton Financial Corporation,Financials,Regional Banks,S&P SmallCap 600
 FUN,Six Flags,Consumer Discretionary,Leisure Facilities,S&P SmallCap 600
 FWRD,Forward Air Corp.,Industrials,Air Freight & Logistics,S&P SmallCap 600
 GBX,"The Greenbrier Companies, Inc.",Industrials,Construction Machinery & Heavy Transportation Equipment,S&P SmallCap 600
-GDYN,"Grid Dynamics Holdings, Inc.",Information Technology,IT Consulting & Other Services,S&P SmallCap 600
 GEO,"GEO Group, Inc.",Industrials,Environmental & Facilities Services,S&P SmallCap 600
 GFF,Griffon Corporation,Industrials,Building Products,S&P SmallCap 600
 GIII,"G-III Apparel Group, Ltd.",Consumer Discretionary,"Apparel, Accessories & Luxury Goods",S&P SmallCap 600
@@ -1275,6 +1274,7 @@ NEO,"NeoGenomics Laboratories, Inc.",Health Care,Health Care Services,S&P SmallC
 NEOG,Neogen,Health Care,Health Care Supplies,S&P SmallCap 600
 NGVT,"Ingevity, Corp.",Materials,Specialty Chemicals,S&P SmallCap 600
 NHC,"National Healthcare, Corp.",Health Care,Health Care Facilities,S&P SmallCap 600
+NHI,"National Health Investors, Inc.",Real Estate,Health Care REITs,S&P SmallCap 600
 NMIH,"NMI Holdings, Inc.",Financials,Commercial & Residential Mortgage Finance,S&P SmallCap 600
 NOG,"Northern Oil and Gas, Inc.",Energy,Oil & Gas Exploration & Production,S&P SmallCap 600
 NPK,"National Presto Industries, Inc.",Industrials,Aerospace & Defense,S&P SmallCap 600
