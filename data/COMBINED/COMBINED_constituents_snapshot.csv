@@ -516,6 +516,7 @@ AIT,Applied Industrial Technologies,Industrials,Trading Companies & Distributors
 ALGM,Allegro MicroSystems,Information Technology,Semiconductors,S&P MidCap 400
 ALK,Alaska Air Group,Industrials,Passenger Airlines,S&P MidCap 400
 ALLY,Ally Financial,Financials,Consumer Finance,S&P MidCap 400
+ALSN,Allison Transmission,Industrials,Construction Machinery & Heavy Transportation Equipment,S&P MidCap 400
 ALV,Autoliv,Consumer Discretionary,Automotive Parts & Equipment,S&P MidCap 400
 AM,Antero Midstream,Energy,Oil & Gas Storage & Transportation,S&P MidCap 400
 AMG,Affiliated Managers Group,Financials,Asset Management & Custody Banks,S&P MidCap 400
@@ -663,7 +664,6 @@ GME,GameStop,Consumer Discretionary,Computer & Electronics Retail,S&P MidCap 400
 GMED,Globus Medical,Health Care,Health Care Equipment,S&P MidCap 400
 GNTX,Gentex,Consumer Discretionary,Automotive Parts & Equipment,S&P MidCap 400
 GPK,Graphic Packaging,Materials,Paper & Plastic Packaging Products & Materials,S&P MidCap 400
-GT,Goodyear Tire & Rubber,Consumer Discretionary,Tires & Rubber,S&P MidCap 400
 GTLS,Chart Industries,Industrials,Industrial Machinery & Supplies & Components,S&P MidCap 400
 GWRE,Guidewire Software,Information Technology,Application Software,S&P MidCap 400
 GXO,GXO Logistics,Industrials,Air Freight & Logistics,S&P MidCap 400
@@ -712,7 +712,7 @@ LFUS,Littelfuse,Information Technology,Electronic Components,S&P MidCap 400
 LIVN,LivaNova,Health Care,Health Care Equipment,S&P MidCap 400
 LNTH,Lantheus Holdings,Health Care,Health Care Supplies,S&P MidCap 400
 LOPE,Grand Canyon Education,Consumer Discretionary,Education Services,S&P MidCap 400
-LPX,Louisiana-Pacific,Materials,Forest Products,S&P MidCap 400
+LPX,Louisiana-Pacific,Industrials,Building Products,S&P MidCap 400
 LSCC,Lattice Semiconductor,Information Technology,Semiconductors,S&P MidCap 400
 LSTR,Landstar System,Industrials,Cargo Ground Transportation,S&P MidCap 400
 M,Macy's,Consumer Discretionary,Broadline Retail,S&P MidCap 400
@@ -778,7 +778,7 @@ PEGA,Pegasystems,Information Technology,Application Software,S&P MidCap 400
 PEN,"Penumbra, Inc.",Health Care,Health Care Equipment,S&P MidCap 400
 PFGC,Performance Food Group,Consumer Staples,Food Distributors,S&P MidCap 400
 PII,Polaris,Consumer Discretionary,Leisure Products,S&P MidCap 400
-PINS,Pinterest,Communication Services,,S&P MidCap 400
+PINS,Pinterest,Communication Services,Interactive Home Entertainment,S&P MidCap 400
 PK,Park Hotels & Resorts,Real Estate,Hotel & Resort REITs,S&P MidCap 400
 PLNT,Planet Fitness,Consumer Discretionary,Leisure Facilities,S&P MidCap 400
 PNFP,Pinnacle Financial Partners,Financials,Regional Banks,S&P MidCap 400
@@ -864,7 +864,7 @@ TXRH,Texas Roadhouse,Consumer Discretionary,Restaurants,S&P MidCap 400
 UBSI,United Bankshares,Financials,Regional Banks,S&P MidCap 400
 UFPI,UFP Industries,Industrials,Building Products,S&P MidCap 400
 UGI,UGI Corp,Utilities,Gas Utilities,S&P MidCap 400
-ULS,UL Solutions,Industrials,,S&P MidCap 400
+ULS,UL Solutions,Industrials,Research & Consulting Services,S&P MidCap 400
 UMBF,UMB Financial Corp.,Financials,Regional Banks,S&P MidCap 400
 UNM,Unum,Financials,Life & Health Insurance,S&P MidCap 400
 USFD,US Foods,Consumer Staples,Food Distributors,S&P MidCap 400
@@ -1014,7 +1014,6 @@ CERT,"Certara, Inc.",Health Care,Health Care Technology,S&P SmallCap 600
 CFFN,Capitol Federal Savings Bank,Financials,Regional Banks,S&P SmallCap 600
 CHCO,City Holding Company,Financials,Regional Banks,S&P SmallCap 600
 CHEF,"Chefs' Warehouse, Inc.",Consumer Staples,Food Distributors,S&P SmallCap 600
-CLB,Core Laboratories,Energy,Oil & Gas Equipment & Services,S&P SmallCap 600
 CLSK,"CleanSpark, Inc.",Information Technology,Internet Services & Infrastructure,S&P SmallCap 600
 CNK,"Cinemark Holdings, Inc.",Communication Services,Movies & Entertainment,S&P SmallCap 600
 CNMD,CONMED Corporation,Health Care,Health Care Equipment,S&P SmallCap 600
@@ -1133,6 +1132,7 @@ GO,Grocery Outlet,Consumer Staples,Food Retail,S&P SmallCap 600
 GOGO,"Gogo, Inc.",Communication Services,Wireless Telecommunication Services,S&P SmallCap 600
 GOLF,Acushnet Company,Consumer Discretionary,Leisure Products,S&P SmallCap 600
 GPI,"Group 1 Automotive, Inc.",Consumer Discretionary,Automotive Retail,S&P SmallCap 600
+GPOR,Gulfport Energy Corporation,Energy,Oil & Gas Exploration & Production,S&P SmallCap 600
 GRBK,"Green Brick Partners, Inc.",Consumer Discretionary,Homebuilding,S&P SmallCap 600
 GSHD,"Goosehead Insurance, Inc.",Financials,Insurance Brokers,S&P SmallCap 600
 GTES,Gates Corporation,Industrials,Industrial Machinery & Supplies & Components,S&P SmallCap 600
@@ -1233,6 +1233,7 @@ MARA,"MARA Holdings, Inc.",Information Technology,Internet Services & Infrastruc
 MATW,Matthews International Corporation,Consumer Discretionary,Specialized Consumer Services,S&P SmallCap 600
 MATX,"Matson, Inc.",Industrials,Marine Transportation,S&P SmallCap 600
 MBC,"MasterBrand, Inc.",Industrials,Building Products,S&P SmallCap 600
+MBGL,"Mobility Global, Inc.",Industrials,Data Processing & Outsourced Services,S&P SmallCap 600
 MBIN,Merchants Bancorp,Financials,Regional Banks,S&P SmallCap 600
 MC,Moelis & Company,Financials,Investment Banking & Brokerage,S&P SmallCap 600
 MCRI,"Monarch Casino & Resort, Inc.",Consumer Discretionary,Casinos & Gaming,S&P SmallCap 600
@@ -1382,7 +1383,6 @@ SCL,Stepan Company,Materials,Specialty Chemicals,S&P SmallCap 600
 SCSC,"ScanSource, Inc.",Information Technology,Technology Distributors,S&P SmallCap 600
 SDGR,"Schrödinger, Inc.",Health Care,Health Care Services,S&P SmallCap 600
 SEDG,SolarEdge,Information Technology,Semiconductor Materials & Equipment,S&P SmallCap 600
-SEM,"Select Medical Holdings, Corp.",Health Care,Health Care Facilities,S&P SmallCap 600
 SEZL,Sezzle,Financials,Transaction & Payment Processing Services,S&P SmallCap 600
 SFBS,"ServisFirst Bancshares, Inc.",Financials,Regional Banks,S&P SmallCap 600
 SFNC,Simmons First National Corporation,Financials,Regional Banks,S&P SmallCap 600
