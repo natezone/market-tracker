@@ -48,7 +48,6 @@ APAM,"Artisan Partners Asset Management, Inc.",Financials,Asset Management & Cus
 APLE,"Apple Hospitality REIT, Inc.",Real Estate,Hotel & Resort REITs,"Richmond, Virginia",view,1418121
 APOG,"Apogee Enterprises, Inc.",Industrials,Building Products,"Minneapolis, Minnesota",view,6845
 ARCB,ArcBest Corp.,Industrials,Cargo Ground Transportation,"Fort Smith, Arkansas",view,894405
-ARI,Apollo Commercial Real Estate Finance,Real Estate,Mortgage REITs,"New York City, New York",view,1467760
 ARLO,Arlo Technologies,Information Technology,Communications Equipment,"San Jose, California",view,1736946
 AROC,"Archrock, Inc.",Energy,Oil & Gas Equipment & Services,"Houston, Texas",view,1389050
 ARR,Armour Residential REIT,Real Estate,Mortgage REITs,"Vero Beach, Florida",view,1428205
@@ -91,6 +90,7 @@ BTSG,"BrightSpring Health Services, Inc.",Health Care,Health Care Services,"Loui
 BTU,"Peabody Energy, Inc.",Energy,Coal & Consumable Fuels,"St. Louis, Missouri",view,1064728
 BXMT,"Blackstone Mortgage Trust, Inc.",Financials,Mortgage REITs,"New York City, New York",view,1061630
 CABO,Cable One,Communication Services,Cable & Satellite,"Phoenix, Arizona",view,1632127
+CAG,Conagra Brands,Consumer Staples,Packaged Foods & Meats,"Chicago, Illinois",view,23217
 CAKE,"The Cheesecake Factory, Inc.",Consumer Discretionary,Restaurants,"Calabasas, California",view,887596
 CALM,"Cal-Maine Foods, Inc.",Consumer Staples,Packaged Foods & Meats,"Jackson, Mississippi",view,16160
 CALX,Calix,Information Technology,Application Software,"San Jose, California",view,1406666
@@ -193,6 +193,7 @@ EVTC,"EVERTEC, Inc.",Financials,Transaction & Payment Processing Services,"San J
 EXTR,"Extreme Networks, Inc.",Information Technology,Communications Equipment,"Morrisville, North Carolina",view,1078271
 EYE,National Vision Holdings,Consumer Discretionary,Specialty Stores,"Duluth, Georgia",view,1710155
 EZPW,"EZCORP, Inc.",Financials,Consumer Finance,"Austin, Texas",view,876523
+FA,First Advantage Corporation,Industrials,Human Resource & Employment Services,"Atlanta, Georgia",view,1649749
 FBK,FB Financial Corp.,Financials,Regional Banks,"Nashville, Tennessee",view,1649749
 FBNC,First Bancorp (Southern Pines NC),Financials,Regional Banks,"Southern Pines, North Carolina",view,811589
 FBP,First BanCorp (Puerto Rico),Financials,Regional Banks,"San Juan, Puerto Rico",view,1057706
@@ -219,7 +220,6 @@ FULT,Fulton Financial Corporation,Financials,Regional Banks,"Lancaster, Pennsylv
 FUN,Six Flags,Consumer Discretionary,Leisure Facilities,"Charlotte, North Carolina",view,1999001
 FWRD,Forward Air Corp.,Industrials,Air Freight & Logistics,"Greeneville, Tennessee",view,912728
 GBX,"The Greenbrier Companies, Inc.",Industrials,Construction Machinery & Heavy Transportation Equipment,"Lake Oswego, Oregon",view,923120
-GDYN,"Grid Dynamics Holdings, Inc.",Information Technology,IT Consulting & Other Services,"San Ramon, California",view,1743725
 GEO,"GEO Group, Inc.",Industrials,Environmental & Facilities Services,"Boca Raton, Florida",view,923796
 GFF,Griffon Corporation,Industrials,Building Products,"New York City, New York",view,50725
 GIII,"G-III Apparel Group, Ltd.",Consumer Discretionary,"Apparel, Accessories & Luxury Goods","New York City, New York",view,821002
@@ -299,7 +299,6 @@ KOP,"Koppers Holdings, Inc.",Materials,Commodity Chemicals,"Pittsburgh, Pennsylv
 KRYS,"Krystal Biotech, Inc.",Health Care,Biotechnology,"Pittsburgh, Pennsylvania",view,1711279
 KSS,Kohl's Corp.,Consumer Discretionary,Broadline Retail,"Menomonee Falls, Wisconsin",view,885639
 KTB,Kontoor Brands,Consumer Discretionary,"Apparel, Accessories & Luxury Goods","Greensboro, North Carolina",view,1760965
-KW,"Kennedy-Wilson Holdings, Inc.",Real Estate,Real Estate Services,"Beverly Hills, California",view,1408100
 KWR,Quaker Chemical Corporation,Materials,Specialty Chemicals,"Conshohocken, Pennsylvania",view,81362
 LAUR,"Laureate Education, Inc.",Consumer Discretionary,Education Services,"Miami, Florida",view,912766
 LBRT,"Liberty Energy, Inc.",Energy,Oil & Gas Equipment & Services,"Denver, Colorado",view,1694028
@@ -372,6 +371,7 @@ NEO,"NeoGenomics Laboratories, Inc.",Health Care,Health Care Services,"Fort Myer
 NEOG,Neogen,Health Care,Health Care Supplies,"Lansing, Michigan",view,711377
 NGVT,"Ingevity, Corp.",Materials,Specialty Chemicals,"North Charleston, South Carolina",view,1653477
 NHC,"National Healthcare, Corp.",Health Care,Health Care Facilities,"Murfreesboro, Tennessee",view,1047335
+NHI,"National Health Investors, Inc.",Real Estate,Health Care REITs,"Murfreesboro, Tennessee",view,877860
 NMIH,"NMI Holdings, Inc.",Financials,Commercial & Residential Mortgage Finance,"Emeryville, California",view,1547903
 NOG,"Northern Oil and Gas, Inc.",Energy,Oil & Gas Exploration & Production,"Minnetonka, Minnesota",view,1104485
 NPK,"National Presto Industries, Inc.",Industrials,Aerospace & Defense,"Eau Claire, Wisconsin",view,80172
@@ -380,6 +380,7 @@ NSIT,"Insight Enterprises, Inc.",Industrials,Technology Distributors,"Tempe, Ari
 NSP,Insperity,Industrials,Human Resource & Employment Services,"Houston, Texas",view,1000753
 NSSC,Napco Security Technologies,Information Technology,Electronic Equipment & Instruments,"Amityville, New York",view,69633
 NTCT,"NETSCOUT Systems, Inc.",Information Technology,Communications Equipment,"Westford, Massachusetts",view,1078075
+NTST,NETSTREIT Corp.,Real Estate,Retail REITs,"Dallas, Texas",view,1798100
 NWBI,"Northwest Bancshares, Inc.",Financials,Regional Banks,"Warren, Pennsylvania",view,1471265
 NWL,Newell Brands,Consumer Discretionary,Housewares & Specialties,"Atlanta, Georgia",view,814453
 NWN,NW Natural,Utilities,Gas Utilities,"Portland, Oregon",view,1733998
@@ -423,7 +424,6 @@ PMT,PennyMac Mortgage Investment Trust,Real Estate,Mortgage REITs,"Westlake Vill
 POWI,Power Integrations,Information Technology,Semiconductors,"San Jose, California",view,833640
 POWL,"Powell Industries, Inc.",Industrials,Electrical Components & Equipment,"Houston, Texas",view,80420
 PPLI,People Inc.,Communication Services,Interactive Media & Services,"New York City, New York",view,1800227
-PRA,ProAssurance Corporation,Financials,Property & Casualty Insurance,"Birmingham, Alabama",view,1127703
 PRAA,"PRA Group, Inc.",Financials,Consumer Finance,"Norfolk, Virginia",view,1185348
 PRDO,Perdoceo Education Corp.,Consumer Discretionary,Education Services,"Schaumburg, Illinois",view,1046568
 PRG,"PROG Holdings, Inc.",Financials,Consumer Finance,"Draper, Utah",view,1808834
