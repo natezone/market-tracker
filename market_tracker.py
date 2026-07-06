@@ -1448,8 +1448,46 @@ def create_colored_metric_card(title, value, metric_type='return', format_func=N
     """, unsafe_allow_html=True)
 
 def create_enhanced_bar_chart(df, x_col, y_col, title, metric_type='return'):
-    """Create a bar chart with gradient colors"""
+    """Create a bar chart with gradient colors and detailed hover information"""
     colors = [get_performance_color(val, metric_type) for val in df[y_col]]
+    
+    # Build hover text with detailed information
+    hover_texts = []
+    for idx, row in df.iterrows():
+        hover_text = f"<b>{row.get(x_col, 'N/A')}</b><br>"
+        
+        # Add company name if available
+        if 'company_name' in row:
+            hover_text += f"Company: {row['company_name']}<br>"
+        
+        # Add main metric
+        hover_text += f"{title}: <b>{row[y_col]:.2f}%</b><br>"
+        
+        # Add price
+        if 'last_close' in row:
+            hover_text += f"Price ($): {row['last_close']:.2f}<br>"
+        
+        # Add sector
+        if 'sector' in row:
+            hover_text += f"Sector: {row['sector']}<br>"
+        
+        # Add annual volatility
+        if 'ann_vol_pct' in row:
+            hover_text += f"Annual Volatility (%): {row['ann_vol_pct']:.2f}<br>"
+        
+        # Add RSI if available
+        if 'rsi' in row and pd.notna(row['rsi']):
+            hover_text += f"RSI (14): {row['rsi']:.1f}<br>"
+        
+        # Add P/E ratio if available
+        if 'pe_ratio' in row and pd.notna(row['pe_ratio']):
+            hover_text += f"P/E Ratio: {row['pe_ratio']:.2f}<br>"
+        
+        # Add market cap if available
+        if 'market_cap' in row and pd.notna(row['market_cap']):
+            hover_text += f"Market Cap: {row['market_cap']}<br>"
+        
+        hover_texts.append(hover_text)
     
     fig = go.Figure(data=[
         go.Bar(
@@ -1458,8 +1496,8 @@ def create_enhanced_bar_chart(df, x_col, y_col, title, metric_type='return'):
             marker_color=colors,
             text=df[y_col].apply(lambda x: f"{x:.1f}%"),
             textposition='outside',
-            hovertemplate='<b>%{x}</b><br>' +
-                          f'{title}: %{{y:.2f}}%<extra></extra>'
+            customdata=hover_texts,
+            hovertemplate='%{customdata}<extra></extra>'
         )
     ])
     
@@ -1472,11 +1510,50 @@ def create_enhanced_bar_chart(df, x_col, y_col, title, metric_type='return'):
     
     return fig
 
-def create_sector_heatmap(sector_data, value_col, title):
-    """Create a heatmap for sector performance"""
+def create_sector_heatmap(sector_data, value_col, title, df_full=None):
+    """Create a heatmap for sector performance with detailed hover info"""
     sector_data = pd.to_numeric(sector_data, errors='coerce')
     z_values = sector_data.values.astype(float).reshape(1, -1)
     text_values = sector_data.apply(lambda x: f"{x:.1f}%").values.astype(object).reshape(1, -1)
+    
+    # Build detailed hover text for each sector if full dataframe provided
+    hover_texts = []
+    if df_full is not None:
+        for sector in sector_data.index:
+            sector_mask = df_full['sector'] == sector
+            sector_stocks = df_full[sector_mask]
+            
+            hover_text = f"<b>{sector}</b><br>"
+            hover_text += f"Average Return: <b>{sector_data[sector]:.2f}%</b><br>"
+            hover_text += f"Stock Count: {len(sector_stocks)}<br>"
+            
+            if 'ann_vol_pct' in sector_stocks.columns:
+                avg_vol = sector_stocks['ann_vol_pct'].mean()
+                hover_text += f"Avg Volatility: {avg_vol:.2f}%<br>"
+            
+            if 'rsi' in sector_stocks.columns:
+                avg_rsi = sector_stocks['rsi'].mean()
+                if pd.notna(avg_rsi):
+                    hover_text += f"Avg RSI: {avg_rsi:.1f}<br>"
+            
+            # Top performers in sector
+            top_performer = sector_stocks.nlargest(1, value_col)
+            if not top_performer.empty:
+                ticker = top_performer.iloc[0]['ticker']
+                ret = top_performer.iloc[0][value_col]
+                hover_text += f"Top Performer: {ticker} ({ret:.2f}%)<br>"
+            
+            # Worst performer in sector
+            worst_performer = sector_stocks.nsmallest(1, value_col)
+            if not worst_performer.empty:
+                ticker = worst_performer.iloc[0]['ticker']
+                ret = worst_performer.iloc[0][value_col]
+                hover_text += f"Worst Performer: {ticker} ({ret:.2f}%)"
+            
+            hover_texts.append(hover_text)
+    else:
+        hover_texts = [f"<b>{sector}</b><br>Performance: {sector_data[sector]:.2f}%" 
+                       for sector in sector_data.index]
 
     fig = go.Figure(data=go.Heatmap(
         z=z_values,
@@ -1487,7 +1564,8 @@ def create_sector_heatmap(sector_data, value_col, title):
         texttemplate="%{text}",
         textfont={"size": 10},
         hoverongaps=False,
-        hovertemplate='<b>%{x}</b><br>Performance: %{z:.2f}%<extra></extra>'
+        customdata=[[text] for text in hover_texts],
+        hovertemplate='%{customdata[0]}<extra></extra>'
     ))
     
     fig.update_layout(
@@ -5575,7 +5653,7 @@ def run_streamlit():
         # Add sector heatmap
         st.subheader("🏢 Sector Performance Heatmap")
         sector_perf = valid_metrics.groupby('sector')[horizon_col].mean().sort_values(ascending=False)
-        fig_heatmap = create_sector_heatmap(sector_perf, horizon_col, f"Sector Performance ({horizon_label})")
+        fig_heatmap = create_sector_heatmap(sector_perf, horizon_col, f"Sector Performance ({horizon_label})", valid_metrics)
         st.plotly_chart(fig_heatmap, width='stretch')
 
 # Enhanced data table with colors
