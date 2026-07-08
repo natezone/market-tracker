@@ -234,7 +234,7 @@ HSY,Hershey Company (The),Consumer Staples,Packaged Foods & Meats,S&P 500
 HPE,Hewlett Packard Enterprise,Information Technology,"Technology Hardware, Storage & Peripherals",S&P 500
 HLT,Hilton Worldwide,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",S&P 500
 HD,Home Depot (The),Consumer Discretionary,Home Improvement Retail,"S&P 500, Dow 30"
-HONA,Honeywell Aerospace,Industrials,Aerospace & Defense,S&P 500
+HONA,Honeywell Aerospace,Industrials,Aerospace & Defense,"S&P 500, Nasdaq-100"
 HON,Honeywell Technologies,Industrials,Industrial Conglomerates,"S&P 500, Nasdaq-100, Dow 30"
 HRL,Hormel Foods,Consumer Staples,Packaged Foods & Meats,S&P 500
 HST,Host Hotels & Resorts,Real Estate,Hotel & Resort REITs,S&P 500
@@ -1515,4 +1515,5 @@ NBIS,Nebius Group,Computer Services,Technology,Nasdaq-100
 PDD,PDD Holdings,EDP Services,Technology,Nasdaq-100
 RKLB,Rocket Lab,Aerospace,Industrials,Nasdaq-100
 SHOP,Shopify,Software,Technology,Nasdaq-100
+SPCX,SpaceX,Telecommunications Services,Telecommunications,Nasdaq-100
 TRI,Thomson Reuters,Software,Technology,Nasdaq-100
