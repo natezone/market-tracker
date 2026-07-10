@@ -217,6 +217,15 @@ class TestMultiIndexStructure(TestMarketTracker):
 
 class TestTickerFetching(TestMarketTracker):
     """Test ticker fetching functions"""
+
+    def test_fetch_pe_ratios_handles_empty_tickers_and_missing_ticker_column(self):
+        """P/E fetching should not crash when no tickers are available or ticker column is missing."""
+        metrics_without_ticker = pd.DataFrame({'company_name': ['Apple Inc.']})
+
+        result = market_tracker.fetch_pe_ratios([], metrics_without_ticker)
+
+        self.assertIn('pe_ratio', result.columns)
+        self.assertTrue(result['pe_ratio'].isna().all())
     
     @patch('requests.get')
     @patch('pandas.read_html')

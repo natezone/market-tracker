@@ -2674,10 +2674,10 @@ def compute_metrics_for_ticker(df, consecutive_days=7):
 
 def fetch_pe_ratios(tickers, metrics_df):
     """
-    Fetch P/E ratios for all tickers and update metrics dataframe
+    Fetch P/E ratios for all tickers and update metrics dataframe.
 
-    Optimized to skip in GitHub Actions (too slow for 1600+ stocks).
-    P/E ratios are fetched on-demand in Streamlit when needed.
+    This function is intentionally defensive because GitHub Actions can hit
+    partially-built dataframes or empty ticker lists during CLI runs.
 
     Args:
         tickers: List of ticker symbols
@@ -2686,13 +2686,31 @@ def fetch_pe_ratios(tickers, metrics_df):
     Returns:
         Updated DataFrame with pe_ratio column
     """
+    if metrics_df is None:
+        return pd.DataFrame()
+
+    if not isinstance(metrics_df, pd.DataFrame):
+        metrics_df = pd.DataFrame(metrics_df)
+
     if VERBOSE:
         print(f"\nFetching P/E ratios for {len(tickers)} tickers...")
+
+    if metrics_df.empty:
+        return metrics_df.assign(pe_ratio=np.nan)
+
+    if 'ticker' not in metrics_df.columns:
+        metrics_df = metrics_df.copy()
+        metrics_df['ticker'] = np.nan
+
+    # Use the available ticker column when the input ticker list is empty.
+    ticker_list = list(tickers or [])
+    if not ticker_list:
+        ticker_list = [str(t) for t in metrics_df['ticker'].dropna().astype(str).tolist() if str(t).strip()]
 
     pe_data = {}
 
     # Fetching in batches to avoid overwhelming the API
-    for chunk in tqdm(batch(tickers, 50), desc="Fetching P/E ratios"):
+    for chunk in tqdm(batch(ticker_list, 50), desc="Fetching P/E ratios"):
         for ticker in chunk:
             try:
                 stock = yf.Ticker(ticker)
@@ -2717,11 +2735,11 @@ def fetch_pe_ratios(tickers, metrics_df):
             time.sleep(0.1)  # Rate limiting
 
     # Update metrics dataframe
-    metrics_df['pe_ratio'] = metrics_df['ticker'].map(pe_data)
+    metrics_df['pe_ratio'] = metrics_df['ticker'].astype(str).map(pe_data)
 
     if VERBOSE:
         valid_pe_count = metrics_df['pe_ratio'].notna().sum()
-        print(f" Fetched P/E ratios for {valid_pe_count}/{len(tickers)} stocks")
+        print(f" Fetched P/E ratios for {valid_pe_count}/{len(ticker_list)} stocks")
 
     return metrics_df
 
