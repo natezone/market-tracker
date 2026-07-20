@@ -556,6 +556,7 @@ BRKR,Bruker,Health Care,Health Care Equipment,S&P MidCap 400
 BROS,Dutch Bros Inc.,Consumer Discretionary,Restaurants,S&P MidCap 400
 BRX,Brixmor Property Group,Real Estate,Retail REITs,S&P MidCap 400
 BSY,Bentley Systems,Information Technology,Application Software,S&P MidCap 400
+BTSG,BrightSpring Health Services,Health Care,Health Care Services,"S&P MidCap 400, S&P SmallCap 600"
 BURL,Burlington Stores,Consumer Discretionary,Apparel Retail,S&P MidCap 400
 BWA,BorgWarner,Consumer Discretionary,Automotive Parts & Equipment,S&P MidCap 400
 BWXT,BWX Technologies,Industrials,Aerospace & Defense,S&P MidCap 400
@@ -664,7 +665,6 @@ GME,GameStop,Consumer Discretionary,Computer & Electronics Retail,S&P MidCap 400
 GMED,Globus Medical,Health Care,Health Care Equipment,S&P MidCap 400
 GNTX,Gentex,Consumer Discretionary,Automotive Parts & Equipment,S&P MidCap 400
 GPK,Graphic Packaging,Materials,Paper & Plastic Packaging Products & Materials,S&P MidCap 400
-GTLS,Chart Industries,Industrials,Industrial Machinery & Supplies & Components,S&P MidCap 400
 GWRE,Guidewire Software,Information Technology,Application Software,S&P MidCap 400
 GXO,GXO Logistics,Industrials,Air Freight & Logistics,S&P MidCap 400
 H,Hyatt,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",S&P MidCap 400
@@ -688,7 +688,7 @@ IDCC,InterDigital,Information Technology,Communications Equipment,S&P MidCap 400
 ILMN,"Illumina, Inc.",Health Care,Life Sciences Tools & Services,S&P MidCap 400
 INGR,Ingredion,Consumer Staples,Agricultural Products & Services,S&P MidCap 400
 IPGP,IPG Photonics,Information Technology,Electronic Manufacturing Services,S&P MidCap 400
-IRT,IRT Living,Real Estate,Multi-Family Residential REITs,S&P MidCap 400
+IRT,Independence Realty Trust,Real Estate,Multi-Family Residential REITs,S&P MidCap 400
 ITT,ITT Inc.,Industrials,Industrial Machinery & Supplies & Components,S&P MidCap 400
 JAZZ,Jazz Pharmaceuticals,Health Care,Pharmaceuticals,S&P MidCap 400
 JEF,Jefferies,Financials,Multi-Sector Holdings,S&P MidCap 400
@@ -990,7 +990,6 @@ BOH,Bank of Hawaii,Financials,Regional Banks,S&P SmallCap 600
 BOOT,"Boot Barn Holdings, Inc.",Consumer Discretionary,Apparel Retail,S&P SmallCap 600
 BOX,"Box, Inc.",Information Technology,Application Software,S&P SmallCap 600
 BRC,Brady Corporation,Industrials,Commercial Printing,S&P SmallCap 600
-BTSG,"BrightSpring Health Services, Inc.",Health Care,Health Care Services,S&P SmallCap 600
 BTU,"Peabody Energy, Inc.",Energy,Coal & Consumable Fuels,S&P SmallCap 600
 BXMT,"Blackstone Mortgage Trust, Inc.",Financials,Mortgage REITs,S&P SmallCap 600
 CACC,Credit Acceptance,Financials,Specialized Finance,S&P SmallCap 600
@@ -1067,6 +1066,7 @@ DFIN,"Donnelley Financial Solutions, Inc.",Financials,Financial Exchanges & Data
 DGII,Digi International Inc.,Information Technology,Communications Equipment,S&P SmallCap 600
 DIOD,Diodes Incorporated,Information Technology,Semiconductors,S&P SmallCap 600
 DLX,Deluxe Corporation,Industrials,Commercial Printing,S&P SmallCap 600
+DMC,Del Monte Corporation,Consumer Staples,Packaged Foods & Meats,S&P SmallCap 600
 DNOW,NOW Inc,Industrials,Trading Companies & Distributors,S&P SmallCap 600
 DORM,"Dorman Products, Inc.",Consumer Discretionary,Automotive Parts & Equipment,S&P SmallCap 600
 DRH,DiamondRock Hospitality Company,Real Estate,Hotel & Resort REITs,S&P SmallCap 600
@@ -1104,7 +1104,6 @@ FBP,First BanCorp (Puerto Rico),Financials,Regional Banks,S&P SmallCap 600
 FBRT,"Franklin BSP Realty Trust, Inc.",Real Estate,Mortgage REITs,S&P SmallCap 600
 FCF,"First Commonwealth Financial, Corp.",Financials,Regional Banks,S&P SmallCap 600
 FCPT,"Four Corners Property Trust, Inc.",Real Estate,Other Specialized REITs,S&P SmallCap 600
-DMC,Del Monte Corporation,Consumer Staples,Packaged Foods & Meats,S&P SmallCap 600
 FELE,Franklin Electric,Industrials,Industrial Machinery & Supplies & Components,S&P SmallCap 600
 FFBC,First Financial Bancorp,Financials,Regional Banks,S&P SmallCap 600
 FG,"F&G Annuities & Life, Inc.",Financials,Life & Health Insurance,S&P SmallCap 600
@@ -1318,7 +1317,7 @@ PENG,"Penguin Solutions, Inc.",Information Technology,Semiconductors,S&P SmallCa
 PENN,Penn Entertainment,Consumer Discretionary,Casinos & Gaming,S&P SmallCap 600
 PFBC,Preferred Bank,Financials,Regional Banks,S&P SmallCap 600
 PFS,"Provident Financial Services, Inc.",Financials,Regional Banks,S&P SmallCap 600
-PGNY,Progyny,Health Care,Health Care Services,S&P SmallCap 600
+PGNY,"Progyny, Inc.",Health Care,Health Care Services,S&P SmallCap 600
 PHIN,"PHINIA, Inc.",Consumer Discretionary,Automotive Retail,S&P SmallCap 600
 PI,"Impinj, Inc.",Information Technology,Electronic Equipment & Instruments,S&P SmallCap 600
 PIPR,Piper Sandler Companies,Financials,Investment Banking & Brokerage,S&P SmallCap 600

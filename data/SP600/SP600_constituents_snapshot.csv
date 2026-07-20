@@ -164,6 +164,7 @@ DFIN,"Donnelley Financial Solutions, Inc.",Financials,Financial Exchanges & Data
 DGII,Digi International Inc.,Information Technology,Communications Equipment,"Hopkins, Minnesota",view,854775.0
 DIOD,Diodes Incorporated,Information Technology,Semiconductors,"Plano, Texas",view,29002.0
 DLX,Deluxe Corporation,Industrials,Commercial Printing,"Minneapolis, Minnesota",view,27996.0
+DMC,Del Monte Corporation,Consumer Staples,Packaged Foods & Meats,"Coral Gables, Florida",view,1047340.0
 DNOW,NOW Inc,Industrials,Trading Companies & Distributors,"Houston, Texas",view,1599617.0
 DORM,"Dorman Products, Inc.",Consumer Discretionary,Automotive Parts & Equipment,"Colmar, Pennsylvania",view,868780.0
 DRH,DiamondRock Hospitality Company,Real Estate,Hotel & Resort REITs,"Bethesda, Maryland",view,1298946.0
@@ -201,7 +202,6 @@ FBP,First BanCorp (Puerto Rico),Financials,Regional Banks,"San Juan, Puerto Rico
 FBRT,"Franklin BSP Realty Trust, Inc.",Real Estate,Mortgage REITs,"New York City, New York",view,1562528.0
 FCF,"First Commonwealth Financial, Corp.",Financials,Regional Banks,"Indiana, Pennsylvania",view,712537.0
 FCPT,"Four Corners Property Trust, Inc.",Real Estate,Other Specialized REITs,"Mill Valley, California",view,1650132.0
-DMC,Del Monte Corporation,Consumer Staples,Packaged Foods & Meats,"Coral Gables, Florida",view,1047340.0
 FELE,Franklin Electric,Industrials,Industrial Machinery & Supplies & Components,"Fort Wayne, Indiana",view,38725.0
 FFBC,First Financial Bancorp,Financials,Regional Banks,"Cincinnati, Ohio",view,708955.0
 FG,"F&G Annuities & Life, Inc.",Financials,Life & Health Insurance,"Des Moines, Iowa",view,1934850.0
@@ -415,7 +415,7 @@ PENG,"Penguin Solutions, Inc.",Information Technology,Semiconductors,"Milpitas, 
 PENN,Penn Entertainment,Consumer Discretionary,Casinos & Gaming,"Wyomissing, Pennsylvania",view,921738.0
 PFBC,Preferred Bank,Financials,Regional Banks,"Los Angeles, California",view,1492165.0
 PFS,"Provident Financial Services, Inc.",Financials,Regional Banks,"Jersey City, New Jersey",view,1178970.0
-PGNY,Progyny,Health Care,Health Care Services,"New York City, New York",view,1551306.0
+PGNY,"Progyny, Inc.",Health Care,Health Care Services,"New York City, New York",view,1551306.0
 PHIN,"PHINIA, Inc.",Consumer Discretionary,Automotive Retail,"Auburn Hills, Michigan",view,1968915.0
 PI,"Impinj, Inc.",Information Technology,Electronic Equipment & Instruments,"Seattle, Washington",view,1114995.0
 PIPR,Piper Sandler Companies,Financials,Investment Banking & Brokerage,"Minneapolis, Minnesota",view,1230245.0
