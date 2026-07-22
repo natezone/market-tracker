@@ -47,7 +47,6 @@ BILL,Bill Holdings,Information Technology,Application Software,"San Jose, Califo
 BIO,Bio-Rad Laboratories,Health Care,Life Sciences Tools & Services,"Hercules, California",reports
 BJ,BJ's Wholesale Club,Consumer Staples,Consumer Staples Merchandise Retail,"Marlborough, Massachusetts",reports
 BKH,Black Hills Corporation,Utilities,Multi-Utilities,"Rapid City, South Dakota",reports
-BLD,TopBuild Corp.,Consumer Discretionary,Homebuilding,,reports
 BMRN,BioMarin Pharmaceutical,Health Care,Biotechnology,"San Rafael, California",reports
 BRKR,Bruker,Health Care,Health Care Equipment,"Billerica, Massachusetts",reports
 BROS,Dutch Bros Inc.,Consumer Discretionary,Restaurants,"Tempe, Arizona",reports
@@ -350,6 +349,7 @@ TLN,Talen Energy,Utilities,Independent Power Producers & Energy Traders,"Houston
 TMHC,Taylor Morrison,Consumer Discretionary,Homebuilding,"Scottsdale, Arizona",reports
 TNL,Travel + Leisure Co.,Consumer Discretionary,"Hotels, Resorts & Cruise Lines","Orlando, Florida",reports
 TOL,Toll Brothers,Consumer Discretionary,Homebuilding,"Fort Washington, Pennsylvania",reports
+TOST,"Toast, Inc.",,,,reports
 TREX,Trex,Industrials,Building Products,"Winchester, Virginia",reports
 TRU,TransUnion,Industrials,Research & Consulting Services,"Chicago, Illinois",reports
 TTC,Toro,Industrials,Agricultural & Farm Machinery,"Bloomington, Minnesota",reports

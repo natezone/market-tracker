@@ -550,7 +550,6 @@ BILL,Bill Holdings,Information Technology,Application Software,S&P MidCap 400
 BIO,Bio-Rad Laboratories,Health Care,Life Sciences Tools & Services,S&P MidCap 400
 BJ,BJ's Wholesale Club,Consumer Staples,Consumer Staples Merchandise Retail,S&P MidCap 400
 BKH,Black Hills Corporation,Utilities,Multi-Utilities,S&P MidCap 400
-BLD,TopBuild Corp.,Consumer Discretionary,Homebuilding,S&P MidCap 400
 BMRN,BioMarin Pharmaceutical,Health Care,Biotechnology,S&P MidCap 400
 BRKR,Bruker,Health Care,Health Care Equipment,S&P MidCap 400
 BROS,Dutch Bros Inc.,Consumer Discretionary,Restaurants,S&P MidCap 400
@@ -853,6 +852,7 @@ TLN,Talen Energy,Utilities,Independent Power Producers & Energy Traders,S&P MidC
 TMHC,Taylor Morrison,Consumer Discretionary,Homebuilding,S&P MidCap 400
 TNL,Travel + Leisure Co.,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",S&P MidCap 400
 TOL,Toll Brothers,Consumer Discretionary,Homebuilding,S&P MidCap 400
+TOST,"Toast, Inc.",,,S&P MidCap 400
 TREX,Trex,Industrials,Building Products,S&P MidCap 400
 TRU,TransUnion,Industrials,Research & Consulting Services,S&P MidCap 400
 TTC,Toro,Industrials,Agricultural & Farm Machinery,S&P MidCap 400
