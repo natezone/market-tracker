@@ -684,6 +684,7 @@ HXL,Hexcel,Industrials,Aerospace & Defense,S&P MidCap 400
 IBOC,Intl Bancshares Corp,Financials,Regional Banks,S&P MidCap 400
 IDA,Idacorp,Utilities,Electric Utilities,S&P MidCap 400
 IDCC,InterDigital,Information Technology,Communications Equipment,S&P MidCap 400
+IESC,IES Holdings,Industrials,Construction & Engineering,S&P MidCap 400
 ILMN,"Illumina, Inc.",Health Care,Life Sciences Tools & Services,S&P MidCap 400
 INGR,Ingredion,Consumer Staples,Agricultural Products & Services,S&P MidCap 400
 IPGP,IPG Photonics,Information Technology,Electronic Manufacturing Services,S&P MidCap 400
@@ -691,7 +692,6 @@ IRT,Independence Realty Trust,Real Estate,Multi-Family Residential REITs,S&P Mid
 ITT,ITT Inc.,Industrials,Industrial Machinery & Supplies & Components,S&P MidCap 400
 JAZZ,Jazz Pharmaceuticals,Health Care,Pharmaceuticals,S&P MidCap 400
 JEF,Jefferies,Financials,Multi-Sector Holdings,S&P MidCap 400
-JHG,Janus Henderson,Financials,Asset Management & Custody Banks,S&P MidCap 400
 JLL,Jones Lang LaSalle,Real Estate,Real Estate Services,S&P MidCap 400
 KBH,KB Home,Consumer Discretionary,Homebuilding,S&P MidCap 400
 KBR,"KBR, Inc.",Industrials,Diversified Support Services,S&P MidCap 400
@@ -723,6 +723,7 @@ MKSI,MKS Instruments,Information Technology,Semiconductor Materials & Equipment,
 MLI,Mueller Industries,Industrials,Industrial Machinery & Supplies & Components,S&P MidCap 400
 MMS,Maximus Inc.,Industrials,Data Processing & Outsourced Services,S&P MidCap 400
 MOG-A,Moog Inc.,Industrials,Aerospace & Defense,S&P MidCap 400
+MOH,Molina Healthcare,Health Care,Managed Health Care,"S&P MidCap 400, S&P SmallCap 600"
 MORN,"Morningstar, Inc.",Financials,Financial Exchanges & Data,S&P MidCap 400
 MP,MP Materials,Materials,Diversified Metals & Mining,S&P MidCap 400
 MSA,MSA Safety,Industrials,Office Services & Supplies,S&P MidCap 400
@@ -743,7 +744,6 @@ NLY,Annaly Capital Management,Financials,Mortgage REITs,S&P MidCap 400
 NNN,NNN Reit,Real Estate,Retail REITs,S&P MidCap 400
 NOV,NOV Inc.,Energy,Oil & Gas Equipment & Services,S&P MidCap 400
 NOVT,Novanta,Information Technology,Electronic Equipment & Instruments,S&P MidCap 400
-NSA,National Storage Affiliates Trust,Real Estate,Self-Storage REITs,S&P MidCap 400
 NTNX,Nutanix,Information Technology,Systems Software,S&P MidCap 400
 NVST,Envista Holdings,Health Care,Health Care Supplies,S&P MidCap 400
 NVT,nVent Electric plc,Industrials,Electrical Components & Equipment,S&P MidCap 400
@@ -852,7 +852,7 @@ TLN,Talen Energy,Utilities,Independent Power Producers & Energy Traders,S&P MidC
 TMHC,Taylor Morrison,Consumer Discretionary,Homebuilding,S&P MidCap 400
 TNL,Travel + Leisure Co.,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",S&P MidCap 400
 TOL,Toll Brothers,Consumer Discretionary,Homebuilding,S&P MidCap 400
-TOST,"Toast, Inc.",,,S&P MidCap 400
+TOST,"Toast, Inc.",Financials,Transaction & Payment Processing Services,S&P MidCap 400
 TREX,Trex,Industrials,Building Products,S&P MidCap 400
 TRU,TransUnion,Industrials,Research & Consulting Services,S&P MidCap 400
 TTC,Toro,Industrials,Agricultural & Farm Machinery,S&P MidCap 400
@@ -1070,7 +1070,7 @@ DMC,Del Monte Corporation,Consumer Staples,Packaged Foods & Meats,S&P SmallCap 6
 DNOW,NOW Inc,Industrials,Trading Companies & Distributors,S&P SmallCap 600
 DORM,"Dorman Products, Inc.",Consumer Discretionary,Automotive Parts & Equipment,S&P SmallCap 600
 DRH,DiamondRock Hospitality Company,Real Estate,Hotel & Resort REITs,S&P SmallCap 600
-DV,"DoubleVerify Holdings, Inc.",Communication Services,Advertising,S&P SmallCap 600
+DV,DoubleVerify Holdings Inc.,Communication Services,Advertising,S&P SmallCap 600
 DXC,DXC Technology,Information Technology,IT Consulting & Other Services,S&P SmallCap 600
 DXPE,"DXP Enterprises, Inc.",Industrials,Trading Companies & Distributors,S&P SmallCap 600
 EAT,"Brinker International, Inc.",Consumer Discretionary,Restaurants,S&P SmallCap 600
@@ -1252,7 +1252,6 @@ MKTX,MarketAxess,Financials,Financial Exchanges & Data,S&P SmallCap 600
 MLKN,"MillerKnoll, Inc.",Industrials,Office Services & Supplies,S&P SmallCap 600
 MMI,"Marcus & Millichap, Inc.",Real Estate,Real Estate Services,S&P SmallCap 600
 MMSI,"Merit Medical Systems, Inc.",Health Care,Health Care Supplies,S&P SmallCap 600
-MOH,Molina Healthcare,Health Care,Managed Health Care,S&P SmallCap 600
 MPT,Medical Properties Trust,Real Estate,Health Care REITs,S&P SmallCap 600
 MRCY,Mercury Systems,Industrials,Electrical Components & Equipment,S&P SmallCap 600
 MRP,"Millrose Properties, Inc.",Real Estate,Single-Family Residential REITs,S&P SmallCap 600
