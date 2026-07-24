@@ -702,6 +702,7 @@ KNSL,Kinsale Capital Group,Financials,Property & Casualty Insurance,S&P MidCap 4
 KNX,Knight-Swift,Industrials,Cargo Ground Transportation,S&P MidCap 400
 KRC,Kilroy Realty Corp,Real Estate,Office REITs,S&P MidCap 400
 KRG,Kite Realty Group Trust,Real Estate,Retail REITs,S&P MidCap 400
+KRYS,Krystal Biotech,Health Care,Biotechnology,"S&P MidCap 400, S&P SmallCap 600"
 KTOS,Kratos Defense & Security Solutions,Industrials,Aerospace & Defense,S&P MidCap 400
 LAD,Lithia Motors,Consumer Discretionary,Automotive Retail,S&P MidCap 400
 LAMR,Lamar Advertising Company,Real Estate,Other Specialized REITs,S&P MidCap 400
@@ -849,7 +850,6 @@ THG,Hanover Insurance,Financials,Property & Casualty Insurance,S&P MidCap 400
 THO,Thor Industries,Consumer Discretionary,Leisure Products,S&P MidCap 400
 TKR,Timken,Industrials,Industrial Machinery & Supplies & Components,S&P MidCap 400
 TLN,Talen Energy,Utilities,Independent Power Producers & Energy Traders,S&P MidCap 400
-TMHC,Taylor Morrison,Consumer Discretionary,Homebuilding,S&P MidCap 400
 TNL,Travel + Leisure Co.,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",S&P MidCap 400
 TOL,Toll Brothers,Consumer Discretionary,Homebuilding,S&P MidCap 400
 TOST,"Toast, Inc.",Financials,Transaction & Payment Processing Services,S&P MidCap 400
@@ -1199,7 +1199,6 @@ KMX,"CarMax, Inc.",Consumer Discretionary,Automotive Retail,S&P SmallCap 600
 KN,Knowles Corporation,Information Technology,Electronic Components,S&P SmallCap 600
 KNTK,"Kinetik Holdings, Inc.",Energy,Oil & Gas Storage & Transportation,S&P SmallCap 600
 KOP,"Koppers Holdings, Inc.",Materials,Commodity Chemicals,S&P SmallCap 600
-KRYS,"Krystal Biotech, Inc.",Health Care,Biotechnology,S&P SmallCap 600
 KSS,Kohl's Corp.,Consumer Discretionary,Broadline Retail,S&P SmallCap 600
 KTB,Kontoor Brands,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",S&P SmallCap 600
 KWR,Quaker Chemical Corporation,Materials,Specialty Chemicals,S&P SmallCap 600
@@ -1208,6 +1207,7 @@ LAZ,Lazard,Financials,Diversified Capital Markets,S&P SmallCap 600
 LBRT,"Liberty Energy, Inc.",Energy,Oil & Gas Equipment & Services,S&P SmallCap 600
 LCII,LCI Industries,Consumer Discretionary,Automotive Parts & Equipment,S&P SmallCap 600
 LEG,Leggett & Platt,Consumer Discretionary,Home Furnishings,S&P SmallCap 600
+LEU,Centrus Energy Corp.,Energy,Coal & Consumable Fuels,S&P SmallCap 600
 LFST,Lifestance Health,Health Care,Health Care Services,S&P SmallCap 600
 LGIH,LGI Homes,Consumer Discretionary,Homebuilding,S&P SmallCap 600
 LIF,Life360,Information Technology,Application Software,S&P SmallCap 600
@@ -1492,7 +1492,6 @@ WS,Worthington Steel,Materials,Steel,S&P SmallCap 600
 WSBC,WesBanco,Financials,Regional Banks,S&P SmallCap 600
 WSC,WillScot Holdings Corp.,Industrials,Office Services & Supplies,S&P SmallCap 600
 WSFS,WSFS Financial Corporation,Financials,Regional Banks,S&P SmallCap 600
-WSR,Whitestone REIT,Real Estate,Retail REITs,S&P SmallCap 600
 WT,"WisdomTree Investments, Inc.",Financials,Asset Management & Custody Banks,S&P SmallCap 600
 WU,Western Union,Financials,Transaction & Payment Processing Services,S&P SmallCap 600
 WWW,"Wolverine World Wide, Inc.",Consumer Discretionary,Footwear,S&P SmallCap 600

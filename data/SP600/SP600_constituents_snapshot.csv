@@ -306,6 +306,7 @@ LAZ,Lazard,Financials,Diversified Capital Markets,"New York City, New York",view
 LBRT,"Liberty Energy, Inc.",Energy,Oil & Gas Equipment & Services,"Denver, Colorado",view,1694028
 LCII,LCI Industries,Consumer Discretionary,Automotive Parts & Equipment,"Elkhart, Indiana",view,763744
 LEG,Leggett & Platt,Consumer Discretionary,Home Furnishings,"Carthage, Missouri",view,58492
+LEU,Centrus Energy Corp.,Energy,Coal & Consumable Fuels,"Bethesda, Maryland",view,1065059
 LFST,Lifestance Health,Health Care,Health Care Services,"Scottsdale, Arizona",view,1845257
 LGIH,LGI Homes,Consumer Discretionary,Homebuilding,"The Woodlands, Texas",view,1580670
 LIF,Life360,Information Technology,Application Software,"San Mateo, California",view,1581760
@@ -591,7 +592,6 @@ WS,Worthington Steel,Materials,Steel,"Columbus, Ohio",view,1968487
 WSBC,WesBanco,Financials,Regional Banks,"Wheeling, West Virginia",view,203596
 WSC,WillScot Holdings Corp.,Industrials,Office Services & Supplies,"Phoenix, Arizona",view,1647088
 WSFS,WSFS Financial Corporation,Financials,Regional Banks,"Wilmington, Delaware",view,828944
-WSR,Whitestone REIT,Real Estate,Retail REITs,"Houston, Texas",view,1175535
 WT,"WisdomTree Investments, Inc.",Financials,Asset Management & Custody Banks,"New York City, New York",view,880631
 WU,Western Union,Financials,Transaction & Payment Processing Services,"Denver, Colorado",view,1365135
 WWW,"Wolverine World Wide, Inc.",Consumer Discretionary,Footwear,"Rockford, Michigan",view,110471
