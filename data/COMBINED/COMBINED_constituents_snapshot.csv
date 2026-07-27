@@ -555,7 +555,7 @@ BRKR,Bruker,Health Care,Health Care Equipment,S&P MidCap 400
 BROS,Dutch Bros Inc.,Consumer Discretionary,Restaurants,S&P MidCap 400
 BRX,Brixmor Property Group,Real Estate,Retail REITs,S&P MidCap 400
 BSY,Bentley Systems,Information Technology,Application Software,S&P MidCap 400
-BTSG,BrightSpring Health Services,Health Care,Health Care Services,"S&P MidCap 400, S&P SmallCap 600"
+BTSG,BrightSpring Health Services,Health Care,Health Care Services,S&P MidCap 400
 BURL,Burlington Stores,Consumer Discretionary,Apparel Retail,S&P MidCap 400
 BWA,BorgWarner,Consumer Discretionary,Automotive Parts & Equipment,S&P MidCap 400
 BWXT,BWX Technologies,Industrials,Aerospace & Defense,S&P MidCap 400
@@ -724,7 +724,7 @@ MKSI,MKS Instruments,Information Technology,Semiconductor Materials & Equipment,
 MLI,Mueller Industries,Industrials,Industrial Machinery & Supplies & Components,S&P MidCap 400
 MMS,Maximus Inc.,Industrials,Data Processing & Outsourced Services,S&P MidCap 400
 MOG-A,Moog Inc.,Industrials,Aerospace & Defense,S&P MidCap 400
-MOH,Molina Healthcare,Health Care,Managed Health Care,"S&P MidCap 400, S&P SmallCap 600"
+MOH,Molina Healthcare,Health Care,Managed Health Care,S&P MidCap 400
 MORN,"Morningstar, Inc.",Financials,Financial Exchanges & Data,S&P MidCap 400
 MP,MP Materials,Materials,Diversified Metals & Mining,S&P MidCap 400
 MSA,MSA Safety,Industrials,Office Services & Supplies,S&P MidCap 400
@@ -930,7 +930,7 @@ AGX,"Argan, Inc.",Industrials,Construction & Engineering,S&P SmallCap 600
 AGYS,"Agilysys, Inc.",Information Technology,Application Software,S&P SmallCap 600
 AHCO,AdaptHealth Corp.,Health Care,Health Care Equipment,S&P SmallCap 600
 AIN,Albany International Corp.,Industrials,Industrial Machinery & Supplies & Components,S&P SmallCap 600
-AIR,AAR CORP.,Industrials,Aerospace & Defense,S&P SmallCap 600
+AIR,AAR Corp.,Industrials,Aerospace & Defense,S&P SmallCap 600
 AKR,Acadia Realty Trust,Real Estate,Retail REITs,S&P SmallCap 600
 ALG,Alamo Group,Industrials,Construction Machinery & Heavy Transportation Equipment,S&P SmallCap 600
 ALGT,Allegiant Travel Company,Industrials,Passenger Airlines,S&P SmallCap 600
@@ -1145,7 +1145,7 @@ HCC,"Warrior Met Coal, Inc.",Materials,Steel,S&P SmallCap 600
 HCI,"HCI Group, Inc.",Financials,Property & Casualty Insurance,S&P SmallCap 600
 HCSG,"Healthcare Services Group, Inc.",Industrials,Environmental & Facilities Services,S&P SmallCap 600
 HE,"Hawaiian Electric Industries, Inc.",Utilities,Electric Utilities,S&P SmallCap 600
-HFWA,Heritage Financial Corporation,Health Care,Regional Banks,S&P SmallCap 600
+HFWA,Heritage Financial Corporation,Financials,Regional Banks,S&P SmallCap 600
 HIW,Highwoods Properties,Real Estate,Office REITs,S&P SmallCap 600
 HLIT,Harmonic Inc.,Information Technology,Communications Equipment,S&P SmallCap 600
 HLX,"Helix Energy Solutions Group, Inc.",Energy,Oil & Gas Equipment & Services,S&P SmallCap 600
@@ -1188,7 +1188,6 @@ JOE,St. Joe Company,Real Estate,Real Estate Development,S&P SmallCap 600
 JXN,"Jackson Financial, Inc.",Financials,Life & Health Insurance,S&P SmallCap 600
 KAI,Kadant Inc.,Industrials,Industrial Machinery & Supplies & Components,S&P SmallCap 600
 KALU,Kaiser Aluminum Corporation,Materials,Aluminum,S&P SmallCap 600
-OPLN,"OPENLANE, Inc.",Industrials,Diversified Support Services,S&P SmallCap 600
 KFY,Korn/Ferry International,Industrials,Human Resource & Employment Services,S&P SmallCap 600
 KGS,"Kodiak Gas Services, Inc.",Energy,Oil & Gas Equipment & Services,S&P SmallCap 600
 KLIC,"Kulicke and Soffa Industries, Inc.",Information Technology,Semiconductor Materials & Equipment,S&P SmallCap 600
@@ -1198,6 +1197,7 @@ KMX,"CarMax, Inc.",Consumer Discretionary,Automotive Retail,S&P SmallCap 600
 KN,Knowles Corporation,Information Technology,Electronic Components,S&P SmallCap 600
 KNTK,"Kinetik Holdings, Inc.",Energy,Oil & Gas Storage & Transportation,S&P SmallCap 600
 KOP,"Koppers Holdings, Inc.",Materials,Commodity Chemicals,S&P SmallCap 600
+KRMN,Karman Holdings,Industrials,Aerospace & Defense,S&P SmallCap 600
 KSS,Kohl's Corp.,Consumer Discretionary,Broadline Retail,S&P SmallCap 600
 KTB,Kontoor Brands,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",S&P SmallCap 600
 KWR,Quaker Chemical Corporation,Materials,Specialty Chemicals,S&P SmallCap 600
@@ -1296,6 +1296,7 @@ OGN,Organon & Co.,Health Care,Pharmaceuticals,S&P SmallCap 600
 OI,"O-I Glass, Inc.",Materials,"Metal, Glass & Plastic Containers",S&P SmallCap 600
 OII,"Oceaneering International, Inc.",Energy,Oil & Gas Equipment & Services,S&P SmallCap 600
 OMCL,Omnicell,Health Care,Health Care Technology,S&P SmallCap 600
+OPLN,"OPENLANE, Inc.",Industrials,Diversified Support Services,S&P SmallCap 600
 OSIS,"OSI Systems, Inc.",Information Technology,Electronic Equipment & Instruments,S&P SmallCap 600
 OSW,OneSpaWorld Holdings Limited,Consumer Discretionary,Leisure Facilities,S&P SmallCap 600
 OTTR,Otter Tail Corporation,Utilities,Electric Utilities,S&P SmallCap 600
@@ -1364,6 +1365,7 @@ RHP,Ryman Hospitality Properties,Real Estate,Hotel & Resort REITs,S&P SmallCap 6
 RITM,Rithm Capital,Financials,Mortgage REITs,S&P SmallCap 600
 RNG,"RingCentral, Inc.",Information Technology,Application Software,S&P SmallCap 600
 RNST,Renasant Corp.,Financials,Regional Banks,S&P SmallCap 600
+ROAD,"Construction Partners, Inc.",Industrials,Construction & Engineering,S&P SmallCap 600
 ROCK,"Gibraltar Industries, Inc.",Industrials,Building Products,S&P SmallCap 600
 ROG,Rogers Corporation,Information Technology,Electronic Components,S&P SmallCap 600
 RRR,"Red Rock Resorts, Inc.",Consumer Discretionary,Casinos & Gaming,S&P SmallCap 600
