@@ -702,7 +702,7 @@ KNSL,Kinsale Capital Group,Financials,Property & Casualty Insurance,S&P MidCap 4
 KNX,Knight-Swift,Industrials,Cargo Ground Transportation,S&P MidCap 400
 KRC,Kilroy Realty Corp,Real Estate,Office REITs,S&P MidCap 400
 KRG,Kite Realty Group Trust,Real Estate,Retail REITs,S&P MidCap 400
-KRYS,Krystal Biotech,Health Care,Biotechnology,"S&P MidCap 400, S&P SmallCap 600"
+KRYS,Krystal Biotech,Health Care,Biotechnology,S&P MidCap 400
 KTOS,Kratos Defense & Security Solutions,Industrials,Aerospace & Defense,S&P MidCap 400
 LAD,Lithia Motors,Consumer Discretionary,Automotive Retail,S&P MidCap 400
 LAMR,Lamar Advertising Company,Real Estate,Other Specialized REITs,S&P MidCap 400
@@ -961,7 +961,6 @@ ATEN,"A10 Networks, Inc.",Information Technology,Systems Software,S&P SmallCap 6
 ATMU,Atmus Filtration Technologies Inc.,Industrials,Industrial Machinery & Supplies & Components,S&P SmallCap 600
 AUB,"Atlantic Union Bankshares, Corp.",Financials,Regional Banks,S&P SmallCap 600
 AVA,Avista Corporation,Utilities,Multi-Utilities,S&P SmallCap 600
-AVNS,"Avanos Medical, Inc.",Health Care,Health Care Supplies,S&P SmallCap 600
 AWI,"Armstrong World Industries, Inc.",Industrials,Building Products,S&P SmallCap 600
 AWR,American States Water Company,Utilities,Water Utilities,S&P SmallCap 600
 AX,"Axos Financial, Inc.",Financials,Regional Banks,S&P SmallCap 600
@@ -1431,6 +1430,7 @@ TMDX,"TransMedics Group, Inc.",Health Care,Health Care Equipment,S&P SmallCap 60
 TMP,Tompkins Financial Corporation,Financials,Regional Banks,S&P SmallCap 600
 TNC,Tennant Company,Industrials,Industrial Machinery & Supplies & Components,S&P SmallCap 600
 TNDM,Tandem Diabetes Care,Health Care,Health Care Equipment,S&P SmallCap 600
+TPC,Tutor Perini Corporation,Industrials,Construction & Engineering,S&P SmallCap 600
 TR,"Tootsie Roll Industries, Inc.",Consumer Staples,Packaged Foods & Meats,S&P SmallCap 600
 TRIP,TripAdvisor,Communication Services,Interactive Media & Services,S&P SmallCap 600
 TRMK,Trustmark Corp.,Financials,Regional Banks,S&P SmallCap 600
@@ -1474,6 +1474,7 @@ VSNT,"Versant Media Group, Inc.",Communication Services,Cable & Satellite,S&P Sm
 VSTS,Vestis,Industrials,Diversified Support Services,S&P SmallCap 600
 VSXY,Victoria's Secret,Consumer Discretionary,Apparel Retail,S&P SmallCap 600
 VTOL,Bristow Group Inc.,Energy,Oil & Gas Equipment & Services,S&P SmallCap 600
+VVX,"V2X, Inc.",Industrials,Aerospace & Defense,S&P SmallCap 600
 VYX,NCR Voyix,Information Technology,IT Consulting & Other Services,S&P SmallCap 600
 WABC,Westamerica Bank,Financials,Regional Banks,S&P SmallCap 600
 WAFD,"WaFd, Inc.",Financials,Regional Banks,S&P SmallCap 600
