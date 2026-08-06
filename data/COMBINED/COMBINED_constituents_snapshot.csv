@@ -166,7 +166,6 @@ ECHO,EchoStar,Communication Services,Wireless Telecommunication Services,S&P 500
 ECL,Ecolab,Materials,Specialty Chemicals,S&P 500
 EIX,Edison International,Utilities,Electric Utilities,S&P 500
 EW,Edwards Lifesciences,Health Care,Health Care Equipment,S&P 500
-EA,Electronic Arts,Communication Services,Interactive Home Entertainment,S&P 500
 ELV,Elevance Health,Health Care,Managed Health Care,S&P 500
 EME,Emcor,Industrials,Construction & Engineering,S&P 500
 EMR,Emerson Electric,Industrials,Electrical Components & Equipment,S&P 500
@@ -195,6 +194,7 @@ FAST,Fastenal,Industrials,Trading Companies & Distributors,S&P 500
 FRT,Federal Realty Investment Trust,Real Estate,Retail REITs,S&P 500
 FDX,FedEx,Industrials,Air Freight & Logistics,S&P 500
 FDXF,FedEx Freight,Industrials,Cargo Ground Transportation,S&P 500
+FERG,Ferguson Enterprises,Industrials,Building Products,S&P 500
 FIS,Fidelity National Information Services,Financials,Transaction & Payment Processing Services,S&P 500
 FITB,Fifth Third Bancorp,Financials,Regional Banks,S&P 500
 FSLR,First Solar,Information Technology,Semiconductors,S&P 500
