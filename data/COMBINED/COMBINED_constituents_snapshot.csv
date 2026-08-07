@@ -39,7 +39,7 @@ APA,APA Corporation,Energy,Oil & Gas Exploration & Production,S&P 500
 APO,Apollo Global Management,Financials,Asset Management & Custody Banks,S&P 500
 AAPL,Apple Inc.,Information Technology,"Technology Hardware, Storage & Peripherals","S&P 500, Dow 30"
 AMAT,Applied Materials,Information Technology,Semiconductor Materials & Equipment,S&P 500
-APP,AppLovin,Information Technology,Application Software,S&P 500
+APP,AppLovin,Communication Services,Advertising,S&P 500
 APTV,Aptiv,Consumer Discretionary,Automotive Parts & Equipment,S&P 500
 ACGL,Arch Capital Group,Financials,Property & Casualty Insurance,S&P 500
 ADM,Archer Daniels Midland,Consumer Staples,Agricultural Products & Services,S&P 500
@@ -159,7 +159,7 @@ DOW,Dow Inc.,Materials,Commodity Chemicals,S&P 500
 DHI,D. R. Horton,Consumer Discretionary,Homebuilding,S&P 500
 DTE,DTE Energy,Utilities,Multi-Utilities,S&P 500
 DUK,Duke Energy,Utilities,Electric Utilities,S&P 500
-DD,DuPont,Materials,Specialty Chemicals,S&P 500
+DD,DuPont,Industrials,Industrial Conglomerates,S&P 500
 ETN,Eaton Corporation,Industrials,Electrical Components & Equipment,S&P 500
 EBAY,eBay Inc.,Consumer Discretionary,Broadline Retail,S&P 500
 ECHO,EchoStar,Communication Services,Wireless Telecommunication Services,S&P 500
