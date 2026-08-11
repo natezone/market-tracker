@@ -326,7 +326,7 @@ MCO,Moody's Corporation,Financials,Financial Exchanges & Data,S&P 500
 MS,Morgan Stanley,Financials,Investment Banking & Brokerage,S&P 500
 MOS,Mosaic Company (The),Materials,Fertilizers & Agricultural Chemicals,S&P 500
 MSI,Motorola Solutions,Information Technology,Communications Equipment,S&P 500
-MSCI,MSCI Inc.,Financials,Financial Exchanges & Data,S&P 500
+MSCI,MSCI,Financials,Financial Exchanges & Data,S&P 500
 NDAQ,"Nasdaq, Inc.",Financials,Financial Exchanges & Data,S&P 500
 NTAP,NetApp,Information Technology,"Technology Hardware, Storage & Peripherals",S&P 500
 NFLX,Netflix,Communication Services,Movies & Entertainment,S&P 500
@@ -346,7 +346,7 @@ NUE,Nucor,Materials,Steel,S&P 500
 NVDA,Nvidia,Information Technology,Semiconductors,"S&P 500, Dow 30"
 NVR,"NVR, Inc.",Consumer Discretionary,Homebuilding,S&P 500
 NXPI,NXP Semiconductors,Information Technology,Semiconductors,S&P 500
-ORLY,O’Reilly Automotive,Consumer Discretionary,Automotive Retail,S&P 500
+ORLY,O'Reilly Automotive,Consumer Discretionary,Automotive Retail,S&P 500
 OXY,Occidental Petroleum,Energy,Oil & Gas Exploration & Production,S&P 500
 ODFL,Old Dominion,Industrials,Cargo Ground Transportation,S&P 500
 OMC,Omnicom Group,Communication Services,Advertising,S&P 500
@@ -393,7 +393,7 @@ REG,Regency Centers,Real Estate,Retail REITs,S&P 500
 REGN,Regeneron Pharmaceuticals,Health Care,Biotechnology,S&P 500
 RF,Regions Financial Corporation,Financials,Regional Banks,S&P 500
 RSG,Republic Services,Industrials,Environmental & Facilities Services,S&P 500
-RMD,ResMed,Health Care,Health Care Equipment,S&P 500
+RMD,ResMed|,Health Care,Health Care Equipment,S&P 500
 RVTY,Revvity,Health Care,Health Care Equipment,S&P 500
 HOOD,Robinhood Markets,Financials,Investment Banking & Brokerage,S&P 500
 ROK,Rockwell Automation,Industrials,Electrical Components & Equipment,S&P 500
