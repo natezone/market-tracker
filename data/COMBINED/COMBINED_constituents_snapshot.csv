@@ -52,7 +52,6 @@ ATO,Atmos Energy,Utilities,Gas Utilities,S&P 500
 ADSK,Autodesk,Information Technology,Application Software,S&P 500
 ADP,Automatic Data Processing,Industrials,Human Resource & Employment Services,S&P 500
 AZO,AutoZone,Consumer Discretionary,Automotive Retail,S&P 500
-AVB,AvalonBay Communities,Real Estate,Multi-Family Residential REITs,S&P 500
 AVY,Avery Dennison,Materials,Paper & Plastic Packaging Products & Materials,S&P 500
 AXON,Axon Enterprise,Industrials,Aerospace & Defense,S&P 500
 BKR,Baker Hughes,Energy,Oil & Gas Equipment & Services,S&P 500
@@ -174,7 +173,6 @@ EOG,EOG Resources,Energy,Oil & Gas Exploration & Production,S&P 500
 EQT,EQT Corporation,Energy,Oil & Gas Exploration & Production,S&P 500
 EFX,Equifax,Industrials,Research & Consulting Services,S&P 500
 EQIX,Equinix,Real Estate,Data Center REITs,S&P 500
-EQR,Equity Residential,Real Estate,Multi-Family Residential REITs,S&P 500
 ERIE,Erie Indemnity,Financials,Insurance Brokers,S&P 500
 ESS,Essex Property Trust,Real Estate,Multi-Family Residential REITs,S&P 500
 EL,Estée Lauder Companies (The),Consumer Staples,Personal Care Products,S&P 500
@@ -387,6 +385,7 @@ DGX,Quest Diagnostics,Health Care,Health Care Services,S&P 500
 Q,Qnity Electronics,Information Technology,Semiconductor Materials & Equipment,S&P 500
 RL,Ralph Lauren Corporation,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",S&P 500
 RJF,Raymond James Financial,Financials,Investment Banking & Brokerage,S&P 500
+RDDT,Reddit,Communication Services,,S&P 500
 RTX,RTX Corporation,Industrials,Aerospace & Defense,S&P 500
 O,Realty Income,Real Estate,Retail REITs,S&P 500
 REG,Regency Centers,Real Estate,Retail REITs,S&P 500
@@ -476,6 +475,7 @@ VTRS,Viatris,Health Care,Pharmaceuticals,S&P 500
 VICI,Vici Properties,Real Estate,Hotel & Resort REITs,S&P 500
 V,Visa Inc.,Financials,Transaction & Payment Processing Services,S&P 500
 VST,Vistra Corp.,Utilities,Electric Utilities,S&P 500
+VMRK,Vivmark Residential,Real Estate,Multi-Family Residential REITs,S&P 500
 VMC,Vulcan Materials Company,Materials,Construction Materials,S&P 500
 WRB,W. R. Berkley Corporation,Financials,Property & Casualty Insurance,S&P 500
 GWW,W. W. Grainger,Industrials,Industrial Machinery & Supplies & Components,S&P 500
