@@ -8,6 +8,7 @@ ADC,Agree Realty,Real Estate,Retail REITs,"Bloomfield Hills, Michigan",reports
 AEIS,Advanced Energy,Information Technology,Semiconductor Materials & Equipment,"Denver, Colorado",reports
 AFG,American Financial Group,Financials,Multi-line Insurance,"Cincinnati, Ohio",reports
 AGCO,AGCO,Industrials,Agricultural & Farm Machinery,"Duluth, Georgia",reports
+AGNC,AGNC Investment,Financials,Mortgage REITs,"Bethesda, Maryland",reports
 AHR,American Healthcare REIT,Real Estate,Health Care REITs,"Irvine, California",reports
 AIT,Applied Industrial Technologies,Industrials,Trading Companies & Distributors,"Cleveland, Ohio",reports
 ALGM,Allegro MicroSystems,Information Technology,Semiconductors,"Manchester, New Hampshire",reports
@@ -85,7 +86,7 @@ CNX,CNX Resources,Energy,Oil & Gas Exploration & Production,"Pittsburgh, Pennsyl
 COKE,Coca-Cola Consolidated,Consumer Staples,Soft Drinks & Non-alcoholic Beverages,"Charlotte, North Carolina",reports
 COLB,Columbia Banking System,Financials,Regional Banks,"Tacoma, Washington",reports
 COLM,Columbia Sportswear,Consumer Discretionary,"Apparel, Accessories & Luxury Goods","Portland, Oregon",reports
-CPRI,Capri Holdings,Consumer Discretionary,"Apparel, Accessories & Luxury Goods","New York City, New York",reports
+CORT,Corcept Therapeutics,Health Care,Biotechnology,"Redwood City, California",reports
 CR,Crane,Industrials,Industrial Machinery & Supplies & Components,"Stamford, Connecticut",reports
 CRBG,Corebridge Financial,Financials,Asset Management & Custody Banks,"Houston, Texas",reports
 CROX,Crocs,Consumer Discretionary,Footwear,"Broomfield, Colorado",reports
@@ -112,6 +113,7 @@ DT,Dynatrace,Information Technology,Application Software,"Waltham, Massachusetts
 DTM,DT Midstream,Energy,Oil & Gas Storage & Transportation,"Detroit, Michigan",reports
 DUOL,Duolingo,Consumer Discretionary,Education Services,"Pittsburgh, Pennsylvania",reports
 DY,Dycom Industries,Industrials,Construction & Engineering,"Palm Beach Gardens, Florida",reports
+EAT,Brinker International,Consumer Discretionary,Restaurants,"Dallas, Texas",reports
 EEFT,Euronet Worldwide,Financials,Transaction & Payment Processing Services,"Leawood, Kansas",reports
 EGP,EastGroup Properties,Real Estate,Industrial REITs,,reports
 EHC,Encompass Health,Health Care,Health Care Facilities,"Birmingham, Alabama",reports
@@ -176,13 +178,13 @@ HOMB,Home BancShares,Financials,Regional Banks,"Conway, Arkansas",reports
 HQY,HealthEquity,Health Care,Managed Health Care,"Draper, Utah",reports
 HR,Healthcare Realty Trust,Real Estate,Health Care REITs,,reports
 HRB,H&R Block,Consumer Discretionary,Specialized Consumer Services,"Kansas City, Missouri",reports
+HUBS,HubSpot,Information Technology,Application Software,"Cambridge, Massachusetts",reports
 HWC,Hancock Whitney,Financials,Regional Banks,"Gulfport, Mississippi",reports
 HXL,Hexcel,Industrials,Aerospace & Defense,"Stamford, Connecticut",reports
 IBOC,Intl Bancshares Corp,Financials,Regional Banks,"Laredo, Texas",reports
 IDA,Idacorp,Utilities,Electric Utilities,"Boise, Idaho",reports
 IDCC,InterDigital,Information Technology,Communications Equipment,"Wilmington, Delaware",reports
 IESC,IES Holdings,Industrials,Construction & Engineering,"Sugar Land, Texas",reports
-ILMN,"Illumina, Inc.",Health Care,Life Sciences Tools & Services,"San Diego, California",reports
 INGR,Ingredion,Consumer Staples,Agricultural Products & Services,"Westchester, Illinois",reports
 IPGP,IPG Photonics,Information Technology,Electronic Manufacturing Services,"Oxford, Massachusetts",reports
 IRT,Independence Realty Trust,Real Estate,Multi-Family Residential REITs,,reports
@@ -265,7 +267,6 @@ ORI,Old Republic International,Financials,Property & Casualty Insurance,"Chicago
 OSK,Oshkosh,Industrials,Construction Machinery & Heavy Transportation Equipment,"Oshkosh, Wisconsin",reports
 OVV,Ovintiv,Energy,Oil & Gas Exploration & Production,"Denver, Colorado",reports
 OZK,Bank OZK,Financials,Regional Banks,"Little Rock, Arkansas",reports
-P,Everpure,Information Technology,"Technology Hardware, Storage & Peripherals","Santa Clara, California",reports
 PAG,Penske Automotive Group,Consumer Discretionary,Automotive Retail,"Bloomfield Hills, Michigan",reports
 PATH,UiPath,Information Technology,Systems Software,"New York City, New York",reports
 PB,Prosperity Bancshares,Financials,Regional Banks,"Houston, Texas",reports
@@ -308,7 +309,6 @@ RYAN,Ryan Specialty,Financials,Insurance Brokers,"Chicago, Illinois",reports
 RYN,Rayonier,Real Estate,Timber REITs,"Wildlight, Florida",reports
 SAIA,Saia,Industrials,Cargo Ground Transportation,"Johns Creek, Georgia",reports
 SAIC,Science Applications Intl Corp,Industrials,Diversified Support Services,"Reston, Virginia",reports
-SAM,Boston Beer Company,Consumer Staples,Brewers,"Boston, Massachusetts",reports
 SANM,Sanmina Corporation,Information Technology,Electronic Manufacturing Services,"San Jose, California",reports
 SARO,StandardAero,Industrials,Aerospace & Defense,"Scottsdale, Arizona",reports
 SBRA,Sabra Health Care REIT,Real Estate,Health Care REITs,,reports

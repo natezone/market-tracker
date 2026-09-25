@@ -178,7 +178,7 @@ ESS,Essex Property Trust,Real Estate,Multi-Family Residential REITs,S&P 500
 EL,Estée Lauder Companies (The),Consumer Staples,Personal Care Products,S&P 500
 EG,Everest Group,Financials,Reinsurance,S&P 500
 EVRG,Evergy,Utilities,Electric Utilities,S&P 500
-P,Everpure,Information Technology,"Technology Hardware, Storage & Peripherals","S&P 500, S&P MidCap 400"
+P,Everpure,Information Technology,"Technology Hardware, Storage & Peripherals",S&P 500
 ES,Eversource Energy,Utilities,Electric Utilities,S&P 500
 EXC,Exelon,Utilities,Electric Utilities,S&P 500
 EXE,Expand Energy,Energy,Oil & Gas Exploration & Production,S&P 500
@@ -247,7 +247,7 @@ IBM,IBM,Information Technology,IT Consulting & Other Services,S&P 500
 IEX,IDEX Corporation,Industrials,Industrial Machinery & Supplies & Components,S&P 500
 IDXX,Idexx Laboratories,Health Care,Health Care Equipment,S&P 500
 ITW,Illinois Tool Works,Industrials,Industrial Machinery & Supplies & Components,S&P 500
-ILMN,"Illumina, Inc.",Health Care,Life Sciences Tools & Services,"S&P 500, S&P MidCap 400"
+ILMN,"Illumina, Inc.",Health Care,Life Sciences Tools & Services,S&P 500
 INCY,Incyte,Health Care,Biotechnology,S&P 500
 IR,Ingersoll Rand,Industrials,Industrial Machinery & Supplies & Components,S&P 500
 PODD,Insulet Corporation,Health Care,Health Care Equipment,S&P 500
@@ -511,6 +511,7 @@ ADC,Agree Realty,Real Estate,Retail REITs,S&P MidCap 400
 AEIS,Advanced Energy,Information Technology,Semiconductor Materials & Equipment,S&P MidCap 400
 AFG,American Financial Group,Financials,Multi-line Insurance,S&P MidCap 400
 AGCO,AGCO,Industrials,Agricultural & Farm Machinery,S&P MidCap 400
+AGNC,AGNC Investment,Financials,Mortgage REITs,S&P MidCap 400
 AHR,American Healthcare REIT,Real Estate,Health Care REITs,S&P MidCap 400
 AIT,Applied Industrial Technologies,Industrials,Trading Companies & Distributors,S&P MidCap 400
 ALGM,Allegro MicroSystems,Information Technology,Semiconductors,S&P MidCap 400
@@ -588,7 +589,7 @@ CNX,CNX Resources,Energy,Oil & Gas Exploration & Production,S&P MidCap 400
 COKE,Coca-Cola Consolidated,Consumer Staples,Soft Drinks & Non-alcoholic Beverages,S&P MidCap 400
 COLB,Columbia Banking System,Financials,Regional Banks,S&P MidCap 400
 COLM,Columbia Sportswear,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",S&P MidCap 400
-CPRI,Capri Holdings,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",S&P MidCap 400
+CORT,Corcept Therapeutics,Health Care,Biotechnology,"S&P MidCap 400, S&P SmallCap 600"
 CR,Crane,Industrials,Industrial Machinery & Supplies & Components,S&P MidCap 400
 CRBG,Corebridge Financial,Financials,Asset Management & Custody Banks,S&P MidCap 400
 CROX,Crocs,Consumer Discretionary,Footwear,S&P MidCap 400
@@ -615,6 +616,7 @@ DT,Dynatrace,Information Technology,Application Software,S&P MidCap 400
 DTM,DT Midstream,Energy,Oil & Gas Storage & Transportation,S&P MidCap 400
 DUOL,Duolingo,Consumer Discretionary,Education Services,S&P MidCap 400
 DY,Dycom Industries,Industrials,Construction & Engineering,S&P MidCap 400
+EAT,Brinker International,Consumer Discretionary,Restaurants,"S&P MidCap 400, S&P SmallCap 600"
 EEFT,Euronet Worldwide,Financials,Transaction & Payment Processing Services,S&P MidCap 400
 EGP,EastGroup Properties,Real Estate,Industrial REITs,S&P MidCap 400
 EHC,Encompass Health,Health Care,Health Care Facilities,S&P MidCap 400
@@ -679,6 +681,7 @@ HOMB,Home BancShares,Financials,Regional Banks,S&P MidCap 400
 HQY,HealthEquity,Health Care,Managed Health Care,S&P MidCap 400
 HR,Healthcare Realty Trust,Real Estate,Health Care REITs,S&P MidCap 400
 HRB,H&R Block,Consumer Discretionary,Specialized Consumer Services,S&P MidCap 400
+HUBS,HubSpot,Information Technology,Application Software,S&P MidCap 400
 HWC,Hancock Whitney,Financials,Regional Banks,S&P MidCap 400
 HXL,Hexcel,Industrials,Aerospace & Defense,S&P MidCap 400
 IBOC,Intl Bancshares Corp,Financials,Regional Banks,S&P MidCap 400
@@ -809,7 +812,6 @@ RYAN,Ryan Specialty,Financials,Insurance Brokers,S&P MidCap 400
 RYN,Rayonier,Real Estate,Timber REITs,S&P MidCap 400
 SAIA,Saia,Industrials,Cargo Ground Transportation,S&P MidCap 400
 SAIC,Science Applications Intl Corp,Industrials,Diversified Support Services,S&P MidCap 400
-SAM,Boston Beer Company,Consumer Staples,Brewers,S&P MidCap 400
 SANM,Sanmina Corporation,Information Technology,Electronic Manufacturing Services,S&P MidCap 400
 SARO,StandardAero,Industrials,Aerospace & Defense,S&P MidCap 400
 SBRA,Sabra Health Care REIT,Real Estate,Health Care REITs,S&P MidCap 400
@@ -1023,7 +1025,6 @@ COCO,The Vita Coco Company,Consumer Staples,Soft Drinks & Non-alcoholic Beverage
 COHU,"Cohu, Inc.",Information Technology,Semiconductor Materials & Equipment,S&P SmallCap 600
 COLL,"Collegium Pharmaceutical, Inc.",Health Care,Pharmaceuticals,S&P SmallCap 600
 CON,"Concentra Group Holdings Parent, Inc.",Health Care,Health Care Services,S&P SmallCap 600
-CORT,Corcept Therapeutics Incorporated,Health Care,Pharmaceuticals,S&P SmallCap 600
 COTY,Coty,Consumer Staples,Personal Care Products,S&P SmallCap 600
 CPB,The Campbell's Company,Consumer Staples,Packaged Foods & Meats,S&P SmallCap 600
 CPF,Central Pacific Financial Corp.,Financials,Regional Banks,S&P SmallCap 600
@@ -1070,7 +1071,6 @@ DRH,DiamondRock Hospitality Company,Real Estate,Hotel & Resort REITs,S&P SmallCa
 DV,DoubleVerify Holdings Inc.,Communication Services,Advertising,S&P SmallCap 600
 DXC,DXC Technology,Information Technology,IT Consulting & Other Services,S&P SmallCap 600
 DXPE,"DXP Enterprises, Inc.",Industrials,Trading Companies & Distributors,S&P SmallCap 600
-EAT,"Brinker International, Inc.",Consumer Discretionary,Restaurants,S&P SmallCap 600
 EBC,"Eastern Bankshares, Inc.",Financials,Regional Banks,S&P SmallCap 600
 ECG,"Everus Construction Group, Inc.",Industrials,Construction & Engineering,S&P SmallCap 600
 ECPG,"Encore Capital Group, Inc.",Financials,Consumer Finance,S&P SmallCap 600
