@@ -127,7 +127,6 @@ COO,Cooper Companies (The),Health Care,Health Care Supplies,S&P 500
 CPRT,Copart,Industrials,Diversified Support Services,S&P 500
 GLW,Corning Inc.,Information Technology,Electronic Components,S&P 500
 CPAY,Corpay,Financials,Transaction & Payment Processing Services,S&P 500
-CTVA,Corteva,Materials,Fertilizers & Agricultural Chemicals,S&P 500
 CSGP,CoStar Group,Real Estate,Real Estate Services,S&P 500
 COST,Costco,Consumer Staples,Consumer Staples Merchandise Retail,S&P 500
 CRH,CRH plc,Materials,Construction Materials,S&P 500
@@ -357,7 +356,7 @@ PCAR,Paccar,Industrials,Construction Machinery & Heavy Transportation Equipment,
 PKG,Packaging Corporation of America,Materials,Paper & Plastic Packaging Products & Materials,S&P 500
 PLTR,Palantir Technologies,Information Technology,Application Software,S&P 500
 PANW,Palo Alto Networks,Information Technology,Systems Software,S&P 500
-PSKY,Paramount Skydance Corporation,Communication Services,Movies & Entertainment,S&P 500
+SKYD,Paramount Skydance Corporation,Communication Services,Movies & Entertainment,S&P 500
 PH,Parker Hannifin,Industrials,Industrial Machinery & Supplies & Components,S&P 500
 PAYX,Paychex,Industrials,Human Resource & Employment Services,S&P 500
 PYPL,PayPal,Financials,Transaction & Payment Processing Services,S&P 500
@@ -450,6 +449,7 @@ TDG,TransDigm Group,Industrials,Aerospace & Defense,S&P 500
 TRV,Travelers Companies (The),Financials,Property & Casualty Insurance,S&P 500
 TRMB,Trimble Inc.,Information Technology,Application Software,S&P 500
 TFC,Truist Financial,Financials,Diversified Banks,S&P 500
+TWLO,Twilio,Information Technology,Systems Software,"S&P 500, S&P MidCap 400"
 TYL,Tyler Technologies,Information Technology,Application Software,S&P 500
 TSN,Tyson Foods,Consumer Staples,Packaged Foods & Meats,S&P 500
 USB,U.S. Bancorp,Financials,Diversified Banks,S&P 500
@@ -477,12 +477,12 @@ V,Visa Inc.,Financials,Transaction & Payment Processing Services,S&P 500
 VST,Vistra Corp.,Utilities,Electric Utilities,S&P 500
 VMRK,Vivmark Residential,Real Estate,Multi-Family Residential REITs,S&P 500
 VMC,Vulcan Materials Company,Materials,Construction Materials,S&P 500
+VYLR,Vylor,Consumer Staples,Agricultural Products & Services,S&P 500
 WRB,W. R. Berkley Corporation,Financials,Property & Casualty Insurance,S&P 500
 GWW,W. W. Grainger,Industrials,Industrial Machinery & Supplies & Components,S&P 500
 WAB,Wabtec,Industrials,Construction Machinery & Heavy Transportation Equipment,S&P 500
 WMT,Walmart,Consumer Staples,Consumer Staples Merchandise Retail,S&P 500
 DIS,Walt Disney Company (The),Communication Services,Movies & Entertainment,S&P 500
-WBD,Warner Bros. Discovery,Communication Services,Broadcasting,S&P 500
 WM,Waste Management,Industrials,Environmental & Facilities Services,S&P 500
 WAT,Waters Corporation,Health Care,Life Sciences Tools & Services,S&P 500
 WEC,WEC Energy Group,Utilities,Electric Utilities,S&P 500
@@ -859,7 +859,6 @@ TRU,TransUnion,Industrials,Research & Consulting Services,S&P MidCap 400
 TTC,Toro,Industrials,Agricultural & Farm Machinery,S&P MidCap 400
 TTEK,Tetra Tech,Industrials,Construction & Engineering,S&P MidCap 400
 TTMI,TTM Technologies,Information Technology,Electronic Manufacturing Services,S&P MidCap 400
-TWLO,Twilio,Information Technology,Systems Software,S&P MidCap 400
 TXNM,TXNM Energy,Utilities,Electric Utilities,S&P MidCap 400
 TXRH,Texas Roadhouse,Consumer Discretionary,Restaurants,S&P MidCap 400
 UBSI,United Bankshares,Financials,Regional Banks,S&P MidCap 400
