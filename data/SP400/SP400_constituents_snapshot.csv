@@ -94,6 +94,7 @@ CRS,Carpenter Technology,Industrials,Industrial Machinery & Supplies & Component
 CRUS,Cirrus Logic,Information Technology,Semiconductors,"Austin, Texas",reports
 CSL,Carlisle Companies,Industrials,Industrial Conglomerates,"Phoenix, Arizona",reports
 CTRE,CareTrust REIT,Real Estate,Health Care REITs,"Dana Point, California",reports
+CTVA,Corteva,Materials,Fertilizers & Agricultural Chemicals,"Indianapolis, Indiana",reports
 CUBE,CubeSmart,Real Estate,Industrial REITs,"Malvern, Pennsylvania",reports
 CUZ,Cousins Properties,Real Estate,Office REITs,"Atlanta, Georgia",reports
 CVLT,CommVault Systems,Information Technology,Systems Software,"Tinton Falls, New Jersey",reports
@@ -148,6 +149,7 @@ FN,Fabrinet,Information Technology,Electronic Manufacturing Services,"Santa Clar
 FNB,FNB Corporation,Financials,Regional Banks,"Pittsburgh, Pennsylvania",reports
 FND,Floor & Decor,Consumer Discretionary,Home Improvement Retail,"Smyrna, Georgia",reports
 FNF,Fidelity National Financial,Financials,Property & Casualty Insurance,"Jacksonville, Florida",reports
+FORM,"FormFactor, Inc.",Information Technology,Semiconductor Materials & Equipment,"Livermore, California",reports
 FOUR,Shift4,Financials,Transaction & Payment Processing Services,"Center Valley, Pennsylvania",reports
 FR,First Industrial Realty Trust,Real Estate,Industrial REITs,"Chicago, Illinois",reports
 FTI,TechnipFMC,Energy,Oil & Gas Equipment & Services,"Houston, Texas",reports
@@ -258,7 +260,6 @@ OHI,Omega Healthcare Investors,Real Estate,Health Care REITs,,reports
 OKTA,"Okta, Inc.",Information Technology,Application Software,"San Francisco, California",reports
 OLED,Universal Display,Information Technology,Semiconductors,"Ewing, New Jersey",reports
 OLLI,Ollie's Bargain Outlet,Consumer Discretionary,Broadline Retail,"Harrisburg, Pennsylvania",reports
-OLN,Olin Corporation,Materials,Diversified Chemicals,"Clayton, Missouri",reports
 ONB,Old National Bank,Financials,Regional Banks,"Evansville, Indiana",reports
 ONTO,Onto Innovation,Information Technology,Semiconductor Materials & Equipment,"Wilmington, Massachusetts",reports
 OPCH,Option Care Health,Health Care,Health Care Facilities,,reports
@@ -356,7 +357,6 @@ TRU,TransUnion,Industrials,Research & Consulting Services,"Chicago, Illinois",re
 TTC,Toro,Industrials,Agricultural & Farm Machinery,"Bloomington, Minnesota",reports
 TTEK,Tetra Tech,Industrials,Construction & Engineering,"Pasadena, California",reports
 TTMI,TTM Technologies,Information Technology,Electronic Manufacturing Services,"Santa Ana, California",reports
-TWLO,Twilio,Information Technology,Systems Software,"San Francisco, California",reports
 TXNM,TXNM Energy,Utilities,Electric Utilities,"Albuquerque, New Mexico",reports
 TXRH,Texas Roadhouse,Consumer Discretionary,Restaurants,"Louisville, Kentucky",reports
 UBSI,United Bankshares,Financials,Regional Banks,"Charleston, West Virginia",reports

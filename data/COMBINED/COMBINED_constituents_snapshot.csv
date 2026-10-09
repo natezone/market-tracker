@@ -449,7 +449,7 @@ TDG,TransDigm Group,Industrials,Aerospace & Defense,S&P 500
 TRV,Travelers Companies (The),Financials,Property & Casualty Insurance,S&P 500
 TRMB,Trimble Inc.,Information Technology,Application Software,S&P 500
 TFC,Truist Financial,Financials,Diversified Banks,S&P 500
-TWLO,Twilio,Information Technology,Systems Software,"S&P 500, S&P MidCap 400"
+TWLO,Twilio,Information Technology,Systems Software,S&P 500
 TYL,Tyler Technologies,Information Technology,Application Software,S&P 500
 TSN,Tyson Foods,Consumer Staples,Packaged Foods & Meats,S&P 500
 USB,U.S. Bancorp,Financials,Diversified Banks,S&P 500
@@ -597,6 +597,7 @@ CRS,Carpenter Technology,Industrials,Industrial Machinery & Supplies & Component
 CRUS,Cirrus Logic,Information Technology,Semiconductors,S&P MidCap 400
 CSL,Carlisle Companies,Industrials,Industrial Conglomerates,S&P MidCap 400
 CTRE,CareTrust REIT,Real Estate,Health Care REITs,S&P MidCap 400
+CTVA,Corteva,Materials,Fertilizers & Agricultural Chemicals,S&P MidCap 400
 CUBE,CubeSmart,Real Estate,Industrial REITs,S&P MidCap 400
 CUZ,Cousins Properties,Real Estate,Office REITs,S&P MidCap 400
 CVLT,CommVault Systems,Information Technology,Systems Software,S&P MidCap 400
@@ -651,6 +652,7 @@ FN,Fabrinet,Information Technology,Electronic Manufacturing Services,S&P MidCap 
 FNB,FNB Corporation,Financials,Regional Banks,S&P MidCap 400
 FND,Floor & Decor,Consumer Discretionary,Home Improvement Retail,S&P MidCap 400
 FNF,Fidelity National Financial,Financials,Property & Casualty Insurance,S&P MidCap 400
+FORM,"FormFactor, Inc.",Information Technology,Semiconductor Materials & Equipment,"S&P MidCap 400, S&P SmallCap 600"
 FOUR,Shift4,Financials,Transaction & Payment Processing Services,S&P MidCap 400
 FR,First Industrial Realty Trust,Real Estate,Industrial REITs,S&P MidCap 400
 FTI,TechnipFMC,Energy,Oil & Gas Equipment & Services,S&P MidCap 400
@@ -761,7 +763,6 @@ OHI,Omega Healthcare Investors,Real Estate,Health Care REITs,S&P MidCap 400
 OKTA,"Okta, Inc.",Information Technology,Application Software,S&P MidCap 400
 OLED,Universal Display,Information Technology,Semiconductors,S&P MidCap 400
 OLLI,Ollie's Bargain Outlet,Consumer Discretionary,Broadline Retail,S&P MidCap 400
-OLN,Olin Corporation,Materials,Diversified Chemicals,S&P MidCap 400
 ONB,Old National Bank,Financials,Regional Banks,S&P MidCap 400
 ONTO,Onto Innovation,Information Technology,Semiconductor Materials & Equipment,S&P MidCap 400
 OPCH,Option Care Health,Health Care,Health Care Facilities,S&P MidCap 400
@@ -1109,7 +1110,6 @@ FIVN,"Five9, Inc.",Information Technology,Application Software,S&P SmallCap 600
 FIZZ,National Beverage Corp.,Consumer Staples,Soft Drinks & Non-alcoholic Beverages,S&P SmallCap 600
 FLO,Flowers Foods,Consumer Staples,Packaged Foods & Meats,S&P SmallCap 600
 FMC,FMC Corporation,Materials,Fertilizers & Agricultural Chemicals,S&P SmallCap 600
-FORM,"FormFactor, Inc.",Information Technology,Semiconductor Materials & Equipment,S&P SmallCap 600
 FOXF,Fox Factory,Consumer Discretionary,Automotive Parts & Equipment,S&P SmallCap 600
 FRPT,Freshpet,Consumer Staples,Packaged Foods & Meats,S&P SmallCap 600
 FSS,Federal Signal Corporation,Industrials,Construction Machinery & Heavy Transportation Equipment,S&P SmallCap 600
