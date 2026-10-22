@@ -52,7 +52,7 @@ ARCB,ArcBest Corp.,Industrials,Cargo Ground Transportation,"Fort Smith, Arkansas
 ARLO,Arlo Technologies,Information Technology,Communications Equipment,"San Jose, California",view,1736946
 AROC,"Archrock, Inc.",Energy,Oil & Gas Equipment & Services,"Houston, Texas",view,1389050
 ARR,Armour Residential REIT,Real Estate,Mortgage REITs,"Vero Beach, Florida",view,1428205
-ASO,Academy Sports + Outdoors,Consumer Discretionary,Specialty Stores,"Harris County, Texas",view,1817358
+ASO,Academy Sports + Outdoors,Consumer Discretionary,Other Specialty Retail,"Harris County, Texas",view,1817358
 ASTE,"Astec Industries, Inc.",Industrials,Construction Machinery & Heavy Transportation Equipment,"Chattanooga, Tennessee",view,792987
 ASTH,"Astrana Health, Inc.",Health Care,Health Care Facilities,"Alhambra, California",view,1083446
 ATEN,"A10 Networks, Inc.",Information Technology,Systems Software,"San Jose, California",view,1580808
@@ -191,7 +191,7 @@ ESI,Element Solutions,Materials,Specialty Chemicals,"Fort Lauderdale, Florida",v
 ETSY,Etsy,Consumer Discretionary,Broadline Retail,"New York City, New York",view,1370637
 EVTC,"EVERTEC, Inc.",Financials,Transaction & Payment Processing Services,"San Juan, Puerto Rico",view,1559865
 EXTR,"Extreme Networks, Inc.",Information Technology,Communications Equipment,"Morrisville, North Carolina",view,1078271
-EYE,National Vision Holdings,Consumer Discretionary,Specialty Stores,"Duluth, Georgia",view,1710155
+EYE,National Vision Holdings,Consumer Discretionary,Other Specialty Retail,"Duluth, Georgia",view,1710155
 EZPW,"EZCORP, Inc.",Financials,Consumer Finance,"Austin, Texas",view,876523
 FA,First Advantage Corporation,Industrials,Human Resource & Employment Services,"Atlanta, Georgia",view,1210677
 FBK,FB Financial Corp.,Financials,Regional Banks,"Nashville, Tennessee",view,1649749
@@ -258,7 +258,7 @@ HTLD,"Heartland Express, Inc.",Industrials,Cargo Ground Transportation,"North Li
 HTO,H2O America,Utilities,Water Utilities,"San Jose, California",view,766829
 HUBG,"Hub Group, Inc.",Industrials,Air Freight & Logistics,"Oak Brook, Illinois",view,940942
 HWKN,"Hawkins, Inc.",Materials,Commodity Chemicals,"Roseville, Minnesota",view,46250
-HZO,"MarineMax, Inc.",Consumer Discretionary,Specialty Stores,"Clearwater, Florida",view,1057060
+HZO,"MarineMax, Inc.",Consumer Discretionary,Other Specialty Retail,"Clearwater, Florida",view,1057060
 IART,Integra Lifesciences Holdings,Health Care,Health Care Equipment,"Princeton, New Jersey",view,917520
 IBP,"Installed Building Products, Inc.",Consumer Discretionary,Homebuilding,"Columbus, Ohio",view,1580905
 ICHR,"Ichor Holdings, Ltd.",Information Technology,Semiconductor Materials & Equipment,"Fremont, California",view,1652535
@@ -475,7 +475,7 @@ SABR,Sabre,Consumer Discretionary,"Hotels, Resorts & Cruise Lines","Southlake, T
 SAFT,"Safety Insurance Group, Inc.",Financials,Property & Casualty Insurance,"Boston, Massachusetts",view,1172052
 SAH,"Sonic Automotive, Inc.",Consumer Discretionary,Automotive Retail,"Charlotte, North Carolina",view,1043509
 SBCF,Seacoast Banking Corporation of Florida,Financials,Regional Banks,"Stuart, Florida",view,730708
-SBH,"Sally Beauty Holdings, Inc.",Consumer Discretionary,Specialty Stores,"Denton, Texas",view,1368458
+SBH,"Sally Beauty Holdings, Inc.",Consumer Discretionary,Other Specialty Retail,"Denton, Texas",view,1368458
 SBSI,"Southside Bancshares, Inc.",Financials,Regional Banks,"Tyler, Texas",view,705432
 SCHL,Scholastic Corporation,Consumer Discretionary,Publishing,"New York City, New York",view,866729
 SCL,Stepan Company,Materials,Specialty Chemicals,"Northfield, Illinois",view,94049
@@ -490,7 +490,7 @@ SHAK,"Shake Shack, Inc.",Consumer Discretionary,Restaurants,"New York City, New 
 SHEN,Shenandoah Telecommunications Co,Communication Services,Wireless Telecommunication Services,"Edinburg, Virginia",view,354963
 SHO,"Sunstone Hotel Investors, Inc.",Real Estate,Hotel & Resort REITs,"Aliso Viejo, California",view,1295810
 SHOO,"Steven Madden, Ltd.",Consumer Discretionary,Footwear,"Long Island City, New York",view,913241
-SIG,Signet Jewelers,Consumer Discretionary,Specialty Stores,"Akron, Ohio",view,832988
+SIG,Signet Jewelers,Consumer Discretionary,Other Specialty Retail,"Akron, Ohio",view,832988
 SKT,"Tanger Factory Outlet Centers, Inc.",Real Estate,Retail REITs,"Greensboro, North Carolina",view,899715
 SKY,"Champion Homes, Inc.",Consumer Discretionary,Homebuilding,"Troy, Michigan",view,90896
 SKYW,"SkyWest, Inc.",Industrials,Passenger Airlines,"St. George, Utah",view,793733

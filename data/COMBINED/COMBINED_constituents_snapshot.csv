@@ -608,7 +608,7 @@ DAR,Darling Ingredients,Consumer Staples,Agricultural Products & Services,S&P Mi
 DBX,Dropbox,Information Technology,Application Software,S&P MidCap 400
 DCI,Donaldson Company,Industrials,Industrial Machinery & Supplies & Components,S&P MidCap 400
 DINO,HF Sinclair,Energy,Oil & Gas Refining & Marketing,S&P MidCap 400
-DKS,Dick's Sporting Goods,Consumer Discretionary,Specialty Stores,S&P MidCap 400
+DKS,Dick's Sporting Goods,Consumer Discretionary,Other Specialty Retail,S&P MidCap 400
 DLB,Dolby,Information Technology,Application Software,S&P MidCap 400
 DOCN,DigitalOcean,Information Technology,Internet Services & Infrastructure,S&P MidCap 400
 DOCS,Doximity,Health Care,Health Care Technology,S&P MidCap 400
@@ -644,7 +644,7 @@ FCN,FTI Consulting,Industrials,Research & Consulting Services,S&P MidCap 400
 FFIN,First Financial Bankshares,Financials,Regional Banks,S&P MidCap 400
 FHI,Federated Hermes,Financials,Asset Management & Custody Banks,S&P MidCap 400
 FHN,First Horizon,Financials,Regional Banks,S&P MidCap 400
-FIVE,Five Below,Consumer Discretionary,Specialty Stores,S&P MidCap 400
+FIVE,Five Below,Consumer Discretionary,Other Specialty Retail,S&P MidCap 400
 FLG,Flagstar Bank,Financials,Regional Banks,S&P MidCap 400
 FLR,Fluor,Industrials,Construction & Engineering,S&P MidCap 400
 FLS,Flowserve,Industrials,Industrial Machinery & Supplies & Components,S&P MidCap 400
@@ -955,7 +955,7 @@ ARCB,ArcBest Corp.,Industrials,Cargo Ground Transportation,S&P SmallCap 600
 ARLO,Arlo Technologies,Information Technology,Communications Equipment,S&P SmallCap 600
 AROC,"Archrock, Inc.",Energy,Oil & Gas Equipment & Services,S&P SmallCap 600
 ARR,Armour Residential REIT,Real Estate,Mortgage REITs,S&P SmallCap 600
-ASO,Academy Sports + Outdoors,Consumer Discretionary,Specialty Stores,S&P SmallCap 600
+ASO,Academy Sports + Outdoors,Consumer Discretionary,Other Specialty Retail,S&P SmallCap 600
 ASTE,"Astec Industries, Inc.",Industrials,Construction Machinery & Heavy Transportation Equipment,S&P SmallCap 600
 ASTH,"Astrana Health, Inc.",Health Care,Health Care Facilities,S&P SmallCap 600
 ATEN,"A10 Networks, Inc.",Information Technology,Systems Software,S&P SmallCap 600
@@ -1092,7 +1092,7 @@ ESI,Element Solutions,Materials,Specialty Chemicals,S&P SmallCap 600
 ETSY,Etsy,Consumer Discretionary,Broadline Retail,S&P SmallCap 600
 EVTC,"EVERTEC, Inc.",Financials,Transaction & Payment Processing Services,S&P SmallCap 600
 EXTR,"Extreme Networks, Inc.",Information Technology,Communications Equipment,S&P SmallCap 600
-EYE,National Vision Holdings,Consumer Discretionary,Specialty Stores,S&P SmallCap 600
+EYE,National Vision Holdings,Consumer Discretionary,Other Specialty Retail,S&P SmallCap 600
 EZPW,"EZCORP, Inc.",Financials,Consumer Finance,S&P SmallCap 600
 FA,First Advantage Corporation,Industrials,Human Resource & Employment Services,S&P SmallCap 600
 FBK,FB Financial Corp.,Financials,Regional Banks,S&P SmallCap 600
@@ -1158,7 +1158,7 @@ HTLD,"Heartland Express, Inc.",Industrials,Cargo Ground Transportation,S&P Small
 HTO,H2O America,Utilities,Water Utilities,S&P SmallCap 600
 HUBG,"Hub Group, Inc.",Industrials,Air Freight & Logistics,S&P SmallCap 600
 HWKN,"Hawkins, Inc.",Materials,Commodity Chemicals,S&P SmallCap 600
-HZO,"MarineMax, Inc.",Consumer Discretionary,Specialty Stores,S&P SmallCap 600
+HZO,"MarineMax, Inc.",Consumer Discretionary,Other Specialty Retail,S&P SmallCap 600
 IART,Integra Lifesciences Holdings,Health Care,Health Care Equipment,S&P SmallCap 600
 IBP,"Installed Building Products, Inc.",Consumer Discretionary,Homebuilding,S&P SmallCap 600
 ICHR,"Ichor Holdings, Ltd.",Information Technology,Semiconductor Materials & Equipment,S&P SmallCap 600
@@ -1375,7 +1375,7 @@ SABR,Sabre,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",S&P SmallCap 
 SAFT,"Safety Insurance Group, Inc.",Financials,Property & Casualty Insurance,S&P SmallCap 600
 SAH,"Sonic Automotive, Inc.",Consumer Discretionary,Automotive Retail,S&P SmallCap 600
 SBCF,Seacoast Banking Corporation of Florida,Financials,Regional Banks,S&P SmallCap 600
-SBH,"Sally Beauty Holdings, Inc.",Consumer Discretionary,Specialty Stores,S&P SmallCap 600
+SBH,"Sally Beauty Holdings, Inc.",Consumer Discretionary,Other Specialty Retail,S&P SmallCap 600
 SBSI,"Southside Bancshares, Inc.",Financials,Regional Banks,S&P SmallCap 600
 SCHL,Scholastic Corporation,Consumer Discretionary,Publishing,S&P SmallCap 600
 SCL,Stepan Company,Materials,Specialty Chemicals,S&P SmallCap 600
@@ -1390,7 +1390,7 @@ SHAK,"Shake Shack, Inc.",Consumer Discretionary,Restaurants,S&P SmallCap 600
 SHEN,Shenandoah Telecommunications Co,Communication Services,Wireless Telecommunication Services,S&P SmallCap 600
 SHO,"Sunstone Hotel Investors, Inc.",Real Estate,Hotel & Resort REITs,S&P SmallCap 600
 SHOO,"Steven Madden, Ltd.",Consumer Discretionary,Footwear,S&P SmallCap 600
-SIG,Signet Jewelers,Consumer Discretionary,Specialty Stores,S&P SmallCap 600
+SIG,Signet Jewelers,Consumer Discretionary,Other Specialty Retail,S&P SmallCap 600
 SKT,"Tanger Factory Outlet Centers, Inc.",Real Estate,Retail REITs,S&P SmallCap 600
 SKY,"Champion Homes, Inc.",Consumer Discretionary,Homebuilding,S&P SmallCap 600
 SKYW,"SkyWest, Inc.",Industrials,Passenger Airlines,S&P SmallCap 600
