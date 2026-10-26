@@ -378,14 +378,13 @@ PEG,Public Service Enterprise Group,Utilities,Electric Utilities,S&P 500
 PTC,PTC Inc.,Information Technology,Application Software,S&P 500
 PSA,Public Storage,Real Estate,Self-Storage REITs,S&P 500
 PHM,PulteGroup,Consumer Discretionary,Homebuilding,S&P 500
-PWR,Quanta Services,Industrials,Construction & Engineering,S&P 500
-QCOM,Qualcomm,Information Technology,Semiconductors,S&P 500
-DGX,Quest Diagnostics,Health Care,Health Care Services,S&P 500
 Q,Qnity Electronics,Information Technology,Semiconductor Materials & Equipment,S&P 500
+QCOM,Qualcomm,Information Technology,Semiconductors,S&P 500
+PWR,Quanta Services,Industrials,Construction & Engineering,S&P 500
+DGX,Quest Diagnostics,Health Care,Health Care Services,S&P 500
 RL,Ralph Lauren Corporation,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",S&P 500
 RJF,Raymond James Financial,Financials,Investment Banking & Brokerage,S&P 500
 RDDT,Reddit,Communication Services,Interactive Media & Services,S&P 500
-RTX,RTX Corporation,Industrials,Aerospace & Defense,S&P 500
 O,Realty Income,Real Estate,Retail REITs,S&P 500
 REG,Regency Centers,Real Estate,Retail REITs,S&P 500
 REGN,Regeneron Pharmaceuticals,Health Care,Biotechnology,S&P 500
@@ -399,6 +398,7 @@ ROL,"Rollins, Inc.",Industrials,Environmental & Facilities Services,S&P 500
 ROP,Roper Technologies,Information Technology,Electronic Equipment & Instruments,S&P 500
 ROST,Ross Stores,Consumer Discretionary,Apparel Retail,S&P 500
 RCL,Royal Caribbean Group,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",S&P 500
+RTX,RTX Corporation,Industrials,Aerospace & Defense,S&P 500
 SPGI,S&P Global,Financials,Financial Exchanges & Data,S&P 500
 CRM,Salesforce,Information Technology,Application Software,S&P 500
 SNDK,Sandisk,Information Technology,"Technology Hardware, Storage & Peripherals",S&P 500
@@ -409,7 +409,7 @@ SRE,Sempra,Utilities,Multi-Utilities,S&P 500
 NOW,ServiceNow,Information Technology,Systems Software,S&P 500
 SHW,Sherwin-Williams,Materials,Specialty Chemicals,S&P 500
 SPG,Simon Property Group,Real Estate,Retail REITs,S&P 500
-SKYD,Skydance Corporation,Communication Services,Movies & Entertainment,S&P 500
+SKYD,Skydance,Communication Services,Movies & Entertainment,S&P 500
 SWKS,Skyworks Solutions,Information Technology,Semiconductors,S&P 500
 SJM,J.M. Smucker Company (The),Consumer Staples,Packaged Foods & Meats,S&P 500
 SW,Smurfit Westrock,Materials,Paper & Plastic Packaging Products & Materials,S&P 500
