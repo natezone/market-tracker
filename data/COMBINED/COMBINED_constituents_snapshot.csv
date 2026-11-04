@@ -268,7 +268,6 @@ J,Jacobs Solutions,Industrials,Construction & Engineering,S&P 500
 JNJ,Johnson & Johnson,Health Care,Pharmaceuticals,S&P 500
 JCI,Johnson Controls,Industrials,Building Products,S&P 500
 JPM,JPMorgan Chase,Financials,Diversified Banks,S&P 500
-KVUE,Kenvue,Consumer Staples,Personal Care Products,S&P 500
 KDP,Keurig Dr Pepper,Consumer Staples,Soft Drinks & Non-alcoholic Beverages,S&P 500
 KEY,KeyCorp,Financials,Regional Banks,S&P 500
 KEYS,Keysight Technologies,Information Technology,Electronic Equipment & Instruments,S&P 500
@@ -346,6 +345,7 @@ NVR,"NVR, Inc.",Consumer Discretionary,Homebuilding,S&P 500
 NXPI,NXP Semiconductors,Information Technology,Semiconductors,S&P 500
 ORLY,O'Reilly Automotive,Consumer Discretionary,Automotive Retail,S&P 500
 OXY,Occidental Petroleum,Energy,Oil & Gas Exploration & Production,S&P 500
+OKTA,"Okta, Inc.",Information Technology,Application Software,"S&P 500, S&P MidCap 400"
 ODFL,Old Dominion,Industrials,Cargo Ground Transportation,S&P 500
 OMC,Omnicom Group,Communication Services,Advertising,S&P 500
 ON,ON Semiconductor,Information Technology,Semiconductors,S&P 500
@@ -760,7 +760,6 @@ OC,Owens Corning,Industrials,Building Products,S&P MidCap 400
 OGE,OGE Energy,Utilities,Multi-Utilities,S&P MidCap 400
 OGS,One Gas,Utilities,Gas Utilities,S&P MidCap 400
 OHI,Omega Healthcare Investors,Real Estate,Health Care REITs,S&P MidCap 400
-OKTA,"Okta, Inc.",Information Technology,Application Software,S&P MidCap 400
 OLED,Universal Display,Information Technology,Semiconductors,S&P MidCap 400
 OLLI,Ollie's Bargain Outlet,Consumer Discretionary,Broadline Retail,S&P MidCap 400
 ONB,Old National Bank,Financials,Regional Banks,S&P MidCap 400
