@@ -345,7 +345,7 @@ NVR,"NVR, Inc.",Consumer Discretionary,Homebuilding,S&P 500
 NXPI,NXP Semiconductors,Information Technology,Semiconductors,S&P 500
 ORLY,O'Reilly Automotive,Consumer Discretionary,Automotive Retail,S&P 500
 OXY,Occidental Petroleum,Energy,Oil & Gas Exploration & Production,S&P 500
-OKTA,"Okta, Inc.",Information Technology,Application Software,"S&P 500, S&P MidCap 400"
+OKTA,"Okta, Inc.",Information Technology,Application Software,S&P 500
 ODFL,Old Dominion,Industrials,Cargo Ground Transportation,S&P 500
 OMC,Omnicom Group,Communication Services,Advertising,S&P 500
 ON,ON Semiconductor,Information Technology,Semiconductors,S&P 500
@@ -663,6 +663,7 @@ GBCI,Glacier Bancorp,Financials,Regional Banks,S&P MidCap 400
 GEF,"Greif, Inc.",Materials,"Metal, Glass & Plastic Containers",S&P MidCap 400
 GGG,Graco Inc.,Industrials,Industrial Machinery & Supplies & Components,S&P MidCap 400
 GHC,Graham Holdings,Consumer Discretionary,Education Services,S&P MidCap 400
+GKOS,Glaukos,Health Care,Health Care Equipment,"S&P MidCap 400, S&P SmallCap 600"
 GLPI,Gaming and Leisure Properties,Real Estate,Other Specialized REITs,S&P MidCap 400
 GME,GameStop,Consumer Discretionary,Computer & Electronics Retail,S&P MidCap 400
 GMED,Globus Medical,Health Care,Health Care Equipment,S&P MidCap 400
@@ -1121,7 +1122,6 @@ GBX,"The Greenbrier Companies, Inc.",Industrials,Construction Machinery & Heavy 
 GEO,"GEO Group, Inc.",Industrials,Environmental & Facilities Services,S&P SmallCap 600
 GFF,Griffon Corporation,Industrials,Building Products,S&P SmallCap 600
 GIII,"G-III Apparel Group, Ltd.",Consumer Discretionary,"Apparel, Accessories & Luxury Goods",S&P SmallCap 600
-GKOS,Glaukos Corp.,Health Care,Health Care Equipment,S&P SmallCap 600
 GNL,"Global Net Lease, Inc.",Real Estate,Diversified REITs,S&P SmallCap 600
 GNW,"Genworth Financial, Inc.",Financials,Multi-line Insurance,S&P SmallCap 600
 GO,Grocery Outlet,Consumer Staples,Food Retail,S&P SmallCap 600
