@@ -47,7 +47,6 @@ BHF,Brighthouse Financial,Financials,Life & Health Insurance,"Charlotte, North C
 BILL,Bill Holdings,Information Technology,Application Software,"San Jose, California",reports
 BIO,Bio-Rad Laboratories,Health Care,Life Sciences Tools & Services,"Hercules, California",reports
 BJ,BJ's Wholesale Club,Consumer Staples,Consumer Staples Merchandise Retail,"Marlborough, Massachusetts",reports
-HZN,Bright Horizon Energy Corporation,Utilities,Multi-Utilities,"Rapid City, South Dakota",reports
 BMRN,BioMarin Pharmaceutical,Health Care,Biotechnology,"San Rafael, California",reports
 BRKR,Bruker,Health Care,Health Care Equipment,"Billerica, Massachusetts",reports
 BROS,Dutch Bros Inc.,Consumer Discretionary,Restaurants,"Tempe, Arizona",reports
@@ -76,6 +75,7 @@ CHE,Chemed Corp.,Health Care,Health Care Services,"Cincinnati, Ohio",reports
 CHH,Choice Hotels,Consumer Discretionary,"Hotels, Resorts & Cruise Lines","Rockville, Maryland",reports
 CHRD,Chord Energy,Energy,Oil & Gas Exploration & Production,"Houston, Texas",reports
 CHWY,Chewy,Consumer Discretionary,Other Specialty Retail,"Plantation, Florida",reports
+CHYM,Chime Financial,Financials,Consumer Finance,"San Francisco, California",reports
 CLF,Cleveland-Cliffs,Materials,Steel,"Cleveland, Ohio",reports
 CLH,Clean Harbors,Industrials,Environmental & Facilities Services,"Norwell, Massachusetts",reports
 CMC,Commercial Metals,Materials,Steel,"Irving, Texas",reports
@@ -184,6 +184,7 @@ HRB,H&R Block,Consumer Discretionary,Specialized Consumer Services,"Kansas City,
 HUBS,HubSpot,Information Technology,Application Software,"Cambridge, Massachusetts",reports
 HWC,Hancock Whitney,Financials,Regional Banks,"Gulfport, Mississippi",reports
 HXL,Hexcel,Industrials,Aerospace & Defense,"Stamford, Connecticut",reports
+HZN,Bright Horizon Energy Corporation,Utilities,Multi-Utilities,"Rapid City, South Dakota",reports
 IBOC,Intl Bancshares Corp,Financials,Regional Banks,"Laredo, Texas",reports
 IDA,Idacorp,Utilities,Electric Utilities,"Boise, Idaho",reports
 IDCC,InterDigital,Information Technology,Communications Equipment,"Wilmington, Delaware",reports
@@ -251,7 +252,6 @@ NOVT,Novanta,Information Technology,Electronic Equipment & Instruments,,reports
 NTNX,Nutanix,Information Technology,Systems Software,"San Jose, California",reports
 NVST,Envista Holdings,Health Care,Health Care Supplies,,reports
 NVT,nVent Electric plc,Industrials,Electrical Components & Equipment,,reports
-NWE,NorthWestern Energy,Utilities,Multi-Utilities,"Sioux Falls, South Dakota",reports
 NXST,Nexstar Media Group,Communication Services,Broadcasting,"Irving, Texas",reports
 NXT,Nextpower,Industrials,Electrical Components & Equipment,"Fremont, California",reports
 NYT,New York Times Company,Communication Services,Publishing,"New York City, New York",reports

@@ -550,7 +550,6 @@ BHF,Brighthouse Financial,Financials,Life & Health Insurance,S&P MidCap 400
 BILL,Bill Holdings,Information Technology,Application Software,S&P MidCap 400
 BIO,Bio-Rad Laboratories,Health Care,Life Sciences Tools & Services,S&P MidCap 400
 BJ,BJ's Wholesale Club,Consumer Staples,Consumer Staples Merchandise Retail,S&P MidCap 400
-HZN,Bright Horizon Energy Corporation,Utilities,Multi-Utilities,S&P MidCap 400
 BMRN,BioMarin Pharmaceutical,Health Care,Biotechnology,S&P MidCap 400
 BRKR,Bruker,Health Care,Health Care Equipment,S&P MidCap 400
 BROS,Dutch Bros Inc.,Consumer Discretionary,Restaurants,S&P MidCap 400
@@ -579,6 +578,7 @@ CHE,Chemed Corp.,Health Care,Health Care Services,S&P MidCap 400
 CHH,Choice Hotels,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",S&P MidCap 400
 CHRD,Chord Energy,Energy,Oil & Gas Exploration & Production,S&P MidCap 400
 CHWY,Chewy,Consumer Discretionary,Other Specialty Retail,S&P MidCap 400
+CHYM,Chime Financial,Financials,Consumer Finance,S&P MidCap 400
 CLF,Cleveland-Cliffs,Materials,Steel,S&P MidCap 400
 CLH,Clean Harbors,Industrials,Environmental & Facilities Services,S&P MidCap 400
 CMC,Commercial Metals,Materials,Steel,S&P MidCap 400
@@ -687,6 +687,7 @@ HRB,H&R Block,Consumer Discretionary,Specialized Consumer Services,S&P MidCap 40
 HUBS,HubSpot,Information Technology,Application Software,S&P MidCap 400
 HWC,Hancock Whitney,Financials,Regional Banks,S&P MidCap 400
 HXL,Hexcel,Industrials,Aerospace & Defense,S&P MidCap 400
+HZN,Bright Horizon Energy Corporation,Utilities,Multi-Utilities,S&P MidCap 400
 IBOC,Intl Bancshares Corp,Financials,Regional Banks,S&P MidCap 400
 IDA,Idacorp,Utilities,Electric Utilities,S&P MidCap 400
 IDCC,InterDigital,Information Technology,Communications Equipment,S&P MidCap 400
@@ -754,7 +755,6 @@ NOVT,Novanta,Information Technology,Electronic Equipment & Instruments,S&P MidCa
 NTNX,Nutanix,Information Technology,Systems Software,S&P MidCap 400
 NVST,Envista Holdings,Health Care,Health Care Supplies,S&P MidCap 400
 NVT,nVent Electric plc,Industrials,Electrical Components & Equipment,S&P MidCap 400
-NWE,NorthWestern Energy,Utilities,Multi-Utilities,S&P MidCap 400
 NXST,Nexstar Media Group,Communication Services,Broadcasting,S&P MidCap 400
 NXT,Nextpower,Industrials,Electrical Components & Equipment,S&P MidCap 400
 NYT,New York Times Company,Communication Services,Publishing,S&P MidCap 400
